@@ -9,8 +9,8 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -29,4 +29,69 @@ model Session {
   locale        String?
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
+}
+
+model UpsellCampaign {
+  id              String  @id @default(cuid())
+  name            String
+  type            String // e.g., 'add_to_unlock'
+  placement       String
+  rewardMode      String // e.g., 'fixed' or 'flame'
+  showConfetti    Boolean
+  showLockedGoals Boolean
+  goalType        String // 'amount_cart' or 'quantity'
+  currency        String // e.g., 'MAD', 'USD'
+  goalAmount      String // string to allow flexible formatting
+  rewardType      String // 'discount', 'gift', 'shipping'
+  discountCode    String? // if rewardType = discount
+  discountType    String? // percentage or amount
+
+  badgeImageUrl String? // base64 or uploaded file URL
+  barStyle      String
+  barRadius     String
+  barColors     Json // { primary, secondary, background, goalComplete }
+
+  goalText    String
+  preGoalText String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  triggerProducts    UpsellTriggerProduct[]
+  triggerCollections UpsellTriggerCollection[]
+  rewardProducts     UpsellRewardProduct[]
+}
+
+model UpsellTriggerProduct {
+  id           String  @id @default(cuid())
+  campaignId   String
+  productId    String
+  productTitle String
+  handle       String
+  price        String?
+  media        String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model UpsellTriggerCollection {
+  id           String @id @default(cuid())
+  campaignId   String
+  collectionId String
+  title        String
+  handle       String
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model UpsellRewardProduct {
+  id         String  @id @default(cuid())
+  campaignId String
+  productId  String
+  title      String
+  price      String?
+  media      String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
 }
