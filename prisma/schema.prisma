@@ -32,24 +32,28 @@ model Session {
 }
 
 model UpsellCampaign {
-  id              String  @id @default(cuid())
-  name            String
-  type            String // e.g., 'add_to_unlock'
-  placement       String
-  rewardMode      String // e.g., 'fixed' or 'flame'
-  showConfetti    Boolean
-  showLockedGoals Boolean
-  goalType        String // 'amount_cart' or 'quantity'
-  currency        String // e.g., 'MAD', 'USD'
-  goalAmount      String // string to allow flexible formatting
-  rewardType      String // 'discount', 'gift', 'shipping'
-  discountCode    String? // if rewardType = discount
-  discountType    String? // percentage or amount
+  id           Int     @id @default(autoincrement())
+  name         String
+  type         String
+  placement    String
+  rewardMode   String
+  rewardType   String
+  discountCode String?
+  discountType String?
 
-  badgeImageUrl String? // base64 or uploaded file URL
+  goalType     String?
+  goalAmount   Int?
+  goalquantity Int?
+  currency     String?
+  shop         String
+
+  showConfetti    Boolean @default(false)
+  showLockedGoals Boolean @default(false)
+
+  badgeImageUrl String?
   barStyle      String
   barRadius     String
-  barColors     Json // { primary, secondary, background, goalComplete }
+  barColors     Json
 
   goalText    String
   preGoalText String
@@ -57,15 +61,19 @@ model UpsellCampaign {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
-  triggerProducts    UpsellTriggerProduct[]
-  triggerCollections UpsellTriggerCollection[]
-  rewardProducts     UpsellRewardProduct[]
+  // 🔗 Relations
+  triggerProducts        UpsellTriggerProduct[]
+  triggerCollections     UpsellTriggerCollection[]
+  rewardProducts         UpsellRewardProduct[]
+  buyMoreRules           BuyMoreRule[]
+  bogoRules              BogoRule[]
+  bogoFreeItems          BogoFreeItem[]
+  UpsellRewardCollection UpsellRewardCollection[]
 }
 
 model UpsellTriggerProduct {
-  id           String  @id @default(cuid())
-  campaignId   String
+  id           Int     @id @default(autoincrement())
+  campaignId   Int
   productId    String
   productTitle String
   handle       String
@@ -76,8 +84,8 @@ model UpsellTriggerProduct {
 }
 
 model UpsellTriggerCollection {
-  id           String @id @default(cuid())
-  campaignId   String
+  id           Int    @id @default(autoincrement())
+  campaignId   Int
   collectionId String
   title        String
   handle       String
@@ -86,12 +94,53 @@ model UpsellTriggerCollection {
 }
 
 model UpsellRewardProduct {
-  id         String  @id @default(cuid())
-  campaignId String
+  id         Int     @id @default(autoincrement())
+  campaignId Int
   productId  String
-  title      String
+  variantId  String?
+  title      String?
   price      String?
   media      String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model UpsellRewardCollection {
+  id           Int     @id @default(autoincrement())
+  campaignId   Int
+  collectionid String
+  title        String?
+  price        String?
+  media        String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model BuyMoreRule {
+  id           Int    @id @default(autoincrement())
+  campaignId   Int
+  productId    String
+  quantity     Int
+  discount     Float
+  discountType String // 'percentage' | 'amount'
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model BogoRule {
+  id         Int    @id @default(autoincrement())
+  campaignId Int
+  buyQty     String
+  getQty     String
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model BogoFreeItem {
+  id         Int    @id @default(autoincrement())
+  campaignId Int
+  productId  String
+  title      String
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
 }

@@ -1,0 +1,334 @@
+<script>
+  document.addEventListener('DOMContentLoaded', async function () {
+    const App_Domain = 'https://novels-humidity-nurses-glasgow.trycloudflare.com';
+    const shop = Shopify.shop;
+    const productId = '{{ product.id }}';
+    const selectedVariantPrices = JSON.parse('{{ product.variants | json }}');
+    const variantId = selectedVariantPrices[0].id;
+    const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
+
+    try {
+      const response = await fetch(Api);
+      const data = await response.json();
+      console.log('API Response:', data);
+
+      const upsellTriggers = Array.isArray(data.upsellTriggerProduct)
+        ? data.upsellTriggerProduct
+        : [data.upsellTriggerProduct];
+
+      const product_info = document.querySelector('product-info');
+      const upsellContainer = document.createElement('div');
+      upsellContainer.style.marginTop = '30px';
+      upsellContainer.className = 'main';
+      product_info.appendChild(upsellContainer);
+      let anyUpsell = false;
+
+      for (const trigger of upsellTriggers) {
+        const campaign = trigger.campaign;
+        const rewardProducts = campaign?.rewardProducts || [];
+        const rewardCollectionsWithProducts = campaign?.rewardCollectionsWithProducts || [];
+
+        const rewardMode = campaign.rewardMode;
+        const rewardType = campaign.rewardType;
+        const discountType = campaign.discountType;
+        const discountCode = parseFloat(campaign.discountCode);
+
+        if (rewardMode !== 'flame' && rewardType !== 'shipping' && rewardProducts.length === 0) {
+          continue;
+        }
+
+        anyUpsell = true;
+
+        let goalText = '';
+        if (campaign.goalType === 'quantity') {
+          goalText = `If you purchase ${campaign.goalquantity}, you get ${campaign.discountCode}${
+            campaign.discountType === 'percentage' ? '%' : ' MAD'
+          } off`;
+        } else if (campaign.goalType === 'subtotal' || campaign.goalType === 'amount_cart') {
+          goalText = `If you spend ${parseFloat(campaign.goalAmount).toFixed(2)} MAD, you get ${campaign.discountCode}${
+            campaign.discountType === 'percentage' ? '%' : ' MAD'
+          } off`;
+        }
+
+        const campaignBlock = document.createElement('div');
+        campaignBlock.className = 'under_main';
+        campaignBlock.style.borderTop = '1px dashed #999';
+        campaignBlock.style.paddingTop = '10px';
+        campaignBlock.style.marginBottom = '20px';
+
+        // 🚚 Free Shipping
+        if (rewardType === 'shipping') {
+          const card = document.createElement('div');
+          card.className = 'product_card';
+          card.innerHTML = `
+            <p>${goalText}</p>
+            <div class="free_shipping" style="margin-top: 8px; font-style: italic; color: #555;">
+              🚚 ${campaign.preGoalText}
+            </div>
+          `;
+          campaignBlock.appendChild(card);
+        }
+
+        // 🔥 Flame - choose from collection
+        if (rewardMode === 'flame') {
+          const collectionProducts = rewardCollectionsWithProducts?.[0]?.products || [];
+
+          collectionProducts.forEach((product) => {
+            const price = parseFloat(product.variantPrice || product.price || 0);
+            const card = document.createElement('div');
+            card.className = 'product_card';
+
+            card.innerHTML = `
+              <div>
+                <label class="custom-radio-wrapper">
+                  <input type="radio" name="reward_product" value="${product.variantId}" id="product-${
+              product.variantId
+            }" />
+                  <span class="custom-radio"></span>
+                </label>
+
+                <div class="product_upsell" style="display: flex; gap: 16px; align-items: center;">
+                  <img src="${product.media || product.variantImage || ''}" alt="${
+              product.title
+            }" width="80" height="80" style="object-fit:cover; border-radius: 8px;" />
+                  <div style="flex: 1;">
+                    <strong>${product.title}</strong><br/>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            campaignBlock.appendChild(card);
+          });
+
+          // 🎁 Add "Claim Free Gift" Button
+          const claimGiftBtn = document.createElement('button');
+          claimGiftBtn.textContent = 'Claim Free Gift';
+          claimGiftBtn.disabled = true;
+          claimGiftBtn.style = `
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: black;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: not-allowed;
+          `;
+          upsellContainer.appendChild(claimGiftBtn);
+
+          // 🧠 Check if goal met
+          fetch('/cart.js')
+            .then((res) => res.json())
+            .then((cart) => {
+              const totalPrice = cart.total_price / 100;
+              const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+
+              const goalMet =
+                campaign.goalType === 'quantity'
+                  ? totalItems >= campaign.goalquantity
+                  : totalPrice >= campaign.goalAmount;
+
+              if (goalMet) {
+                claimGiftBtn.disabled = false;
+                claimGiftBtn.style.cursor = 'pointer';
+                claimGiftBtn.style.background = '#f5f5f5';
+                claimGiftBtn.textContent = 'Claim Your Free Gift';
+              } else {
+                claimGiftBtn.textContent =
+                  campaign.goalType === 'quantity'
+                    ? `Buy ${campaign.goalquantity} items to unlock`
+                    : `Spend ${campaign.goalAmount} MAD to unlock`;
+              }
+            });
+
+          // 📦 On Click – Add selected product
+          claimGiftBtn.addEventListener('click', () => {
+            const selectedRadio = document.querySelector('input[name="reward_product"]:checked');
+            if (!selectedRadio) {
+              alert('Please select a gift first!');
+              return;
+            }
+
+            const selectedVariantId = selectedRadio.value;
+            addToCart(selectedVariantId, 1);
+          });
+        }
+
+        // 🎁 Fixed/discount reward products
+        if (rewardMode !== 'flame' && rewardType !== 'shipping') {
+          rewardProducts.forEach((product) => {
+            const price = parseFloat(product.price);
+            let discountedPrice = price;
+
+            if (rewardMode === 'fixed' && rewardType === 'discount') {
+              if (discountType === 'percentage') {
+                discountedPrice = price * ((100 - discountCode) / 100);
+              } else {
+                discountedPrice = price - discountCode;
+              }
+            }
+
+            const card = document.createElement('div');
+            card.className = 'product_card';
+
+            card.innerHTML = `
+              <p>${goalText}</p>
+              <div class="product_upsell">
+                <img src="${product.media || ''}" alt="${
+              product.title
+            }" width="80" height="80" style="object-fit:cover;" />
+                <div style="flex: 1;">
+                  <strong>${product.title}</strong><br/>
+                  ${
+                    rewardMode === 'fixed' && rewardType === 'discount'
+                      ? `<span style="text-decoration:line-through;">${price.toFixed(2)} MAD</span>
+                        <span style="color:green;">${discountedPrice.toFixed(2)} MAD</span>`
+                      : `<span>Price: ${price.toFixed(2)} MAD</span>`
+                  }
+                  <div style="margin-top: 8px;">
+                    <label>Qty:
+                      <input type="number" min="1" value="1" style="width: 60px;" id="qty-${product.variantId}" />
+                    </label>
+                    <button
+                      style="margin-left: 10px; padding: 5px 10px; background: black; color: white; border: none; cursor: pointer;"
+                      onclick="addToCart('${product.variantId}', document.getElementById('qty-${
+              product.variantId
+            }').value)">
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            campaignBlock.appendChild(card);
+          });
+        }
+
+        upsellContainer.appendChild(campaignBlock);
+      }
+
+      if (anyUpsell) {
+        document.querySelector('[data-product-upsell-block]')?.appendChild(upsellContainer);
+      }
+    } catch (error) {
+      console.error('Fetch failed:', error);
+    }
+  });
+
+  async function addToCart(productId, quantity) {
+    try {
+      const response = await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              id: productId,
+              quantity: parseInt(quantity),
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Added to cart:', data);
+      alert('✅ Product added to cart!');
+    } catch (error) {
+      console.error('Add to cart failed:', error);
+      alert('❌ Failed to add to cart');
+    }
+  }
+</script>
+
+<style>
+  .under_main {
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    overflow-y: hidden;
+  }
+  .product_card {
+    border: 1px solid rgb(221, 221, 221);
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    flex-direction: column;
+    padding: 10px;
+    background: white;
+    border-radius: 10px;
+    margin: 15px 10px;
+  }
+
+  .product_card .product_upsell {
+    width: 100%;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    padding: 10px 0px;
+    font-size: 14px;
+    width: 250px;
+  }
+
+  p {
+    margin: 0px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .custom-radio-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+    margin-right: 10px;
+  }
+
+  .custom-radio-wrapper input[type='radio'] {
+    opacity: 0;
+    position: absolute;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  .custom-radio {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 2px solid #000;
+    display: inline-block;
+    position: relative;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .custom-radio-wrapper input:checked + .custom-radio {
+    background-color: #000;
+    border-color: #000;
+  }
+
+  .custom-radio-wrapper input:checked + .custom-radio::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+  }
+</style>
+
+{% schema %}
+{
+  "name": "DragOn Bundales Upsell",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}

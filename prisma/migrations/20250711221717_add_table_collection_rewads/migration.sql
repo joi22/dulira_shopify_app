@@ -21,19 +21,20 @@ CREATE TABLE `Session` (
 
 -- CreateTable
 CREATE TABLE `UpsellCampaign` (
-    `id` VARCHAR(191) NOT NULL,
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(191) NOT NULL,
     `type` VARCHAR(191) NOT NULL,
     `placement` VARCHAR(191) NOT NULL,
     `rewardMode` VARCHAR(191) NOT NULL,
-    `showConfetti` BOOLEAN NOT NULL,
-    `showLockedGoals` BOOLEAN NOT NULL,
-    `goalType` VARCHAR(191) NOT NULL,
-    `currency` VARCHAR(191) NOT NULL,
-    `goalAmount` VARCHAR(191) NOT NULL,
     `rewardType` VARCHAR(191) NOT NULL,
     `discountCode` VARCHAR(191) NULL,
     `discountType` VARCHAR(191) NULL,
+    `goalType` VARCHAR(191) NULL,
+    `goalAmount` INTEGER NULL,
+    `goalquantity` INTEGER NULL,
+    `currency` VARCHAR(191) NULL,
+    `showConfetti` BOOLEAN NOT NULL DEFAULT false,
+    `showLockedGoals` BOOLEAN NOT NULL DEFAULT false,
     `badgeImageUrl` VARCHAR(191) NULL,
     `barStyle` VARCHAR(191) NOT NULL,
     `barRadius` VARCHAR(191) NOT NULL,
@@ -48,8 +49,8 @@ CREATE TABLE `UpsellCampaign` (
 
 -- CreateTable
 CREATE TABLE `UpsellTriggerProduct` (
-    `id` VARCHAR(191) NOT NULL,
-    `campaignId` VARCHAR(191) NOT NULL,
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
     `productId` VARCHAR(191) NOT NULL,
     `productTitle` VARCHAR(191) NOT NULL,
     `handle` VARCHAR(191) NOT NULL,
@@ -61,8 +62,8 @@ CREATE TABLE `UpsellTriggerProduct` (
 
 -- CreateTable
 CREATE TABLE `UpsellTriggerCollection` (
-    `id` VARCHAR(191) NOT NULL,
-    `campaignId` VARCHAR(191) NOT NULL,
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
     `collectionId` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
     `handle` VARCHAR(191) NOT NULL,
@@ -72,12 +73,56 @@ CREATE TABLE `UpsellTriggerCollection` (
 
 -- CreateTable
 CREATE TABLE `UpsellRewardProduct` (
-    `id` VARCHAR(191) NOT NULL,
-    `campaignId` VARCHAR(191) NOT NULL,
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
     `productId` VARCHAR(191) NOT NULL,
-    `title` VARCHAR(191) NOT NULL,
+    `title` VARCHAR(191) NULL,
     `price` VARCHAR(191) NULL,
     `media` VARCHAR(191) NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `UpsellRewardCollection` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
+    `collectionid` VARCHAR(191) NOT NULL,
+    `title` VARCHAR(191) NULL,
+    `price` VARCHAR(191) NULL,
+    `media` VARCHAR(191) NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BuyMoreRule` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
+    `productId` VARCHAR(191) NOT NULL,
+    `quantity` INTEGER NOT NULL,
+    `discount` DOUBLE NOT NULL,
+    `discountType` VARCHAR(191) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BogoRule` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
+    `buyQty` VARCHAR(191) NOT NULL,
+    `getQty` VARCHAR(191) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `BogoFreeItem` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `campaignId` INTEGER NOT NULL,
+    `productId` VARCHAR(191) NOT NULL,
+    `title` VARCHAR(191) NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -90,3 +135,15 @@ ALTER TABLE `UpsellTriggerCollection` ADD CONSTRAINT `UpsellTriggerCollection_ca
 
 -- AddForeignKey
 ALTER TABLE `UpsellRewardProduct` ADD CONSTRAINT `UpsellRewardProduct_campaignId_fkey` FOREIGN KEY (`campaignId`) REFERENCES `UpsellCampaign`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `UpsellRewardCollection` ADD CONSTRAINT `UpsellRewardCollection_campaignId_fkey` FOREIGN KEY (`campaignId`) REFERENCES `UpsellCampaign`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BuyMoreRule` ADD CONSTRAINT `BuyMoreRule_campaignId_fkey` FOREIGN KEY (`campaignId`) REFERENCES `UpsellCampaign`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BogoRule` ADD CONSTRAINT `BogoRule_campaignId_fkey` FOREIGN KEY (`campaignId`) REFERENCES `UpsellCampaign`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `BogoFreeItem` ADD CONSTRAINT `BogoFreeItem_campaignId_fkey` FOREIGN KEY (`campaignId`) REFERENCES `UpsellCampaign`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
