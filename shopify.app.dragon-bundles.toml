@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "bc86448bb3e4820788b5d259f1d20323"
-application_url = "https://confident-flexible-activities-recordings.trycloudflare.com"
+application_url = "https://privilege-merry-bb-pattern.trycloudflare.com"
 embedded = true
 name = "dragon-bundles"
 handle = "dragon-bundles"
@@ -19,9 +19,9 @@ scopes = "write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://confident-flexible-activities-recordings.trycloudflare.com/auth/callback",
-  "https://confident-flexible-activities-recordings.trycloudflare.com/auth/shopify/callback",
-  "https://confident-flexible-activities-recordings.trycloudflare.com/api/auth/callback"
+  "https://privilege-merry-bb-pattern.trycloudflare.com/auth/callback",
+  "https://privilege-merry-bb-pattern.trycloudflare.com/auth/shopify/callback",
+  "https://privilege-merry-bb-pattern.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

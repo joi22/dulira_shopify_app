@@ -88,7 +88,7 @@ export const loader = async ({ request, params }) => {
           const products = result?.data?.collection?.products?.edges.map((a) => a.node) || [];
           const mediaImageUrls = products.map((product) => {
             const mediaEdges = product.media?.edges || [];
-            
+
             return mediaEdges.map((edge) => edge.node.preview?.image?.url).filter(Boolean);
           });
 

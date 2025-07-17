@@ -18,19 +18,92 @@ import {
   ChoiceList,
   FormLayout,
 } from "@shopify/polaris";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BuyMore from "./components/BuyMore";
 import BogoUpsell from "./components/BogoUpsell";
 import { data, useFetcher } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { add_to_unlock_ } from "./utils/add_unlock"
+import { buy_more_save_more } from "./utils/buy_more_save_more"
+
+const trigger_coll = async (collectionIds, shop, accessToken, campaignId) => {
+  for (const colId of collectionIds) {
+    const gid = `gid://shopify/Collection/${colId}`;
+    const gql = `
+      query {
+        collection(id:"${gid}") {
+          products(first: 200) {
+            edges {
+              node {
+                id
+                title
+                handle
+                media(first: 1) {
+                  edges {
+                    node {
+                      preview {
+                        image {
+                          url
+                        }
+                      }
+                    }
+                  }
+                }
+                variants(first: 1) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price
+                      image {
+                        url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken,
+      },
+      body: JSON.stringify({ query: gql }),
+    });
+
+    const result = await response.json();
+    const products = result?.data?.collection?.products?.edges || [];
+
+    const productData = products.map(({ node }) => ({
+      campaignId,
+      productId: node.id.split('/').pop(),
+      productTitle: node.title,
+      handle: node.handle,
+      price: node.variants?.edges?.[0]?.node?.price || '0',
+      media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
+    }));
+
+    if (productData.length > 0) {
+      await prisma.upsellTriggerProduct.createMany({
+        data: productData,
+      });
+    }
+  }
+};
 
 
 
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
-  const { shop,accessToken } = session
+  const { shop, accessToken } = session
   // Extract form data
   const campaignName = formData.get("campaignName");
   const placement = formData.get("placement");
@@ -40,6 +113,8 @@ export const action = async ({ request }) => {
   const selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
   const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
   const rewardProducts = JSON.parse(formData.get("rewardProducts") || "[]");
+  console.log(rewardProducts, "=========")
+
   const reward_collection = JSON.parse(formData.get("reward_collection") || "[]");
 
   const upsell_allproducts = formData.get("upsell_allproducts");
@@ -73,7 +148,9 @@ export const action = async ({ request }) => {
 
   const barStyle = formData.get("barStyle");
   const barRadius = formData.get("barRadius");
-  const barColors = formData.get("barColors");
+  const barColors = JSON.parse(formData.get("barColors"));
+
+  // =========>>>> Collection Tirgger
 
   // Save campaign to DB
   const upsellCampaign = await prisma.UpsellCampaign.create({
@@ -114,15 +191,20 @@ export const action = async ({ request }) => {
         media: p.media,
       })),
     });
+
   } else if (selectedTriggerType === "collections" && selectedCollections.length > 0) {
     await prisma.UpsellTriggerCollection.createMany({
-      data: selectedCollections.map((p) => ({
+      data: selectedCollections.map((col) => ({
         campaignId: upsellCampaign.id,
-        collectionId: p.id,
-        title: p.title,
-        handle: p.handle,
+        collectionId: col.id,
+        title: col.title,
+        handle: col.handle,
       })),
     });
+
+    // Fetch and insert all products from selected collections
+    const collectionIds = selectedCollections.map(col => col.id);
+    await trigger_coll(collectionIds, shop, accessToken, upsellCampaign.id);
   }
 
   // Create discount in Shopify if fixed reward
@@ -132,65 +214,35 @@ export const action = async ({ request }) => {
 
   if (selectedCampaignType === "add_to_unlock") {
 
-await add_to_unlock(
-  accessToken,
-  shop,
-  rewardType,
-  campaignName,
-  goalType,
-  goalQuantity,
-  goalAmounts,
-  discountCode,
-  rewardProducts,
-  upsellCampaign,
-  reward_collection,
-  rewardMode,
-  discountType,
-  admin
-);
+    const data_unlock = await add_to_unlock_(
+      shop,
+      accessToken,
+      rewardType,
+      campaignName,
+      goalType,
+      goalQuantity,
+      goalAmounts,
+      discountCode,
+      rewardProducts,
+      upsellCampaign,
+      reward_collection,
+      rewardMode,
+      discountType,
+      admin
+    );
+
 
   } else if (selectedCampaignType === "buy_more_save_more") {
 
-    console.log(rewardMode, "this ")
-
-    if (rewardMode === "fixed") {
-      console.log(selectedProducts_Buy, "range")
-      for (const product of selectedProducts_Buy) {
-
-        console.log(product.levels, "=================>>>", product.id, upsellCampaign.id)
-        for (const level of product.levels) {
-          await prisma.buyMoreRule.create({
-            data: {
-              campaignId: upsellCampaign.id,
-              productId: product.id,
-              quantity: parseInt(level.quantity),
-              discount: parseFloat(level.discount),
-              discountType: level.DiscountType,
-            },
-          });
-        }
-      }
-    }
-
-    if (rewardMode === "flame") {
-
-
-      for (const product of selectedProducts) {
-
-      }
-
-      // Optional: Store flame range + discount in UpsellCampaign table
-      await prisma.upsellCampaign.update({
-        where: { id: campaignId },
-        data: {
-          rewardMode: "flame",
-          goalType: "quantity",
-          goalAmount: parseInt(flameRange.min),
-          goalquantity: parseInt(flameRange.max),
-          discountType: "percentage",
-        },
-      });
-    }
+    const Buy_More_Save_More = await buy_more_save_more(
+      accessToken,
+      shop,
+      selectedProducts_Buy,
+      admin,
+      selectedProducts,
+      rewardMode,
+      upsellCampaign
+    );
 
   }
 
@@ -211,6 +263,24 @@ await add_to_unlock(
 export default function UpsellCampaignForm() {
 
   const fetcher = useFetcher()
+
+  //=================>>> Toast Message <<<=====================//
+
+  useEffect(() => {
+    if (fetcher.state == "idle" && fetcher.data?.success) {
+      shopify.toast.show(fetcher.data.message);
+      setMainBtnLoading(false);
+    } else if (fetcher.state == "idle" && !fetcher.data?.success) {
+      shopify.toast.show(fetcher?.data?.message, { isError: true });
+      setMainBtnLoading(false);
+    }
+    console.log(fetcher);
+  }, [fetcher]);
+
+  const [mainBtnLoading, setMainBtnLoading] = useState(false);
+
+  //=================>>> Toast Message <<<=====================//
+
 
   const [campaignName, setCampaignName] = useState("");
   const [goalType, setGoalType] = useState("amount_cart");
@@ -236,6 +306,7 @@ export default function UpsellCampaignForm() {
   const [selectedCampaignType, setSelectedCampaignType] = useState("add_to_unlock");
   const [upsell_allproduct, setUpsell_allproduct] = useState(true)
   const [selectedRewardCollections, setSelectedRewardCollections] = useState([]);
+  const [selectedfreeproduct, setSelectedfreeproduct] = useState([]);
 
 
   // BUY MORE SAVE MORE STATES ??//
@@ -366,35 +437,10 @@ export default function UpsellCampaignForm() {
     }
   }
 
-  async function rewardPicker_collection() {
-    try {
-      const reward_collection = await window.shopify.resourcePicker({
-        type: "collection",
-        multiple: true,
-        action: "select",
-      });
 
-      if (reward_collection) {
-        const collections = reward_collection.map((item) => ({
-          id: item.id.split("/").pop(),
-          title: item.title,
-          handle: item.handle,
-        }));
-
-        const uniqueCollections = collections.filter(
-          (newColl) =>
-            !selectedRewardCollections.some((existing) => existing.id === newColl.id)
-        );
-
-        setSelectedRewardCollections((prev) => [...prev, ...uniqueCollections]);
-      }
-    } catch (error) {
-      console.error("Error in reward collection picker:", error);
-    }
-  }
 
   function removeRewardCollection(id) {
-    setSelectedRewardCollections((prev) =>
+    setSelectedfreeproduct((prev) =>
       prev.filter((collection) => collection.id !== id)
     );
   }
@@ -453,6 +499,9 @@ export default function UpsellCampaignForm() {
   }
 
 
+  //========================>> Handel SUBMIT <<======================
+
+
 
 
   const handleSubmit = () => {
@@ -482,18 +531,16 @@ export default function UpsellCampaignForm() {
 
     // 🔹 Reward Info
 
+
     formData.append("discountCode", discountCode);
     formData.append("discountType", discountType);
-    formData.append("rewardProducts", JSON.stringify(rewardProducts));
-    formData.append("reward_collection", JSON.stringify(selectedRewardCollections))
+    formData.append(
+      "rewardProducts",
+      JSON.stringify(rewardProducts?.length ? rewardProducts : selectedfreeproduct)
+    );
 
-
-
+console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
     if (selectedCampaignType === "buy_more_save_more") {
-
-      formData.append("flameDiscount_Buy", flameDiscount_Buy);
-      formData.append("discount_type", discountType);
-      formData.append("flameRange_Buy", JSON.stringify(flameRange_Buy));
       formData.append("selectedProducts_Buy", JSON.stringify(selectedProducts_Buy));
     }
 
@@ -501,7 +548,7 @@ export default function UpsellCampaignForm() {
     formData.append("showConfetti", showConfetti);
     formData.append("goalText", goalText);
     formData.append("preGoalText", preGoalText);
-    formData.append("placement", JSON.stringify(placement));
+    formData.append("placement", placement);
     formData.append("showLockedGoals", showLockedGoals);
     formData.append("badgeImage", badgeImage);
     formData.append("barStyle", barStyle);
@@ -514,6 +561,47 @@ export default function UpsellCampaignForm() {
       encType: "multipart/form-data",
     });
   };
+
+
+
+  //=======================>> FREE PRODUCT PICKER  <<=================
+
+  async function Free_gift_piker() {
+    const selectedItems = await window.shopify.resourcePicker({
+      multiple: true,
+      type: "product",
+      query: 'product_type:free_gift',
+      action: "select",
+    });
+
+    if (!selectedItems || selectedItems.length === 0) {
+      alert("No items selected.");
+      return;
+    }
+
+    const filteredGifts = selectedItems.filter(
+      item => item.productType === "free_gift"
+    );
+
+    if (filteredGifts.length === 0) {
+      shopify.toast.show("Only products with product_type 'free_gift' are allowed", { isError: true });
+      return;
+    }
+
+    const products = filteredGifts.map((item) => ({
+      id: item.id.split("/").pop(),
+      title: item.title,
+      variantId: item.variants[0]?.id.split("/").pop(),
+      price: item.variants[0]?.price,
+      media: item.images[0]?.originalSrc,
+    }));
+
+    const newItems = products.filter(
+      (p) => !selectedfreeproduct.find((pr) => pr.id === p.id)
+    );
+
+    setSelectedfreeproduct(prev => [...prev, ...newItems].slice(0, 4));
+  }
 
 
 
@@ -539,7 +627,6 @@ export default function UpsellCampaignForm() {
                 </BlockStack>
               </Card>
               {/* Start select a campaign type */}
-
               <Card>
                 <BlockStack gap="200">
                   <Text as="h2" variant="headingMd" fontWeight="bold">
@@ -855,13 +942,12 @@ export default function UpsellCampaignForm() {
                       </BlockStack>
 
                     )}
-
                     {rewardType === "gift" && (
-                      <BlockStack gap={"500"}>
-                        <Button onClick={rewardPicker_collection}>Select Reward Collection</Button>
+                      <BlockStack gap="500">
+                        <Button onClick={Free_gift_piker}>Select Reward Collection</Button>
 
-                        {selectedRewardCollections.map((item) => (
-                          <InlineStack key={item.id} align="space-between" >
+                        {selectedfreeproduct.map((item) => (
+                          <InlineStack key={item.id} align="space-between">
                             <Text>{item.title}</Text>
                             <Button
                               tone="critical"
@@ -879,27 +965,18 @@ export default function UpsellCampaignForm() {
 
 
 
+
+
                   </BlockStack>
                 </Card>
               )}
               {selectedCampaignType === "buy_more_save_more" && (
                 <BuyMore
-                  rewardMode={rewardMode}
-                  setRewardMode={setRewardMode}
-                  selectedProducts={selectedProducts_Buy}
-                  setSelectedProducts={setSelectedProducts_Buy}
-                  flameDiscount={flameDiscount_Buy}
-                  setFlameDiscount={setFlameDiscount_Buy}
-                  flameRange={flameRange_Buy}
-                  setFlameRange={setFlameRange_Buy}
-                  discount_Value={discount_Value}
-                  setDiscount_Value={setDiscount_Value}
-                  discount_type={discountType}
-                  setDiscountType={setDiscountType}
-                  max_quantity={max_quantity}
-                  setMax_Quantity={setMax_Quantity}
-                  min_quantity={min_quantity}
-                  setMin_Quantity={setMin_Quantity}
+                 rewardMode={rewardMode}
+                 selectedProducts={selectedProducts_Buy}
+                 setRewardMode={setRewardMode}
+                 setSelectedProducts={setSelectedProducts_Buy}
+
                 />
               )}
               {selectedCampaignType === "buy_one_get_one" && (
@@ -967,7 +1044,7 @@ export default function UpsellCampaignForm() {
                     title="Select Campaign Placement"
                     choices={[
                       { label: "Homepage", value: "home" },
-                      { label: "Product Page", value: "product" },
+                      { label: "Checkout", value: "checkout" },
                       { label: "Cart Page", value: "cart" },
                     ]}
                     selected={placement}
