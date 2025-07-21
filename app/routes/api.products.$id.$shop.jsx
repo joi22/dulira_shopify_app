@@ -8,7 +8,7 @@ export const loader = async ({ request, params }) => {
 
   const { accessToken } = await prisma.session.findFirst({ where: { shop } });
 
-  const upsellTriggerProduct = await prisma.UpsellRewardProduct.findMany({
+  const upsellTriggerProduct = await prisma.UpsellTriggerProduct.findMany({
     where: {
       productId: String(id)
     },

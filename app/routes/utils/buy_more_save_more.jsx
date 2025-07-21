@@ -7,49 +7,200 @@ export const buy_more_save_more = async (
   admin,
   selectedProducts,
   rewardMode,
-  upsellCampaign
+  flameLevel,
+  upsellCampaign,
 ) => {
-  console.log(rewardMode, "Reward Mode");
+  console.log(flameLevel, "this flameLevels");
 
   if (rewardMode === "fixed") {
-    console.log(selectedProducts_Buy, "Buy More Range Setup");
     for (const product of selectedProducts_Buy) {
       for (const level of product.levels) {
+        // Save the rule in your database
         await prisma.buyMoreRule.create({
           data: {
             campaignId: upsellCampaign.id,
             productId: product.id,
             quantity: parseInt(level.quantity),
             discount: parseFloat(level.discount),
-            discountType: level.DiscountType,
+            discountType: level.discountType || "percentage",
           },
         });
+
+        // Construct the correct value object for discount
+        const discountType = level.discountType || "percentage"; // Ensure fallback
+
+        let valueObj;
+        if (discountType === "percentage") {
+          valueObj = { percentage: parseFloat(level.discount) / 100 };
+        } else if (discountType === "fixed") {
+          valueObj = {
+            discountAmount: {
+              amount: parseFloat(level.discount).toFixed(2),
+              appliesOnEachItem: true,
+            },
+          };
+        } else {
+          throw new Error(`Unsupported discount type: ${discountType}`);
+        }
+
+        // Create the Shopify automatic discount
+        const discount = await admin.graphql(
+          `#graphql
+        mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+          discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
+            automaticDiscountNode {
+              id
+              automaticDiscount {
+                ... on DiscountAutomaticBasic {
+                  title
+                }
+              }
+            }
+            userErrors {
+              field
+              code
+              message
+            }
+          }
+        }`,
+          {
+            variables: {
+              automaticBasicDiscount: {
+                title: `${upsellCampaign.name}-${Date.now()}` || "Discount",
+                startsAt: new Date().toISOString(),
+                combinesWith: {
+                  productDiscounts: true,
+                },
+                minimumRequirement: {
+                  quantity: {
+                    greaterThanOrEqualToQuantity: String(level.quantity),
+                  },
+                },
+                customerGets: {
+                  value: valueObj,
+                  items: {
+                    products: {
+                      productsToAdd:
+                        `gid://shopify/Product/${product.id}`
+
+                    },
+                  },
+                },
+              },
+            },
+          }
+        );
+
+        const response = await discount.json();
+        const userErrors = response?.data?.discountAutomaticBasicCreate?.userErrors;
+
+        if (userErrors?.length > 0) {
+          console.error("Shopify Discount Creation Errors:", userErrors);
+          throw new Error(JSON.stringify(userErrors));
+        }
+
+        const discountId = response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode?.id;
+        console.log("✅ Discount Created:", discountId);
       }
     }
   }
 
-  // if (rewardMode === "flame") {
-  //   // Step 1: Store selected product IDs in relation table
-  //   for (const product of selectedProducts) {
-  //     await prisma.flameMatchProduct.create({
-  //       data: {
-  //         campaignId: upsellCampaign.id,
-  //         productId: product.id,
-  //       },
-  //     });
-  //   }
+  if (rewardMode === "flame") {
+    for (const level of flameLevel) {
+      // Save each rule per product in DB
+      for (const product of selectedProducts_Buy) {
+        await prisma.buyMoreRule.create({
+          data: {
+            campaignId: upsellCampaign.id,
+            productId: product.id,
+            quantity: parseInt(level.quantity),
+            discount: parseFloat(level.discount),
+            discountType: level.discountType,
+          },
+        });
+      }
 
-    // Step 2: Store flame settings in campaign
-    // await prisma.upsellCampaign.update({
-    //   where: { id: campaignId },
-    //   data: {
-    //     rewardMode: "flame",
-    //     goalType: "quantity",
-    //     goalAmount: parseInt(flameRange.min),     // min items to pick
-    //     goalquantity: parseInt(flameRange.max),   // max items to pick
-    //     discountType: "percentage",
-    //     discountCode: flameDiscount,              // percent off (25%)
-    //   },
-    // });
-  // }
+      // Build discount value object based on type
+      let valueObj;
+      if (level.discountType === "percentage") {
+        valueObj = { percentage: parseFloat(level.discount) / 100 };
+      } else if (level.discountType === "fixed") {
+        valueObj = {
+          discountAmount: {
+            amount: parseFloat(level.discount).toFixed(2),
+            appliesOnEachItem: true,
+          },
+        };
+      } else {
+        throw new Error(`Unsupported discount type: ${level.discountType}`);
+      }
+
+      // Generate a list of all selected product GIDs
+      const productGIDs = selectedProducts_Buy.map(
+        (p) => `gid://shopify/Product/${p.id}`
+      );
+
+      // Create one discount per level, applied to all selected products
+      const discount = await admin.graphql(
+        `#graphql
+      mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+        discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
+          automaticDiscountNode {
+            id
+            automaticDiscount {
+              ... on DiscountAutomaticBasic {
+                title
+              }
+            }
+          }
+          userErrors {
+            field
+            code
+            message
+          }
+        }
+      }`,
+        {
+          variables: {
+            automaticBasicDiscount: {
+              title: `${upsellCampaign.name}-${level.quantity}-${Date.now()}` || "Discount",
+              startsAt: new Date().toISOString(),
+              combinesWith: {
+                productDiscounts: true,
+              },
+              minimumRequirement: {
+                quantity: {
+                  greaterThanOrEqualToQuantity: String(level.quantity),
+                },
+              },
+              customerGets: {
+                value: valueObj,
+                items: {
+                  products: {
+                    productsToAdd: productGIDs,
+                  },
+                },
+              },
+            },
+          },
+        }
+      );
+
+      const response = await discount.json();
+      const userErrors = response?.data?.discountAutomaticBasicCreate?.userErrors;
+
+      if (userErrors?.length > 0) {
+        console.error("Shopify Discount Creation Errors:", userErrors);
+        throw new Error(JSON.stringify(userErrors));
+      }
+
+      const discountId =
+        response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode?.id;
+      console.log("✅ Discount Created:", discountId);
+    }
+  }
+
+
+
+
 };

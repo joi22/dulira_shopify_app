@@ -69,12 +69,14 @@ model UpsellCampaign {
   bogoRules              BogoRule[]
   bogoFreeItems          BogoFreeItem[]
   UpsellRewardCollection UpsellRewardCollection[]
+  UpsellFreeGiftProduct  UpsellFreeGiftProduct[]
 }
 
 model UpsellTriggerProduct {
   id           Int     @id @default(autoincrement())
   campaignId   Int
   productId    String
+  variantId    String?
   productTitle String
   handle       String
   price        String?
@@ -94,6 +96,19 @@ model UpsellTriggerCollection {
 }
 
 model UpsellRewardProduct {
+  id         Int     @id @default(autoincrement())
+  campaignId Int
+  productId  String
+  variantId  String?
+  title      String?
+  price      String?
+  media      String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model UpsellFreeGiftProduct {
+
   id         Int     @id @default(autoincrement())
   campaignId Int
   productId  String

@@ -5,115 +5,108 @@ import {
   Card,
   InlineStack,
   RadioButton,
-  Select,
   TextField,
   Text,
+  Box,
+  ResourceList,
+  ResourceItem,
+  Image,
+  Badge,
 } from "@shopify/polaris";
 
-const BogoUpsell = () => {
-  const [mode, setMode] = useState("fixed"); // fixed | flame
-  const [triggerType, setTriggerType] = useState("all"); // all | products | collections
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [selectedCollections, setSelectedCollections] = useState([]);
-  const [freeItems, setFreeItems] = useState([]);
-  const [rules, setRules] = useState([{ buy: "1", get: "1" }]);
+const BogoUpsell = ({
+  rules,                 // ✅ comes from parent
+  setRules,
+  initialFreeItems = [],
+  setFreeItems,
+}) => {
+  const [mode, setMode] = useState("fixed");
+  const freeItems = initialFreeItems; // 👈 Don't redefine state
 
-  const handleAddRule = () => {
-    setRules([...rules, { buy: "", get: "" }]);
+  const handleAddRule = () => setRules([...rules, { buy: "", get: "" }]);
+  const handleRemoveRule = (index) => {
+    const updated = [...rules];
+    updated.splice(index, 1);
+    setRules(updated);
   };
-
   const handleRuleChange = (index, field, value) => {
     const updated = [...rules];
     updated[index][field] = value;
     setRules(updated);
   };
 
-  const handleRemoveRule = (index) => {
-    const updated = [...rules];
-    updated.splice(index, 1);
-    setRules(updated);
+  const removeFreeItem = (id) => {
+    const updated = freeItems.filter((item) => item.id !== id);
+    setFreeItems(updated); // ✅ Now this updates parent
   };
 
-  const mockPicker = async (setFn, label) => {
-    // Replace with actual Shopify resourcePicker integration
-    const mockItem = {
-      id: Math.random().toString(36).substring(2),
-      title: `${label} Item ${selectedProducts.length + 1}`,
-    };
-    setFn((prev) => [...prev, mockItem]);
+  const pickFreeItems = async () => {
+    try {
+      const selected = await window.shopify.resourcePicker({
+        type: "product",
+        action: "select",
+        multiple: mode === "flame",
+        selected: freeItems.map((p) => `gid://shopify/Product/${p.id}`),
+      });
+
+      if (selected) {
+        const items = selected.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+          variantId: item.variants[0]?.id.split("/").pop(),
+          price: item.variants[0]?.price || "0.00",
+          media: item.images[0]?.originalSrc || item.images[0]?.src || null,
+        }));
+
+        const newItems = mode === "fixed" ? [items[0]] : items;
+        setFreeItems(newItems); // ✅ Updates parent state
+      }
+    } catch (error) {
+      console.error("Error picking free items:", error);
+    }
   };
 
   return (
-    <>
-      <Card title="Buy One Get One Setup" sectioned>
-        <BlockStack gap="300">
-          <Text variant="headingMd">Mode</Text>
-          <InlineStack gap="300">
+    <Card title="Buy One Get One Setup" sectioned>
+      <BlockStack gap="400">
+        <Box>
+          <Text variant="headingMd" as="h3">Deal Type</Text>
+          <InlineStack gap="400">
             <RadioButton
-              label="Fixed Deal (Buy 1 Protein Powder, Get 1 Shaker Free)"
+              label="Fixed Deal (Buy X, Get Y Free)"
+              helpText="Example: Buy 1 Protein Powder, Get 1 Shaker Bottle Free"
               checked={mode === "fixed"}
-              onChange={() => {
-                setMode("fixed");
-                setFreeItems([]);
-              }}
+              onChange={() => setMode("fixed")}
             />
             <RadioButton
-              label="Flame Match (Buy 1 Shirt, Choose any Hat Free)"
+              label="Flame Match (Buy X, Choose from Selection)"
+              helpText="Example: Buy 1 Shirt, Get any Hat Free from Selection"
               checked={mode === "flame"}
-              onChange={() => {
-                setMode("flame");
-                setFreeItems([]);
-              }}
+              onChange={() => setMode("flame")}
             />
           </InlineStack>
+        </Box>
 
-          <Text variant="headingMd">Trigger Product Type</Text>
-          <InlineStack gap="200">
-            <RadioButton
-              label="All Products"
-              checked={triggerType === "all"}
-              onChange={() => setTriggerType("all")}
-            />
-            <RadioButton
-              label="Specific Products"
-              checked={triggerType === "products"}
-              onChange={() => setTriggerType("products")}
-            />
-            <RadioButton
-              label="Specific Collections"
-              checked={triggerType === "collections"}
-              onChange={() => setTriggerType("collections")}
-            />
-          </InlineStack>
-
-          {triggerType === "products" && (
-            <Button onClick={() => mockPicker(setSelectedProducts, "Trigger Product")}>
-              Pick Trigger Products
-            </Button>
-          )}
-
-          {triggerType === "collections" && (
-            <Button onClick={() => mockPicker(setSelectedCollections, "Collection")}>
-              Pick Collections
-            </Button>
-          )}
-
-          <Text variant="headingMd">Quantity Rules</Text>
+        <Box>
+          <Text variant="headingMd" as="h3">Quantity Rules</Text>
           {rules.map((rule, index) => (
-            <InlineStack key={index} gap="200" align="start">
+            <InlineStack key={index} gap="200" align="start" blockAlign="center">
               <TextField
                 label="Buy"
                 type="number"
                 value={rule.buy}
                 onChange={(val) => handleRuleChange(index, "buy", val)}
+                min="1"
               />
               <TextField
                 label="Get Free"
                 type="number"
                 value={rule.get}
                 onChange={(val) => handleRuleChange(index, "get", val)}
+                min="1"
               />
-              {index > 0 && (
+              {rules.length > 1 && (
                 <Button tone="critical" onClick={() => handleRemoveRule(index)} plain>
                   Remove
                 </Button>
@@ -121,13 +114,71 @@ const BogoUpsell = () => {
             </InlineStack>
           ))}
           <Button onClick={handleAddRule}>Add Rule</Button>
+        </Box>
 
-          <Text variant="headingMd">Free Item(s)</Text>
-          <Button onClick={() => mockPicker(setFreeItems, "Free Item")}>Pick Free Item(s)</Button>
-        </BlockStack>
-      </Card>
+        <Box>
+          <Text variant="headingMd" as="h3">
+            {mode === "fixed" ? "Free Item" : "Free Items Selection"}
+          </Text>
+          <Text as="p" variant="bodyMd">
+            {mode === "fixed"
+              ? "Select the item that will be given for free"
+              : "Select items that customers can choose from"}
+          </Text>
+          <Button onClick={pickFreeItems}>
+            {freeItems.length > 0 ? "Edit Selection" : "Select Items"}
+          </Button>
 
-    </>
+          {freeItems.length > 0 ? (
+            <Box paddingBlockStart="200">
+              <ResourceList
+                resourceName={{ singular: "product", plural: "products" }}
+                items={freeItems}
+                renderItem={(item) => {
+                  const { id, title, handle, price, media } = item;
+                  return (
+                    <ResourceItem id={id}>
+                      <InlineStack align="space-between" gap="300">
+                        <InlineStack gap="300" align="center">
+                          {media && (
+                            <Image
+                              source={media}
+                              alt={title}
+                              width="60px"
+                              height="60px"
+                              style={{ objectFit: "cover" }}
+                            />
+                          )}
+                          <BlockStack>
+                            <Text fontWeight="bold">{title}</Text>
+                            <Text>Price: ${price}</Text>
+                            <Text>Handle: {handle}</Text>
+                            {mode === "flame" && (
+                              <Badge tone="info">Customer's Choice</Badge>
+                            )}
+                          </BlockStack>
+                        </InlineStack>
+                        <Button
+                          tone="critical"
+                          onClick={() => removeFreeItem(id)}
+                          size="slim"
+                        >
+                          Remove
+                        </Button>
+                      </InlineStack>
+                    </ResourceItem>
+                  );
+                }}
+              />
+            </Box>
+          ) : (
+            <Box paddingBlockStart="200">
+              <Text tone="subdued">No free items selected</Text>
+            </Box>
+          )}
+        </Box>
+      </BlockStack>
+    </Card>
   );
 };
 

@@ -113,14 +113,13 @@ export const action = async ({ request }) => {
   const selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
   const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
   const rewardProducts = JSON.parse(formData.get("rewardProducts") || "[]");
-  console.log(rewardProducts, "=========")
 
   const reward_collection = JSON.parse(formData.get("reward_collection") || "[]");
 
   const upsell_allproducts = formData.get("upsell_allproducts");
   const goalType = formData.get("goalType");
   const goalAmounts = formData.get("goalAmount") || "0";
-  const goalQuantity = formData.get("goalquantity") || "1";
+  const goalQuantity = formData.get("goalquantity");
   const currencys = formData.get("currency") || "USD";
 
   const rewardType = formData.get("rewardType");
@@ -128,13 +127,21 @@ export const action = async ({ request }) => {
   const discountCode = formData.get("discountCode");
   const discountType = formData.get("discountType");
 
+
+
+
+
+
   //  <============= // BUY MORE SAVE MORE /////////// ==========>
 
   const selectedProducts_Buy = JSON.parse(
     formData.get("selectedProducts_Buy") || "[]"
   );
+  const raw = formData.get("flameLevels");
+  const flameLevel = JSON.parse(raw || "[]");
 
 
+  console.log(flameLevel, "this Levels")
   //  <============= // BUY MORE SAVE MORE END /////////// ==========>
 
 
@@ -150,7 +157,7 @@ export const action = async ({ request }) => {
   const barRadius = formData.get("barRadius");
   const barColors = JSON.parse(formData.get("barColors"));
 
-  // =========>>>> Collection Tirgger
+
 
   // Save campaign to DB
   const upsellCampaign = await prisma.UpsellCampaign.create({
@@ -178,19 +185,21 @@ export const action = async ({ request }) => {
     },
   });
 
-  console.log(rewardType, "==================>>>>>>this ")
   // Store trigger logic
   if (selectedTriggerType === "products" && selectedProducts.length > 0) {
     await prisma.upsellTriggerProduct.createMany({
       data: selectedProducts.map((p) => ({
         campaignId: upsellCampaign.id,
         productId: p.id,
+        variantId: String(p.variantId),
         productTitle: p.title,
         handle: p.handle,
         price: p.price,
         media: p.media,
       })),
     });
+
+
 
   } else if (selectedTriggerType === "collections" && selectedCollections.length > 0) {
     await prisma.UpsellTriggerCollection.createMany({
@@ -207,13 +216,9 @@ export const action = async ({ request }) => {
     await trigger_coll(collectionIds, shop, accessToken, upsellCampaign.id);
   }
 
-  // Create discount in Shopify if fixed reward
-
-  console.log(rewardProducts, "all products ")
 
 
   if (selectedCampaignType === "add_to_unlock") {
-
     const data_unlock = await add_to_unlock_(
       shop,
       accessToken,
@@ -228,7 +233,9 @@ export const action = async ({ request }) => {
       reward_collection,
       rewardMode,
       discountType,
-      admin
+      admin,
+      selectedProducts,
+      selectedCollections
     );
 
 
@@ -241,6 +248,7 @@ export const action = async ({ request }) => {
       admin,
       selectedProducts,
       rewardMode,
+      flameLevel,
       upsellCampaign
     );
 
@@ -305,23 +313,27 @@ export default function UpsellCampaignForm() {
   const [discountType, setDiscountType] = useState("percentage");
   const [selectedCampaignType, setSelectedCampaignType] = useState("add_to_unlock");
   const [upsell_allproduct, setUpsell_allproduct] = useState(true)
-  const [selectedRewardCollections, setSelectedRewardCollections] = useState([]);
-  const [selectedfreeproduct, setSelectedfreeproduct] = useState([]);
+  const [selectedCollection, setSelectedCollection] = useState([]);
+  const [freeGiftProducts, setFreeGiftProducts] = useState([]);
 
 
   // BUY MORE SAVE MORE STATES ??//
 
+
+
+  // ============ BOGO BUY ONE GET ONE FREE <<<<<<<< =========== ///
+  const [freeItems, setFreeItems] = useState([]); // ✅ initialized
+  const [rules, setRules] = useState([{ buy: "1", get: "1" }]);
+
+  console.log(rules, freeItems, "========,,,,,<<<<<<")
+
+
+
   // const [rewardMode_Buy, setRewardMode_Buy] = useState("fixed");
   const [selectedProducts_Buy, setSelectedProducts_Buy] = useState([]);
-  const [flameDiscount_Buy, setFlameDiscount_Buy] = useState("25");
-  const [flameRange_Buy, setFlameRange_Buy] = useState({ min: "3", max: "5" });
+  const [flameLevels, setFlameLevels] = useState([]);
   const [min_quantity, setMin_Quantity] = useState("3");
-  const [max_quantity, setMax_Quantity] = useState("5");
   const [discount_Value, setDiscount_Value] = useState("");
-  const [discount_type, setDiscount_type] = useState("percentage");
-
-
-
 
 
   const [rewardMode, setRewardMode] = useState("fixed");
@@ -438,9 +450,8 @@ export default function UpsellCampaignForm() {
   }
 
 
-
   function removeRewardCollection(id) {
-    setSelectedfreeproduct((prev) =>
+    setFreeproductcollection((prev) =>
       prev.filter((collection) => collection.id !== id)
     );
   }
@@ -536,12 +547,16 @@ export default function UpsellCampaignForm() {
     formData.append("discountType", discountType);
     formData.append(
       "rewardProducts",
-      JSON.stringify(rewardProducts?.length ? rewardProducts : selectedfreeproduct)
+      JSON.stringify(rewardProducts)
+    );
+    formData.append(
+      "reward_collection",
+      JSON.stringify(selectedCollection)
     );
 
-console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
     if (selectedCampaignType === "buy_more_save_more") {
       formData.append("selectedProducts_Buy", JSON.stringify(selectedProducts_Buy));
+      formData.append("flameLevels", JSON.stringify(flameLevels))
     }
 
     // 🔹 Visual + UI Settings
@@ -564,47 +579,51 @@ console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
 
 
 
+
   //=======================>> FREE PRODUCT PICKER  <<=================
 
-  async function Free_gift_piker() {
-    const selectedItems = await window.shopify.resourcePicker({
-      multiple: true,
-      type: "product",
-      query: 'product_type:free_gift',
-      action: "select",
-    });
 
-    if (!selectedItems || selectedItems.length === 0) {
-      alert("No items selected.");
-      return;
+  async function fetchProductsInCollection(collectionId) {
+    try {
+      const res = await fetch(`/api/products-by-collection?id=${collectionId}`);
+      const data = await res.json();
+
+      setFreeGiftProducts(
+        data.products.map((p) => ({
+          id: p.id,
+          title: p.title,
+          image: p.image?.src,
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load products:", error);
     }
-
-    const filteredGifts = selectedItems.filter(
-      item => item.productType === "free_gift"
-    );
-
-    if (filteredGifts.length === 0) {
-      shopify.toast.show("Only products with product_type 'free_gift' are allowed", { isError: true });
-      return;
-    }
-
-    const products = filteredGifts.map((item) => ({
-      id: item.id.split("/").pop(),
-      title: item.title,
-      variantId: item.variants[0]?.id.split("/").pop(),
-      price: item.variants[0]?.price,
-      media: item.images[0]?.originalSrc,
-    }));
-
-    const newItems = products.filter(
-      (p) => !selectedfreeproduct.find((pr) => pr.id === p.id)
-    );
-
-    setSelectedfreeproduct(prev => [...prev, ...newItems].slice(0, 4));
   }
 
 
+  async function Free_gift_piker() {
+    try {
+      const upsell_collection = await window.shopify.resourcePicker({
+        type: "collection",
+        multiple: false, // Only one collection like "Summer Collection"
+        action: "select",
+      });
 
+      if (upsell_collection && upsell_collection.length > 0) {
+        const selected = upsell_collection[0];
+        const collectionData = {
+          id: selected.id.split("/").pop(),
+          title: selected.title,
+          handle: selected.handle,
+        };
+
+        setSelectedCollection([collectionData]); // Replace old collection
+        fetchProductsInCollection(collectionData.id); // Load its products
+      }
+    } catch (error) {
+      console.error("Error in collection picker:", error);
+    }
+  }
 
 
 
@@ -938,7 +957,19 @@ console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
                         <Box background="bg-fill-success-secondary" padding="200" borderRadius="200">
                           <Text>🚚 Free Shipping will be applied when goal is reached.</Text>
                         </Box>
-
+                        <Button onClick={rewardPicker}>Select Productt </Button>
+                        {rewardProducts.map((item) => (
+                          <InlineStack key={item.id} align="space-between" >
+                            <Text>{item.title}</Text>
+                            <Button
+                              tone="critical"
+                              size="slim"
+                              onClick={() => removeRewardProduct(item.id)}
+                            >
+                              Remove
+                            </Button>
+                          </InlineStack>
+                        ))}
                       </BlockStack>
 
                     )}
@@ -946,25 +977,35 @@ console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
                       <BlockStack gap="500">
                         <Button onClick={Free_gift_piker}>Select Reward Collection</Button>
 
-                        {selectedfreeproduct.map((item) => (
+                        {selectedCollection.map((item) => (
                           <InlineStack key={item.id} align="space-between">
                             <Text>{item.title}</Text>
                             <Button
                               tone="critical"
                               size="slim"
-                              onClick={() => removeRewardCollection(item.id)}
+                              onClick={() => setSelectedCollection([])}
                             >
                               Remove
                             </Button>
                           </InlineStack>
                         ))}
+
+                        {freeGiftProducts.length > 0 && (
+                          <Card title="Available Free Gift Products">
+                            <BlockStack>
+                              {freeGiftProducts.map((p) => (
+                                <InlineStack key={p.id} align="space-between">
+                                  <InlineStack>
+                                    {p.image && <img src={p.image} width={40} />}
+                                    <Text>{p.title}</Text>
+                                  </InlineStack>
+                                </InlineStack>
+                              ))}
+                            </BlockStack>
+                          </Card>
+                        )}
                       </BlockStack>
                     )}
-
-
-
-
-
 
 
                   </BlockStack>
@@ -972,15 +1013,27 @@ console.log("================>>>><<<",selectedProducts_Buy,"<<<<<<<<====--")
               )}
               {selectedCampaignType === "buy_more_save_more" && (
                 <BuyMore
-                 rewardMode={rewardMode}
-                 selectedProducts={selectedProducts_Buy}
-                 setRewardMode={setRewardMode}
-                 setSelectedProducts={setSelectedProducts_Buy}
+                  discount_Value={discount_Value}
+                  discount_type={discountType}
+                  min_quantity={min_quantity}
+                  rewardMode={rewardMode}
+                  selectedProducts={selectedProducts_Buy}
+                  flameLevels={flameLevels}
+                  setFlameLevels={setFlameLevels}
+                  setRewardMode={setRewardMode}
+                  setSelectedProducts={setSelectedProducts_Buy}
 
                 />
               )}
               {selectedCampaignType === "buy_one_get_one" && (
-                <BogoUpsell />
+                <BogoUpsell
+                  mode={rewardMode}
+                  initialFreeItems={freeItems}
+                  rules={rules}
+                  setFreeItems={setFreeItems}
+                  setRules={setRules}
+
+                />
               )}
 
 
