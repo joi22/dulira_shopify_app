@@ -7,7 +7,11 @@ import {
   Select,
   TextField,
   Text,
-  RadioButton,
+  ChoiceList,
+  Box,
+  IndexTable,
+  Image,
+  Grid
 } from "@shopify/polaris";
 
 const DiscountOptions = [
@@ -23,6 +27,7 @@ const BuyMore = ({
   min_quantity,
   discount_Value,
   discount_type,
+  fiexd_levels,
   flameLevels,
   setFlameLevels
 }) => {
@@ -40,7 +45,6 @@ const BuyMore = ({
       )
     );
   };
-
   const addLevel = (productId) => {
     const newLevel = {
       quantity: min_quantity || "",
@@ -48,6 +52,7 @@ const BuyMore = ({
       DiscountType: discount_type || "percentage",
     };
 
+    console.log(newLevel,"tjis")
     setSelectedProducts((prev) =>
       prev.map((product) =>
         product.id === productId
@@ -145,251 +150,258 @@ const BuyMore = ({
 
   return (
     <>
-      <Card title="Buy More, Save More Configuration" sectioned>
-        <BlockStack gap="300">
-          <Text variant="headingMd">Reward Mode</Text>
-          <InlineStack gap="300">
-            <RadioButton
-              label="Fixed Deal (e.g. Buy 3 Socks = 10% off)"
-              checked={rewardMode === "fixed"}
-              onChange={() => {
-                setRewardMode("fixed");
-                setSelectedProducts([]);
-              }}
-            />
-            <RadioButton
-              label="Flame Match (e.g. Pick 3–5 Accessories, get 25% off)"
-              checked={rewardMode === "flame"}
-              onChange={() => {
-                setRewardMode("flame");
-                setSelectedProducts([]);
-              }}
-            />
-          </InlineStack>
+      {/* Reward Mode Selection */}
+      <Card sectioned>
+        <BlockStack gap="400">
+          <Text variant="headingMd" as="h3">Reward Type</Text>
+          <ChoiceList
+            title="Select reward mode"
+            choices={[
+              {
+                label: (
+                  <Box>
+                    <Text fontWeight="semibold">Fixed Deal</Text>
+                    <Text tone="subdued" variant="bodySm">
+                      (e.g., Buy 3 Socks = 10% off)
+                    </Text>
+                  </Box>
+                ),
+                value: "fixed"
+              },
+              {
+                label: (
+                  <Box>
+                    <Text fontWeight="semibold">Flame Match</Text>
+                    <Text tone="subdued" variant="bodySm">
+                      (e.g., Pick 3-5 Accessories, get 25% off)
+                    </Text>
+                  </Box>
+                ),
+                value: "flame"
+              }
+            ]}
+            selected={[rewardMode]}
+            onChange={(value) => {
+              setRewardMode(value[0]);
+              setSelectedProducts([]);
+            }}
+          />
 
-          <Button onClick={productPicker}>
+          <Button onClick={productPicker} variant="primary">
             {rewardMode === "fixed" ? "Select Trigger Products" : "Select Bundle Products"}
           </Button>
         </BlockStack>
       </Card>
 
-
-
-      {/* Fixed Deal UI */}
-      {rewardMode === "fixed" &&
-        selectedProducts.map((product) => (
-          <Card key={product.id} padding="500" sectioned>
-            <InlineStack align="space-between">
-              <InlineStack gap="200" blockAlign="center">
-                {product.media && (
-                  <img
-                    src={product.media}
-                    alt={product.title}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      objectFit: "cover",
-                      borderRadius: 4,
-                    }}
-                  />
-                )}
-                <div>
-                  <Text fontWeight="medium">{product.title}</Text>
-                  <Text tone="subdued">${product.price}</Text>
-                </div>
-              </InlineStack>
-              <Button
-                tone="critical"
-                size="slim"
-                onClick={() => removeProduct(product.id)}
-              >
-                Remove
-              </Button>
-            </InlineStack>
-
-            <BlockStack gap="300">
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                      Quantity
-                    </th>
-                    <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                      Discount
-                    </th>
-                    <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                      Discount Type
-                    </th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {product.levels.map((level, index) => (
-                    <tr key={index}>
-                      <td style={{ padding: "10px" }}>
-                        <TextField
-                          type="number"
-                          value={level.quantity}
-                          onChange={(value) =>
-                            handleLevelChange(product.id, index, "quantity", value)
-                          }
-                        />
-                      </td>
-                      <td style={{ padding: "10px" }}>
-                        <TextField
-                          type="number"
-                          value={level.discount}
-                          onChange={(value) =>
-                            handleLevelChange(product.id, index, "discount", value)
-                          }
-                        />
-                      </td>
-                      <td style={{ padding: "10px" }}>
-                        <Select
-                          options={DiscountOptions}
-                          value={level.DiscountType}
-                          onChange={(value) =>
-                            handleLevelChange(product.id, index, "DiscountType", value)
-                          }
-                        />
-                      </td>
-                      <td>
-                        {product.levels.length > 1 && (
-                          <Button
-                            plain
-                            tone="critical"
-                            onClick={() => removeLevel(product.id, index)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Button onClick={() => addLevel(product.id)}>Add Level</Button>
-            </BlockStack>
-          </Card>
-        ))}
-
-      {/* Flame Mode UI */}
-   {rewardMode === "flame" && selectedProducts.length > 0 && (
-  <>
-    <Card title="Flame Match Setup" sectioned>
-      <BlockStack gap="300">
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                Quantity
-              </th>
-              <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                Discount
-              </th>
-              <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                Discount Type
-              </th>
-              <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {flameLevels.map((level, index) => (
-              <tr key={index}>
-                <td style={{ padding: "8px" }}>
-                  <TextField
-                    type="number"
-                    value={level.quantity}
-                    onChange={(val) =>
-                      updateFlameLevel(index, "quantity", val)
-                    }
-                  />
-                </td>
-                <td style={{ padding: "8px" }}>
-                  <TextField
-                    type="number"
-                    value={level.discount}
-                    onChange={(val) =>
-                      updateFlameLevel(index, "discount", val)
-                    }
-                  />
-                </td>
-                <td style={{ padding: "8px" }}>
-                  <Select
-                    options={[
-                      { label: "Percentage", value: "percentage" },
-                      { label: "Fixed Amount", value: "fixed" },
-                    ]}
-                    value={level.discountType}
-                    onChange={(val) =>
-                      updateFlameLevel(index, "discountType", val)
-                    }
-                  />
-                </td>
-                <td style={{ padding: "8px" }}>
+      {/* Fixed Deal Configuration */}
+      {rewardMode === "fixed" && selectedProducts.length > 0 && (
+        <BlockStack gap="400">
+          {selectedProducts.map((product) => (
+            <Card key={product.id} sectioned>
+              <BlockStack gap="400">
+                {/* Product Header */}
+                <InlineStack align="space-between" blockAlign="center">
+                  <InlineStack gap="300" blockAlign="center">
+                    {product.media && (
+                      <Image
+                        source={product.media}
+                        alt={product.title}
+                        width={60}
+                        height={60}
+                        style={{ borderRadius: "4px" }}
+                      />
+                    )}
+                    <Box>
+                      <Text fontWeight="semibold">{product.title}</Text>
+                      <Text tone="subdued">${product.price}</Text>
+                    </Box>
+                  </InlineStack>
                   <Button
                     tone="critical"
-                    onClick={() => removeFlameLevel(index)}
+                    onClick={() => removeProduct(product.id)}
                   >
-                    Remove
+                    Remove Product
                   </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Button onClick={addFlameLevel}>Add Level</Button>
-      </BlockStack>
-    </Card>
+                </InlineStack>
 
-    <Card title="Selected Products for Bundle" sectioned>
-      <BlockStack gap="200">
-        {selectedProducts.map((product) => (
-          <InlineStack
-            key={product.id}
-            align="space-between"
-            blockAlign="center"
-            style={{
-              border: "1px solid #ddd",
-              padding: "12px",
-              borderRadius: "8px",
-              marginBottom: "8px",
-            }}
-          >
-            <InlineStack gap="300" blockAlign="center">
-              {product.media && (
-                <img
-                  src={product.media}
-                  alt={product.title}
-                  style={{
-                    width: 50,
-                    height: 50,
-                    objectFit: "cover",
-                    borderRadius: 4,
-                  }}
-                />
-              )}
-              <div>
-                <Text fontWeight="medium">{product.title}</Text>
-                <Text tone="subdued">${product.price}</Text>
-              </div>
-            </InlineStack>
-            <Button
-              tone="critical"
-              onClick={() => removeProduct(product.id)}
-            >
-              Remove
-            </Button>
-          </InlineStack>
-        ))}
-      </BlockStack>
-    </Card>
-  </>
-)}
+                {/* Discount Levels Table */}
+                <Box paddingBlockStart="200">
+                  <Text variant="headingSm" as="h4">Discount Tiers</Text>
+                  <Box paddingBlockStart="200">
+                    <IndexTable
+                      itemCount={product.levels.length}
+                      headings={[
+                        { title: "Quantity" },
+                        { title: "Discount" },
+                        { title: "Type" },
+                        { title: "Actions" }
+                      ]}
+                    >
+                      {product.levels.map((level, index) => (
+                        <IndexTable.Row key={index}>
+                          <IndexTable.Cell>
+                            <TextField
+                              type="number"
+                              value={level.quantity}
+                              onChange={(value) =>
+                                handleLevelChange(product.id, index, "quantity", value)
+                              }
+                              min="1"
+                            />
+                          </IndexTable.Cell>
+                          <IndexTable.Cell>
+                            <TextField
+                              type="number"
+                              value={level.discount}
+                              onChange={(value) =>
+                                handleLevelChange(product.id, index, "discount", value)
+                              }
+                              min="0"
+                            />
+                          </IndexTable.Cell>
+                          <IndexTable.Cell>
+                            <Select
+                              options={DiscountOptions}
+                              value={level.DiscountType}
+                              onChange={(value) =>
+                                handleLevelChange(product.id, index, "DiscountType", value)
+                              }
+                            />
+                          </IndexTable.Cell>
+                          <IndexTable.Cell>
+                            {product.levels.length > 1 && (
+                              <Button
+                                plain
+                                tone="critical"
+                                onClick={() => removeLevel(product.id, index)}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </IndexTable.Cell>
+                        </IndexTable.Row>
+                      ))}
+                    </IndexTable>
+                  </Box>
+                  <Box paddingBlockStart="200">
+                    <Button onClick={() => addLevel(product.id)}>
+                      Add Discount Tier
+                    </Button>
+                  </Box>
+                </Box>
+              </BlockStack>
+            </Card>
+          ))}
+        </BlockStack>
+      )}
 
+      {/* Flame Match Configuration */}
+      {rewardMode === "flame" && selectedProducts.length > 0 && (
+        <BlockStack gap="400">
+          {/* Discount Levels */}
+          <Card sectioned>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h3">Bundle Discount Tiers</Text>
+              <IndexTable
+                itemCount={flameLevels.length}
+                headings={[
+                  { title: "Quantity" },
+                  { title: "Discount" },
+                  { title: "Type" },
+                  { title: "Actions" }
+                ]}
+              >
+                {flameLevels.map((level, index) => (
+                  <IndexTable.Row key={index}>
+                    <IndexTable.Cell>
+                      <TextField
+                        type="number"
+                        value={level.quantity}
+                        onChange={(val) => updateFlameLevel(index, "quantity", val)}
+                        min="1"
+                      />
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>
+                      <TextField
+                        type="number"
+                        value={level.discount}
+                        onChange={(val) => updateFlameLevel(index, "discount", val)}
+                        min="0"
+                      />
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>
+                      <Select
+                        options={[
+                          { label: "Percentage", value: "percentage" },
+                          { label: "Fixed Amount", value: "fixed" },
+                        ]}
+                        value={level.discountType}
+                        onChange={(val) => updateFlameLevel(index, "discountType", val)}
+                      />
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>
+                      <Button
+                        tone="critical"
+                        onClick={() => removeFlameLevel(index)}
+                      >
+                        Remove
+                      </Button>
+                    </IndexTable.Cell>
+                  </IndexTable.Row>
+                ))}
+              </IndexTable>
+              <Button onClick={addFlameLevel} variant="primary">
+                Add Discount Tier
+              </Button>
+            </BlockStack>
+          </Card>
 
+          {/* Selected Products */}
+          <Card sectioned>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h3">Selected Bundle Products</Text>
+
+              {selectedProducts.map((product) => (
+                <Card key={product.id} padding="400">
+                  <BlockStack gap="300">
+                    <InlineStack gap={"300"} align="space-between">
+                      <BlockStack align="center" >
+
+                        <InlineStack align="center">
+                          {product.media && (
+                            <Image
+                              source={product.media}
+                              alt={product.title}
+                              width={60}
+                              height={60}
+                              style={{ borderRadius: "4px" }}
+                            />
+                          )}
+                          <Box>
+                            <Text fontWeight="semibold">{product.title}</Text>
+                            <Text tone="subdued">${product.price}</Text>
+                          </Box>
+                        </InlineStack>
+                      </BlockStack>
+                      <BlockStack>
+
+                        <Button
+                          tone="critical"
+                          size="slim"
+                          onClick={() => removeProduct(product.id)}
+                        >
+                          Remove
+                        </Button>
+                      </BlockStack>
+                    </InlineStack>
+                  </BlockStack>
+                </Card>
+              ))}
+
+            </BlockStack>
+          </Card>
+        </BlockStack>
+      )}
     </>
   );
 };

@@ -17,105 +17,127 @@ import {
   Image,
   ChoiceList,
   FormLayout,
+  Banner,
 } from "@shopify/polaris";
 import { useEffect, useState } from "react";
 import BuyMore from "./components/BuyMore";
 import BogoUpsell from "./components/BogoUpsell";
-import { data, useFetcher } from "@remix-run/react";
+import { useFetcher } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { add_to_unlock_ } from "./utils/add_unlock"
-import { buy_more_save_more } from "./utils/buy_more_save_more"
+import { add_to_unlock_ } from "./utils/add_unlock";
+import { buy_more_save_more } from "./utils/buy_more_save_more";
+import { Bogo } from "./utils/BoGo";
+import OrderBump from "./components/order_bump";
+
+const SHOPIFY_API_VERSION = "2024-10";
+
+const PRODUCT_FRAGMENT = `
+  fragment ProductFields on Product {
+    id
+    title
+    handle
+    media(first: 1) {
+      edges {
+        node {
+          preview {
+            image {
+              url
+            }
+          }
+        }
+      }
+    }
+    variants(first: 1) {
+      edges {
+        node {
+          id
+          title
+          price
+          image {
+            url
+          }
+        }
+      }
+    }
+  }
+`;
 
 const trigger_coll = async (collectionIds, shop, accessToken, campaignId) => {
-  for (const colId of collectionIds) {
-    const gid = `gid://shopify/Collection/${colId}`;
-    const gql = `
-      query {
-        collection(id:"${gid}") {
-          products(first: 200) {
-            edges {
-              node {
-                id
-                title
-                handle
-                media(first: 1) {
-                  edges {
-                    node {
-                      preview {
-                        image {
-                          url
-                        }
-                      }
-                    }
-                  }
-                }
-                variants(first: 1) {
-                  edges {
-                    node {
-                      id
-                      title
-                      price
-                      image {
-                        url
-                      }
-                    }
-                  }
+  try {
+    for (const colId of collectionIds) {
+      const gid = `gid://shopify/Collection/${colId}`;
+      const gql = `
+        ${PRODUCT_FRAGMENT}
+        query($id: ID!) {
+          collection(id: $id) {
+            products(first: 200) {
+              edges {
+                node {
+                  ...ProductFields
                 }
               }
             }
           }
         }
-      }
-    `;
-
-    const response = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken,
-      },
-      body: JSON.stringify({ query: gql }),
-    });
-
-    const result = await response.json();
-    const products = result?.data?.collection?.products?.edges || [];
-
-    const productData = products.map(({ node }) => ({
-      campaignId,
-      productId: node.id.split('/').pop(),
-      productTitle: node.title,
-      handle: node.handle,
-      price: node.variants?.edges?.[0]?.node?.price || '0',
-      media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
-    }));
-
-    if (productData.length > 0) {
-      await prisma.upsellTriggerProduct.createMany({
-        data: productData,
+      `;
+      const response = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': accessToken,
+        },
+        body: JSON.stringify({ query: gql, variables: { id: gid } }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result?.data?.collection?.products?.edges) {
+        console.warn(`No products found for collection ${colId}`);
+        continue;
+      }
+
+      const products = result.data.collection.products.edges;
+      const productData = products.map(({ node }) => ({
+        campaignId,
+        productId: node.id.split('/').pop(),
+        productTitle: node.title,
+        handle: node.handle,
+        price: node.variants?.edges?.[0]?.node?.price || '0',
+        media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
+      }));
+
+      if (productData.length > 0) {
+        await prisma.upsellTriggerProduct.createMany({
+          data: productData,
+        });
+      }
     }
+  } catch (error) {
+    console.error(`Error in trigger_coll for collection ${collectionIds}:`, error);
+    throw error;
   }
 };
-
-
 
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
-  const { shop, accessToken } = session
-  // Extract form data
+  const { shop, accessToken } = session;
+
   const campaignName = formData.get("campaignName");
-  const placement = formData.get("placement");
+  const placement = JSON.parse(formData.get("placement") || "[]");
   const selectedCampaignType = formData.get("selectedCampaignType");
   const selectedTriggerType = formData.get("selectedTriggerType");
 
   const selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
   const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
   const rewardProducts = JSON.parse(formData.get("rewardProducts") || "[]");
-
   const reward_collection = JSON.parse(formData.get("reward_collection") || "[]");
-
+  const buyCollectionPicker_BOGO = JSON.parse(formData.get("buyCollectionPicker_BOGO") || "[]"); // Extract BOGO collection picker
+  const buyProductPicker_BOGO = JSON.parse(formData.get("buyProductPicker_BOGO") || "[]"); // Extract BOGO product picker
   const upsell_allproducts = formData.get("upsell_allproducts");
   const goalType = formData.get("goalType");
   const goalAmounts = formData.get("goalAmount") || "0";
@@ -127,44 +149,26 @@ export const action = async ({ request }) => {
   const discountCode = formData.get("discountCode");
   const discountType = formData.get("discountType");
 
-
-
-
-
-
-  //  <============= // BUY MORE SAVE MORE /////////// ==========>
-
-  const selectedProducts_Buy = JSON.parse(
-    formData.get("selectedProducts_Buy") || "[]"
-  );
-  const raw = formData.get("flameLevels");
-  const flameLevel = JSON.parse(raw || "[]");
-
-
-  console.log(flameLevel, "this Levels")
-  //  <============= // BUY MORE SAVE MORE END /////////// ==========>
-
+  const selectedProducts_Buy = JSON.parse(formData.get("selectedProducts_Buy") || "[]");
+  const flameLevel = JSON.parse(formData.get("flameLevels") || "[]");
+  const freeItems = JSON.parse(formData.get("freeItems") || "[]");
+  const Rules = JSON.parse(formData.get("rules_BOGO") || "[]");
 
   const showConfetti = formData.get("showConfetti");
   const goalText = formData.get("goalText");
   const preGoalText = formData.get("preGoalText");
   const showLockedGoals = formData.get("showLockedGoals");
-
   const badgeImageRaw = formData.get("badgeImage");
   const badgeImageUrl = badgeImageRaw ? String(badgeImageRaw) : null;
-
   const barStyle = formData.get("barStyle");
   const barRadius = formData.get("barRadius");
   const barColors = JSON.parse(formData.get("barColors"));
 
-
-
-  // Save campaign to DB
   const upsellCampaign = await prisma.UpsellCampaign.create({
     data: {
       name: campaignName,
       type: selectedCampaignType,
-      placement,
+      placement: JSON.stringify(placement),
       goalType,
       goalAmount: parseInt(goalAmounts),
       goalquantity: parseInt(goalQuantity),
@@ -185,7 +189,6 @@ export const action = async ({ request }) => {
     },
   });
 
-  // Store trigger logic
   if (selectedTriggerType === "products" && selectedProducts.length > 0) {
     await prisma.upsellTriggerProduct.createMany({
       data: selectedProducts.map((p) => ({
@@ -198,9 +201,6 @@ export const action = async ({ request }) => {
         media: p.media,
       })),
     });
-
-
-
   } else if (selectedTriggerType === "collections" && selectedCollections.length > 0) {
     await prisma.UpsellTriggerCollection.createMany({
       data: selectedCollections.map((col) => ({
@@ -210,16 +210,12 @@ export const action = async ({ request }) => {
         handle: col.handle,
       })),
     });
-
-    // Fetch and insert all products from selected collections
     const collectionIds = selectedCollections.map(col => col.id);
     await trigger_coll(collectionIds, shop, accessToken, upsellCampaign.id);
   }
-
-
-
+  console.log(selectedProducts_Buy, "main page action Page ")
   if (selectedCampaignType === "add_to_unlock") {
-    const data_unlock = await add_to_unlock_(
+    await add_to_unlock_(
       shop,
       accessToken,
       rewardType,
@@ -237,11 +233,8 @@ export const action = async ({ request }) => {
       selectedProducts,
       selectedCollections
     );
-
-
   } else if (selectedCampaignType === "buy_more_save_more") {
-
-    const Buy_More_Save_More = await buy_more_save_more(
+    await buy_more_save_more(
       accessToken,
       shop,
       selectedProducts_Buy,
@@ -251,94 +244,84 @@ export const action = async ({ request }) => {
       flameLevel,
       upsellCampaign
     );
-
+  } else if (selectedCampaignType === "buy_one_get_one") {
+    console.log("BOGO Campaign Triggered", buyCollectionPicker_BOGO, buyProductPicker_BOGO, Rules, freeItems);
+    await Bogo(
+      accessToken,
+      admin,
+      upsellCampaign,
+      buyProductPicker_BOGO, // Use BOGO-specific product picker
+      freeItems,
+      Rules,
+      buyCollectionPicker_BOGO, // Use BOGO-specific collection picker
+      reward_collection // Use reward_collection instead of freeCollections
+    );
   }
 
-
-  // Confirm success
-  return { success: true, campaignID: upsellCampaign.id };
+  return { success: true, campaignID: upsellCampaign.id, message: "Campaign created successfully!" };
 };
 
-
-
-
-
-
-
-
-
+const ProgressBarPreview = ({ barStyle, barRadius, barColors }) => {
+  const style = {
+    height: barStyle === "thin" ? "8px" : "16px",
+    borderRadius: barRadius === "square" ? "0" : barRadius === "rounded" ? "4px" : "999px",
+    backgroundColor: barColors.background,
+    overflow: "hidden",
+  };
+  const progress = {
+    width: "50%",
+    height: "100%",
+    backgroundColor: barColors.primary,
+    transition: "width 0.3s ease-in-out",
+  };
+  return (
+    <Card>
+      <Text variant="headingSm">Progress Bar Preview</Text>
+      <Box paddingBlockStart="200">
+        <div style={style}>
+          <div style={progress}></div>
+        </div>
+      </Box>
+    </Card>
+  );
+};
 
 export default function UpsellCampaignForm() {
-
-  const fetcher = useFetcher()
-
-  //=================>>> Toast Message <<<=====================//
-
-  useEffect(() => {
-    if (fetcher.state == "idle" && fetcher.data?.success) {
-      shopify.toast.show(fetcher.data.message);
-      setMainBtnLoading(false);
-    } else if (fetcher.state == "idle" && !fetcher.data?.success) {
-      shopify.toast.show(fetcher?.data?.message, { isError: true });
-      setMainBtnLoading(false);
-    }
-    console.log(fetcher);
-  }, [fetcher]);
+  const fetcher = useFetcher();
 
   const [mainBtnLoading, setMainBtnLoading] = useState(false);
-
-  //=================>>> Toast Message <<<=====================//
-
-
   const [campaignName, setCampaignName] = useState("");
   const [goalType, setGoalType] = useState("amount_cart");
   const [currency, setCurrency] = useState("MAD");
   const [goalAmount, setGoalAmount] = useState("");
   const [rewardType, setRewardType] = useState("manual");
-  const [upsellType, setUpsellType] = useState("manual");
   const [showConfetti, setShowConfetti] = useState(false);
   const [goalText, setGoalText] = useState("🎉 Goal reached!");
-  const [preGoalText, setPreGoalText] = useState(
-    "👉 Add {{amount_left}} to get free shipping"
-  );
+  const [preGoalText, setPreGoalText] = useState("👉 Add {{amount_left}} to get free shipping");
   const [rewardProducts, setRewardProducts] = useState([]);
   const [placement, setPlacement] = useState(["home"]);
   const [selectedTriggerType, setSelectedTriggerType] = useState("all");
   const [upsellselectedItems, setUpsellselectedItems] = useState([]);
-  const [goalquantity, setGoalquantity] = useState();
+  const [goalquantity, setGoalquantity] = useState("");
   const [selectedCollections, setSelectedCollections] = useState([]);
   const [productSearch, setProductSearch] = useState("");
   const [collectionSearch, setCollectionSearch] = useState("");
   const [discountCode, setDiscountCode] = useState("");
-  const [discountType, setDiscountType] = useState("percentage");
+  const [discountType, setDiscountType] = useState("");
   const [selectedCampaignType, setSelectedCampaignType] = useState("add_to_unlock");
-  const [upsell_allproduct, setUpsell_allproduct] = useState(true)
+  const [upsell_allproduct, setUpsell_allproduct] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState([]);
-  const [freeGiftProducts, setFreeGiftProducts] = useState([]);
-
-
-  // BUY MORE SAVE MORE STATES ??//
-
-
-
-  // ============ BOGO BUY ONE GET ONE FREE <<<<<<<< =========== ///
-  const [freeItems, setFreeItems] = useState([]); // ✅ initialized
+  const [freeItems, setFreeItems] = useState([]);
   const [rules, setRules] = useState([{ buy: "1", get: "1" }]);
-
-  console.log(rules, freeItems, "========,,,,,<<<<<<")
-
-
-
-  // const [rewardMode_Buy, setRewardMode_Buy] = useState("fixed");
   const [selectedProducts_Buy, setSelectedProducts_Buy] = useState([]);
   const [flameLevels, setFlameLevels] = useState([]);
   const [min_quantity, setMin_Quantity] = useState("3");
   const [discount_Value, setDiscount_Value] = useState("");
-
-
   const [rewardMode, setRewardMode] = useState("fixed");
   const [showLockedGoals, setShowLockedGoals] = useState(false);
   const [badgeImage, setBadgeImage] = useState(null);
+  const [rewardCollection, setRewardCollection] = useState([]);
+
   const [barStyle, setBarStyle] = useState("thin");
   const [barRadius, setBarRadius] = useState("rounded");
   const [barColors, setBarColors] = useState({
@@ -347,11 +330,25 @@ export default function UpsellCampaignForm() {
     background: "#f2f2f2",
     goalComplete: "#4caf50",
   });
+  const [buyCollectionPicker, setBuyCollectionPicker] = useState([]);
+  const [buyCollectionPicker_BOGO, setBuyCollectionPicker_BOGO] = useState([]);
+  const [buyProductPicker, setBuyProductPicker] = useState([]);
+  const [buyProductPicker_BOGO, setBuyProductPicker_BOGO] = useState([]);
+  const [productPickType, setProductPickType] = useState("products");
+  const [freeGiftProducts, setFreeGiftProducts] = useState([]);
 
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.success) {
+        shopify.toast.show(fetcher.data.message || "Campaign created successfully!");
+      } else {
+        shopify.toast.show(fetcher.data.message || "Failed to create campaign.", { isError: true });
+      }
+      setMainBtnLoading(false);
+    }
+  }, [fetcher]);
 
-
-
-  function getAmountLeft() {
+  const getAmountLeft = () => {
     if (goalType === "amount_cart") {
       const goal = parseFloat(goalAmount || 0);
       const cartTotal = 0;
@@ -363,33 +360,42 @@ export default function UpsellCampaignForm() {
       return `${Math.max(goal - currentQty, 0)} items`;
     }
     return "";
-  }
+  };
 
-  function getRewardDescription() {
+  const getRewardDescription = () => {
     if (rewardType === "discount") return `${discountCode} ${discountType === "percentage" ? "% off" : "off"}`;
     if (rewardType === "shipping") return "Free Shipping";
     if (rewardType === "gift") return rewardMode === "flame" ? "a free gift of your choice" : rewardProducts[0]?.title || "a free gift";
     return "reward";
-  }
+  };
 
   const formattedGoalText = goalText.replace(/{{reward}}/g, getRewardDescription()).replace(/{{goal}}/g, goalAmount);
   const formattedPreGoalText = preGoalText.replace(/{{amount_left}}/g, getAmountLeft()).replace(/{{goal}}/g, goalAmount);
 
-
   const filteredProducts = upsellselectedItems.filter(
-    (p) =>
-      p.title?.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.handle?.toLowerCase().includes(productSearch.toLowerCase())
+    (p) => p.title?.toLowerCase().includes(productSearch.toLowerCase()) || p.handle?.toLowerCase().includes(productSearch.toLowerCase())
   );
 
   const filteredCollections = selectedCollections.filter(
-    (c) =>
-      c.title?.toLowerCase().includes(collectionSearch.toLowerCase()) ||
-      c.handle?.toLowerCase().includes(collectionSearch.toLowerCase())
+    (c) => c.title?.toLowerCase().includes(collectionSearch.toLowerCase()) || c.handle?.toLowerCase().includes(collectionSearch.toLowerCase())
   );
 
-  // 🛒 Upsell Product Picker
-  async function productpicker() {
+  const removeItem = (id, setState, state) => {
+    setState(state.filter(item => item.id !== id));
+  };
+
+  const removeProduct = (id) => removeItem(id, setUpsellselectedItems, upsellselectedItems);
+  const removeCollection = (id) => removeItem(id, setSelectedCollections, selectedCollections);
+  const removeRewardProduct = (id) => removeItem(id, setRewardProducts, rewardProducts);
+  const removeRewardCollection = (id) => removeItem(id, setRewardCollection, rewardCollection);
+
+  const removeBuyProduct = (id) => removeItem(id, setBuyProductPicker, buyProductPicker);
+  const removeBuyProduct_BOGO = (id) => removeItem(id, setBuyProductPicker_BOGO, buyProductPicker_BOGO);
+  const removeBuyCollection = (id) => removeItem(id, setBuyCollectionPicker, buyCollectionPicker);
+  const removeBuyCollection_BOGO = (id) => removeItem(id, setBuyCollectionPicker_BOGO, buyCollectionPicker_BOGO);
+  const removeFreeItem = (id) => removeItem(id, setFreeItems, freeItems);
+
+  const productpicker = async () => {
     try {
       const selectedItems = await window.shopify.resourcePicker({
         selectionIds: upsellselectedItems.map((product) => product.id),
@@ -411,18 +417,17 @@ export default function UpsellCampaignForm() {
         }));
 
         const uniqueProducts = products.filter(
-          (newProduct) =>
-            !upsellselectedItems.some((existing) => existing.id === newProduct.id)
+          (newProduct) => !upsellselectedItems.some((existing) => existing.id === newProduct.id)
         );
         setUpsellselectedItems((prev) => [...prev, ...uniqueProducts]);
       }
     } catch (error) {
       console.error("Error in product picker:", error);
+      shopify.toast.show("Failed to select products.", { isError: true });
     }
-  }
+  };
 
-  // 📚 upsell Collection Picker
-  async function collectionPicker() {
+  const collectionPicker = async () => {
     try {
       const upsell_collection = await window.shopify.resourcePicker({
         type: "collection",
@@ -438,92 +443,265 @@ export default function UpsellCampaignForm() {
         }));
 
         const uniqueCollections = collections.filter(
-          (newColl) =>
-            !selectedCollections.some((existing) => existing.id === newColl.id)
+          (newColl) => !selectedCollections.some((existing) => existing.id === newColl.id)
         );
-
         setSelectedCollections((prev) => [...prev, ...uniqueCollections]);
       }
     } catch (error) {
       console.error("Error in collection picker:", error);
+      shopify.toast.show("Failed to select collections.", { isError: true });
     }
-  }
+  };
 
-
-  function removeRewardCollection(id) {
-    setFreeproductcollection((prev) =>
-      prev.filter((collection) => collection.id !== id)
-    );
-  }
-
-
-  function removeProduct(id) {
-    setUpsellselectedItems((prev) => prev.filter((p) => p.id !== id));
-  }
-  // Remove collection by ID
-  function removeCollection(id) {
-    setSelectedCollections((prev) => prev.filter((c) => c.id !== id));
-  }
-  function removeRewardProduct(id) {
-    setRewardProducts((prev) => prev.filter((c) => c.id !== id));
-  }
-
-  const goalOptions = [
-    { label: "$ Amount in Cart", value: "amount_cart" },
-    { label: "Quantity", value: "quantity" },
-  ];
-  const selected_campaign_type = [
-    { label: "Add To Unlock", value: "add_to_unlock" },
-    { label: "Buy More Save More", value: "buy_more_save_more" },
-    { label: "Buy One Get One", value: "buy_one_get_one" },
-  ];
-  const currencies = [
-    { label: "MAD", value: "MAD" },
-    { label: "USD", value: "USD" },
-    { label: "EUR", value: "EUR" },
-  ];
-
-  async function rewardPicker() {
-    // if (rewardProducts.length >= 4) {
-    //   alert("You can only select up to 4 reward products.");
-    //   return;
-    // }
-
-    const selectedItems = await window.shopify.resourcePicker({
-      multiple: true,
-      type: "product",
-      action: "select",
-    });
-
-    if (selectedItems) {
-      const products = selectedItems.map((item) => ({
-        id: item.id.split("/").pop(),
-        title: item.title,
-        variantId: item.variants[0]?.id.split('/').pop(),
-        price: item.variants[0]?.price,
-        media: item.images[0]?.originalSrc,
-      }));
-      console.log(products)
-      const newItems = products.filter(p => !rewardProducts.find(pr => pr.id === p.id));
-      setRewardProducts(prev => [...prev, ...newItems].slice(0, 4)); // Hard cap at 4
+  const rewardPicker = async () => {
+    if (rewardProducts.length >= 4) {
+      shopify.toast.show("You can only select up to 4 reward products.", { isError: true });
+      return;
     }
-  }
 
+    try {
+      const selectedItems = await window.shopify.resourcePicker({
+        multiple: true,
+        type: "product",
+        action: "select",
+      });
 
-  //========================>> Handel SUBMIT <<======================
+      if (selectedItems) {
+        const products = selectedItems.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          variantId: item.variants[0]?.id.split('/').pop(),
+          price: item.variants[0]?.price,
+          media: item.images[0]?.originalSrc || null,
+        }));
+
+        const newItems = products.filter(
+          (p) => !rewardProducts.some((pr) => pr.id === p.id)
+        );
+
+        setRewardProducts((prev) => {
+          const combined = [...prev, ...newItems];
+          if (combined.length > 4) {
+            shopify.toast.show("Only 4 reward products can be selected.", { isError: true });
+          }
+          return combined.slice(0, 4);
+        });
+      }
+    } catch (error) {
+      console.error("Error in reward picker:", error);
+      shopify.toast.show("Failed to select reward products.", { isError: true });
+    }
+  };
+
+  const rewardCollectionPicker = async () => {
+    try {
+      const selectedCollections = await window.shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+        action: "select",
+      });
+
+      if (selectedCollections) {
+        const collections = selectedCollections.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+        }));
+        setRewardCollection((prev) => [
+          ...prev,
+          ...collections.filter((c) => !prev.some((existing) => existing.id === c.id)),
+        ]);
+      }
+    } catch (error) {
+      console.error("Error in reward collection picker:", error);
+      shopify.toast.show("Failed to select reward collections.", { isError: true });
+    }
+  };
+
+  const Free_gift_piker = async () => {
+    try {
+      const selectedItems = await window.shopify.resourcePicker({
+        multiple: true,
+        type: "product",
+        action: "select",
+      });
+
+      if (selectedItems) {
+        const products = selectedItems.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          variantId: item.variants[0]?.id.split('/').pop(),
+          price: item.variants[0]?.price,
+          media: item.images[0]?.originalSrc || null,
+        }));
+        setFreeItems((prev) => [...prev, ...products.filter(p => !prev.find(pr => pr.id === p.id))]);
+      }
+    } catch (error) {
+      console.error("Error in free gift picker:", error);
+      shopify.toast.show("Failed to select free gift products.", { isError: true });
+    }
+  };
+
+  const BuyCollectionPicker = async () => {
+    try {
+      const Buy_products = await window.shopify.resourcePicker({
+        type: "collection",
+        multiple: false,
+        action: "select",
+      });
+
+      if (Buy_products && Buy_products.length > 0) {
+        const selected = Buy_products[0];
+        const products = {
+          id: selected.id.split("/").pop(),
+          title: selected.title,
+          handle: selected.handle,
+        };
+        setBuyCollectionPicker([products]);
+      }
+    } catch (error) {
+      console.error("Error in buy collection picker:", error);
+      shopify.toast.show("Failed to select buy collection.", { isError: true });
+    }
+  };
+
+  const Buyproductpicker = async () => {
+    try {
+      const selectedItems = await window.shopify.resourcePicker({
+        selectionIds: buyProductPicker.map((product) => product.id),
+        multiple: true,
+        query: "status:active AND published_status:published",
+        type: "product",
+        action: "select",
+        showVariants: true,
+      });
+
+      if (selectedItems) {
+        const products = selectedItems.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+          variantId: item.variants[0]?.id.split("/").pop(),
+          price: item.variants[0]?.price,
+          media: item.images[0]?.originalSrc || item.images[0]?.src || null,
+        }));
+
+        const uniqueProducts = products.filter(
+          (newProduct) => !buyProductPicker.some((existing) => existing.id === newProduct.id)
+        );
+        setBuyProductPicker((prev) => [...prev, ...uniqueProducts]);
+      }
+    } catch (error) {
+      console.error("Error in buy product picker:", error);
+      shopify.toast.show("Failed to select buy products.", { isError: true });
+    }
+  };
+
+  const addRule = () => {
+    setRules([...rules, { buy: "1", get: "1" }]);
+  };
+
+  const updateRule = (index, field, value) => {
+    const newRules = [...rules];
+    newRules[index][field] = value;
+    setRules(newRules);
+  };
+
+  const removeRule = (index) => {
+    setRules(rules.filter((_, i) => i !== index));
+  };
 
 
 
 
   const handleSubmit = () => {
+    if (!campaignName) {
+      shopify.toast.show("Campaign name is required.", { isError: true });
+      return;
+    }
+
+    if (selectedCampaignType === "add_to_unlock") {
+      console.log(discountType,"thsi New VAlue")
+      if (
+        
+        discountType === "percentage" &&
+        (discountCode <= 0 || discountCode > 100.1)
+      ) {
+        shopify.toast.show("Discount percentage must be between 1 and 100.", { isError: true });
+        return;
+      }
+      if (goalType === "amount_cart" && !goalAmount) {
+        shopify.toast.show("Goal amount is required.", { isError: true });
+        return;
+      }
+      if (goalType === "quantity" && !goalquantity) {
+        shopify.toast.show("Goal quantity is required.", { isError: true });
+        return;
+      }
+    }
+
+
+
+    if (selectedCampaignType === "buy_one_get_one" && (!freeItems.length || !rules.length)) {
+
+      shopify.toast.show("BOGO requires free items and rules.", { isError: true });
+      return;
+    }
+
+
+
+
+    if (selectedCampaignType === "buy_more_save_more") {
+      // 🔹 Validate Buy More Save More + Fixed
+      if (rewardMode === "fixed") {
+        for (const product of selectedProducts_Buy) {
+          for (const level of product.levels) {
+            const discountValue = parseFloat(level.discount);
+            const discountType = level.DiscountType;
+
+            if (
+              discountType === "percentage" &&
+              (isNaN(discountValue) || discountValue <= 0 || discountValue > 100)
+            ) {
+              shopify.toast.show(
+                `Invalid discount for "${product.title}": Percentage must be between 1 and 100.`,
+                { isError: true }
+              );
+              return;
+            }
+          }
+        }
+      }
+
+      // 🔹 Validate Buy More Save More + Flame
+      if (rewardMode === "flame") {
+        for (const level of flameLevels) {
+          const discountValue = parseFloat(level.discount);
+          const discountType = level.discountType;
+
+          if (
+            discountType === "percentage" &&
+            (isNaN(discountValue) || discountValue <= 0 || discountValue > 100)
+          ) {
+            shopify.toast.show(
+              `Invalid flame level discount: Percentage must be between 1 and 100.`,
+              { isError: true }
+            );
+            return;
+          }
+        }
+      }
+    }
+
+
+
+    setMainBtnLoading(true);
     const formData = new FormData();
 
-    // 🔹 Basic Campaign Info
     formData.append("campaignName", campaignName);
     formData.append("selectedCampaignType", selectedCampaignType);
     formData.append("selectedTriggerType", selectedTriggerType);
 
-    // 🔹 Trigger Type Logic
     if (selectedTriggerType === "products") {
       formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
     } else if (selectedTriggerType === "collections") {
@@ -533,119 +711,85 @@ export default function UpsellCampaignForm() {
     }
     formData.append("rewardType", rewardType);
     formData.append("rewardMode", rewardMode);
-
-    // 🔹 Goal Info
     formData.append("goalType", goalType);
-    formData.append("goalAmount", goalAmount);
-    formData.append("goalquantity", goalquantity);
+    formData.append("goalAmount", goalAmount || "0");
+    formData.append("goalquantity", goalquantity || "0");
     formData.append("currency", currency);
-
-    // 🔹 Reward Info
-
-
     formData.append("discountCode", discountCode);
     formData.append("discountType", discountType);
-    formData.append(
-      "rewardProducts",
-      JSON.stringify(rewardProducts)
-    );
-    formData.append(
-      "reward_collection",
-      JSON.stringify(selectedCollection)
-    );
-
-    if (selectedCampaignType === "buy_more_save_more") {
-      formData.append("selectedProducts_Buy", JSON.stringify(selectedProducts_Buy));
-      formData.append("flameLevels", JSON.stringify(flameLevels))
-    }
-
-    // 🔹 Visual + UI Settings
-    formData.append("showConfetti", showConfetti);
+    formData.append("rewardProducts", JSON.stringify(rewardProducts));
+    formData.append("reward_collection", JSON.stringify(rewardCollection));
+    formData.append("selectedProducts_Buy", JSON.stringify(selectedProducts_Buy));
+    formData.append("flameLevels", JSON.stringify(flameLevels));
+    formData.append("freeItems", JSON.stringify(freeItems));
+    formData.append("buyCollectionPicker_BOGO", JSON.stringify(buyCollectionPicker_BOGO)); // Add BOGO collection picker
+    formData.append("buyProductPicker_BOGO", JSON.stringify(buyProductPicker_BOGO)); // Add BOGO product picker
+    formData.append("rules_BOGO", JSON.stringify(rules));
+    formData.append("showConfetti", showConfetti ? "on" : "off");
     formData.append("goalText", goalText);
     formData.append("preGoalText", preGoalText);
-    formData.append("placement", placement);
-    formData.append("showLockedGoals", showLockedGoals);
-    formData.append("badgeImage", badgeImage);
+    formData.append("placement", JSON.stringify(placement));
+    formData.append("showLockedGoals", showLockedGoals ? "on" : "off");
+    formData.append("badgeImage", badgeImage || "");
     formData.append("barStyle", barStyle);
     formData.append("barRadius", barRadius);
     formData.append("barColors", JSON.stringify(barColors));
 
-    // 🚀 Submit via Remix fetcher
     fetcher.submit(formData, {
       method: "POST",
       encType: "multipart/form-data",
     });
   };
 
+  const goalOptions = [
+    { label: "$ Amount in Cart", value: "amount_cart" },
+    { label: "Quantity", value: "quantity" },
+  ];
+  const selected_campaign_type = [
+    { label: "Add To Unlock", value: "add_to_unlock" },
+    { label: "Buy More Save More", value: "buy_more_save_more" },
+    { label: "Buy One Get One", value: "buy_one_get_one" },
+    { label: "Order Bump", value: "order_bump" },
+  ];
+  const currencies = [
+    { label: "MAD", value: "MAD" },
+    { label: "USD", value: "USD" },
+    { label: "EUR", value: "EUR" },
+  ];
 
-
-
-  //=======================>> FREE PRODUCT PICKER  <<=================
-
-
-  async function fetchProductsInCollection(collectionId) {
-    try {
-      const res = await fetch(`/api/products-by-collection?id=${collectionId}`);
-      const data = await res.json();
-
-      setFreeGiftProducts(
-        data.products.map((p) => ({
-          id: p.id,
-          title: p.title,
-          image: p.image?.src,
-        }))
-      );
-    } catch (error) {
-      console.error("Failed to load products:", error);
-    }
-  }
-
-
-  async function Free_gift_piker() {
-    try {
-      const upsell_collection = await window.shopify.resourcePicker({
-        type: "collection",
-        multiple: false, // Only one collection like "Summer Collection"
-        action: "select",
-      });
-
-      if (upsell_collection && upsell_collection.length > 0) {
-        const selected = upsell_collection[0];
-        const collectionData = {
-          id: selected.id.split("/").pop(),
-          title: selected.title,
-          handle: selected.handle,
-        };
-
-        setSelectedCollection([collectionData]); // Replace old collection
-        fetchProductsInCollection(collectionData.id); // Load its products
-      }
-    } catch (error) {
-      console.error("Error in collection picker:", error);
-    }
-  }
-
-
+  // Order Bump state variables
+  const [triggerType, setTriggerType] = useState("all");
+  const [selectedTriggerProducts, setSelectedTriggerProducts] = useState([]);
+  const [selectedTriggerCollections, setSelectedTriggerCollections] = useState([]);
+  const [addOnProduct, setAddOnProduct] = useState(null);
+  const [offerTitle, setOfferTitle] = useState("");
+  const [offerDescription, setOfferDescription] = useState("");
+  const [preChecked, setPreChecked] = useState(false);
+  const [buttonVariant, setButtonVariant] = useState("primary");
+  const [textColor, setTextColor] = useState("#000000");
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [iconSize, setIconSize] = useState("medium");
+  const [targetCountries, setTargetCountries] = useState([]);
+  const [excludeCountries, setExcludeCountries] = useState([]);
+  const [orderBumpPlacement, setOrderBumpPlacement] = useState(["cart"]);
 
   return (
-    <Page title="Create Upsell Campaign" fullWidth padding="4">
-
+    <Page title="Create Upsell Campaign" fullWidth padding="400">
       <FormLayout>
         <Layout>
-          <Layout.Section >
-            <BlockStack gap="400"  >
+          <Layout.Section>
+            <BlockStack gap="400">
               <Card>
                 <BlockStack gap="200">
                   <TextField
                     label="Campaign Name"
                     value={campaignName}
                     onChange={setCampaignName}
+                    requiredIndicator
                   />
                   <Divider />
-
                 </BlockStack>
               </Card>
-              {/* Start select a campaign type */}
               <Card>
                 <BlockStack gap="200">
                   <Text as="h2" variant="headingMd" fontWeight="bold">
@@ -657,12 +801,12 @@ export default function UpsellCampaignForm() {
                         key={type.value}
                         pressed={selectedCampaignType === type.value}
                         onClick={() => setSelectedCampaignType(type.value)}
+                        size="medium"
                       >
                         {type.label}
                       </Button>
                     ))}
                   </InlineStack>
-
                 </BlockStack>
               </Card>
               <Card>
@@ -671,51 +815,42 @@ export default function UpsellCampaignForm() {
                     Selected Products Upsell
                   </Text>
                   <Text as="p">Choose which products will trigger the upsell offer.</Text>
-                  <InlineStack gap={"200"}>
-
-
+                  <InlineStack gap="200">
                     <RadioButton
                       label="All products"
                       checked={selectedTriggerType === "all"}
                       name="triggerType"
                       onChange={() => {
-                        setSelectedTriggerType("all"),
-                          setUpsell_allproduct(true)
+                        setSelectedTriggerType("all");
+                        setUpsell_allproduct(true);
                       }}
                     />
-
                     <RadioButton
                       label="Specific products"
                       checked={selectedTriggerType === "products"}
                       name="triggerType"
-                      onChange={() => {
-                        setSelectedTriggerType("products");
-                      }}
+                      onChange={() => setSelectedTriggerType("products")}
                     />
                     <RadioButton
                       label="Specific collections"
                       checked={selectedTriggerType === "collections"}
                       name="triggerType"
-                      onChange={() => {
-                        setSelectedTriggerType("collections");
-                      }}
+                      onChange={() => setSelectedTriggerType("collections")}
                     />
                   </InlineStack>
                   {selectedTriggerType === "products" && (
                     <Box padding="200" borderStyle="base">
-                      <BlockStack gap={"200"}>
+                      <BlockStack gap="200">
                         <Text as="h3" variant="headingSm" fontWeight="bold">
                           Selected Products
                         </Text>
-
                         <InlineStack gap="200">
-                          <Button onClick={productpicker}>Browse Products</Button>
+                          <Button onClick={productpicker} size="medium">Browse Products</Button>
                         </InlineStack>
-
                         {filteredProducts.length > 0 ? (
                           <ResourceList
                             resourceName={{ singular: "product", plural: "products" }}
-                            items={filteredProducts} // ✅ FIXED
+                            items={filteredProducts}
                             renderItem={(item) => {
                               const { id, title, handle, price, media } = item;
                               return (
@@ -729,7 +864,7 @@ export default function UpsellCampaignForm() {
                                         <Text>Handle: {handle}</Text>
                                       </BlockStack>
                                     </InlineStack>
-                                    <Button tone="critical" onClick={() => removeProduct(id)} size="slim">
+                                    <Button tone="critical" onClick={() => removeProduct(id)} size="medium">
                                       Remove
                                     </Button>
                                   </InlineStack>
@@ -743,19 +878,15 @@ export default function UpsellCampaignForm() {
                       </BlockStack>
                     </Box>
                   )}
-
                   {selectedTriggerType === "collections" && (
                     <Box padding="200" borderStyle="base">
-                      <BlockStack gap={"200"}>
+                      <BlockStack gap="200">
                         <Text as="h3" variant="headingSm" fontWeight="bold">
                           Selected Collections
                         </Text>
-
                         <InlineStack gap="200">
-                          <Button onClick={collectionPicker}>Browse Collections</Button>
-
+                          <Button onClick={collectionPicker} size="medium">Browse Collections</Button>
                         </InlineStack>
-
                         {filteredCollections.length > 0 ? (
                           <ResourceList
                             resourceName={{ singular: "collection", plural: "collections" }}
@@ -769,7 +900,7 @@ export default function UpsellCampaignForm() {
                                       <Text fontWeight="bold">{title}</Text>
                                       <Text>Handle: {handle}</Text>
                                     </BlockStack>
-                                    <Button tone="critical" onClick={() => removeCollection(id)} size="slim">
+                                    <Button tone="critical" onClick={() => removeCollection(id)} size="medium">
                                       Remove
                                     </Button>
                                   </InlineStack>
@@ -777,237 +908,305 @@ export default function UpsellCampaignForm() {
                               );
                             }}
                           />
-
                         ) : (
                           <Text>No matching collections</Text>
                         )}
                       </BlockStack>
-
                     </Box>
                   )}
                 </BlockStack>
               </Card>
-              {/* select a campaign type End */}
-
-
               {selectedCampaignType === "add_to_unlock" && (
                 <Card>
-                  <BlockStack gap="300">
-
-                    {/* 🔧 Goal Trigger Type */}
-                    <Text variant="headingMd">Goal Trigger Type</Text>
-                    <InlineStack gap="200">
-                      {goalOptions.map((type) => (
-                        <Button
-                          key={type.value}
-                          pressed={goalType === type.value}
-                          onClick={() => setGoalType(type.value)}
-                        >
-                          {type.label}
-                        </Button>
-                      ))}
-                    </InlineStack>
-
-                    {/* 🎯 Goal Configuration */}
-                    {goalType === "amount_cart" && (
-                      <BlockStack gap="200">
-                        {/* <Select
-                          label="Currency"
-                          options={currencies}
-                          value={currency}
-                          onChange={setCurrency}
-                        /> */}
-                        <TextField
-                          label={`Goal in `}
-                          type="number"
-                          value={goalAmount}
-                          onChange={setGoalAmount}
-                        />
-                      </BlockStack>
-                    )}
-                    {goalType === "quantity" && (
-                      <BlockStack gap={"150"}>
-                        <Text>
-                          Choose how many products need to be added to the cart to unlock the reward.
-                        </Text>
-                        <TextField
-                          label="Quantity Goal"
-                          type="number"
-                          value={goalquantity}
-                          onChange={setGoalquantity}
-                          helpText="How many products need to be added to the cart to unlock the reward."
-                        />
-                      </BlockStack>
-                    )}
-
-                    {/* ✅ Toggles and Uploads */}
-                    {/* <Checkbox
-                      label="Show Confetti On Unlock"
-                      checked={showConfetti}
-                      onChange={setShowConfetti}
-                    />
-                    <Checkbox
-                      label="Show Locked Goals"
-                      checked={showLockedGoals}
-                      onChange={setShowLockedGoals}
-                    /> */}
-                    <Box>
-                      {/* <BlockStack gap={"150"}>
-                        <Text variant="bodyMd">Upload Reward Badge Icon</Text>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => setBadgeImage(reader.result);
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                        {badgeImage && <Image source={badgeImage} alt="Badge" width="60px" />}
-                      </BlockStack> */}
-
-                    </Box>
-                    <Text variant="headingMd">Reward Mode</Text>
-                    <InlineStack gap="200">
-                      <RadioButton
-                        label="Fixed Deal"
-                        checked={rewardMode === "fixed"}
-                        onChange={() => {
-                          setRewardMode("fixed");
-                          setRewardType("discount");
-                        }}
-                      />
-                      <RadioButton
-                        label="Flame Match (Customer picks)"
-                        checked={rewardMode === "flame"}
-                        onChange={() => {
-                          setRewardMode("flame");
-                          setRewardType("gift");
-                        }}
-                      />
-                    </InlineStack>
-                    <InlineStack gap="200">
-                      {rewardMode === "fixed" && (
-                        <>
-                          <RadioButton
-                            label="Discount"
-                            checked={rewardType === "discount"}
-                            onChange={() => setRewardType("discount")}
-                          />
-                          <RadioButton
-                            label="Free Shipping"
-                            checked={rewardType === "shipping"}
-                            onChange={() => setRewardType("shipping")}
-                          />
-
-                        </>
-                      )}
-
-                      {rewardMode === "flame" && (
-                        <RadioButton
-                          label="Free Gift"
-                          checked={rewardType === "gift"}
-                          onChange={() => setRewardType("gift")}
-                        />
-                      )}
-                    </InlineStack>
-
-
-                    {/* 🛠 Reward Setup */}
-                    <Text variant="headingMd">Reward Setup</Text>
-
-                    {rewardType === "discount" && (
-                      <BlockStack gap="200">
-                        <TextField
-                          label="Discount Code"
-                          placeholder="Enter discount code"
-                          value={discountCode}
-                          onChange={setDiscountCode}
-                        />
-                        <Select
-                          label="Discount Type"
-                          options={[
-                            { label: "Percentage", value: "percentage" },
-                            { label: "Fixed Amount", value: "amount" },
-                          ]}
-                          value={discountType}
-                          onChange={setDiscountType}
-                        />
-                        <Button onClick={rewardPicker}>Select Productt </Button>
-                        {rewardProducts.map((item) => (
-                          <InlineStack key={item.id} align="space-between" >
-                            <Text>{item.title}</Text>
-                            <Button
-                              tone="critical"
-                              size="slim"
-                              onClick={() => removeRewardProduct(item.id)}
-                            >
-                              Remove
-                            </Button>
+                  <BlockStack gap="400">
+                    <Card sectioned>
+                      <BlockStack gap="300">
+                        <Text variant="headingMd" as="h3">Goal Configuration</Text>
+                        <Box paddingBlockStart="200">
+                          <Text variant="bodyMd" fontWeight="semibold">Trigger Type</Text>
+                          <InlineStack gap="200" blockAlign="center" wrap={false}>
+                            {goalOptions.map((type) => (
+                              <Button
+                                key={type.value}
+                                pressed={goalType === type.value}
+                                onClick={() => setGoalType(type.value)}
+                                size="medium"
+                              >
+                                {type.label}
+                              </Button>
+                            ))}
                           </InlineStack>
-                        ))}
-                      </BlockStack>
-                    )}
-
-                    {rewardType === "shipping" && (
-                      <BlockStack gap={"200"}>
-                        <Box background="bg-fill-success-secondary" padding="200" borderRadius="200">
-                          <Text>🚚 Free Shipping will be applied when goal is reached.</Text>
                         </Box>
-                        <Button onClick={rewardPicker}>Select Productt </Button>
-                        {rewardProducts.map((item) => (
-                          <InlineStack key={item.id} align="space-between" >
-                            <Text>{item.title}</Text>
-                            <Button
-                              tone="critical"
-                              size="slim"
-                              onClick={() => removeRewardProduct(item.id)}
-                            >
-                              Remove
-                            </Button>
-                          </InlineStack>
-                        ))}
-                      </BlockStack>
-
-                    )}
-                    {rewardType === "gift" && (
-                      <BlockStack gap="500">
-                        <Button onClick={Free_gift_piker}>Select Reward Collection</Button>
-
-                        {selectedCollection.map((item) => (
-                          <InlineStack key={item.id} align="space-between">
-                            <Text>{item.title}</Text>
-                            <Button
-                              tone="critical"
-                              size="slim"
-                              onClick={() => setSelectedCollection([])}
-                            >
-                              Remove
-                            </Button>
-                          </InlineStack>
-                        ))}
-
-                        {freeGiftProducts.length > 0 && (
-                          <Card title="Available Free Gift Products">
-                            <BlockStack>
-                              {freeGiftProducts.map((p) => (
-                                <InlineStack key={p.id} align="space-between">
-                                  <InlineStack>
-                                    {p.image && <img src={p.image} width={40} />}
-                                    <Text>{p.title}</Text>
-                                  </InlineStack>
-                                </InlineStack>
-                              ))}
-                            </BlockStack>
-                          </Card>
+                        {goalType === "amount_cart" && (
+                          <TextField
+                            label="Cart Total Goal"
+                            type="number"
+                            value={goalAmount}
+                            onChange={(value) => {
+                              setGoalAmount(value);
+                              setGoalquantity("");
+                            }}
+                            prefix="$"
+                            requiredIndicator
+                            helpText="Set the minimum cart total required to unlock the reward"
+                          />
+                        )}
+                        {goalType === "quantity" && (
+                          <TextField
+                            label="Product Quantity Goal"
+                            type="number"
+                            value={goalquantity}
+                            onChange={(value) => {
+                              setGoalAmount("");
+                              setGoalquantity(value);
+                            }}
+                            requiredIndicator
+                            helpText="How many products need to be added to the cart to unlock the reward"
+                          />
                         )}
                       </BlockStack>
-                    )}
-
-
+                    </Card>
+                    <Card sectioned>
+                      <BlockStack gap="300">
+                        <Text variant="headingMd" as="h3">Reward Type</Text>
+                        <Box paddingBlockStart="100">
+                          <ChoiceList
+                            title="Reward Mode"
+                            choices={[
+                              { label: "Fixed Deal", value: "fixed" },
+                              { label: "Flame Match (Customer picks)", value: "flame" },
+                            ]}
+                            selected={[rewardMode]}
+                            onChange={(value) => {
+                              const mode = value[0];
+                              setRewardMode(mode);
+                              setRewardType(mode === "flame" ? "gift" : "discount");
+                            }}
+                          />
+                        </Box>
+                        {rewardMode === "fixed" && (
+                          <ChoiceList
+                            title="Reward Type"
+                            choices={[
+                              { label: "Discount", value: "discount" },
+                              { label: "Free Shipping", value: "shipping" },
+                            ]}
+                            selected={[rewardType]}
+                            onChange={(value) => setRewardType(value[0])}
+                          />
+                        )}
+                      </BlockStack>
+                    </Card>
+                    <Card>
+                      <BlockStack gap="200">
+                        {rewardType === 'gift' && (
+                          <>
+                            <Text as="h2" variant="headingMd" fontWeight="bold">
+                              Buy X Configuration
+                            </Text>
+                            <Text as="p">Choose which products or collections will trigger the Buy X, Get Y offer.</Text>
+                            <InlineStack gap="200">
+                              <RadioButton
+                                label="Specific products"
+                                checked={productPickType === 'products'}
+                                name="triggerType"
+                                onChange={() => setProductPickType('products')}
+                              />
+                              <RadioButton
+                                label="Specific collections"
+                                checked={productPickType === 'collections'}
+                                name="triggerType"
+                                onChange={() => setProductPickType('collections')}
+                              />
+                            </InlineStack>
+                            {productPickType === 'products' && (
+                              <Box padding="200" borderStyle="base">
+                                <BlockStack gap="200">
+                                  <Text as="h3" variant="headingSm" fontWeight="bold">
+                                    Selected Products
+                                  </Text>
+                                  <InlineStack gap="200">
+                                    <Button onClick={Buyproductpicker} size="medium">Browse Products</Button>
+                                  </InlineStack>
+                                  {buyProductPicker.length > 0 ? (
+                                    <ResourceList
+                                      resourceName={{ singular: 'product', plural: 'products' }}
+                                      items={buyProductPicker}
+                                      renderItem={(item) => {
+                                        const { id, title, handle, price, media } = item;
+                                        return (
+                                          <ResourceItem id={id}>
+                                            <InlineStack align="space-between" gap="300">
+                                              <InlineStack gap="300" align="center">
+                                                {media ? (
+                                                  <Image source={media} alt={title} width="60px" />
+                                                ) : (
+                                                  <Text>No image</Text>
+                                                )}
+                                                <BlockStack>
+                                                  <Text fontWeight="bold">{title}</Text>
+                                                  <Text>Price: ${price}</Text>
+                                                  <Text>Handle: {handle}</Text>
+                                                </BlockStack>
+                                              </InlineStack>
+                                              <Button tone="critical" onClick={() => removeBuyProduct(id)} size="medium">
+                                                Remove
+                                              </Button>
+                                            </InlineStack>
+                                          </ResourceItem>
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <Text>No products selected</Text>
+                                  )}
+                                </BlockStack>
+                              </Box>
+                            )}
+                            {productPickType === 'collections' && (
+                              <Box padding="200" borderStyle="base">
+                                <BlockStack gap="200">
+                                  <Text as="h3" variant="headingSm" fontWeight="bold">
+                                    Selected Collections
+                                  </Text>
+                                  <InlineStack gap="200">
+                                    <Button onClick={BuyCollectionPicker} size="medium">Browse Collections</Button>
+                                  </InlineStack>
+                                  {buyCollectionPicker.length > 0 ? (
+                                    <ResourceList
+                                      resourceName={{ singular: 'collection', plural: 'collections' }}
+                                      items={buyCollectionPicker}
+                                      renderItem={(item) => {
+                                        const { id, title, handle } = item;
+                                        return (
+                                          <ResourceItem id={id}>
+                                            <InlineStack align="space-between" gap="300">
+                                              <BlockStack>
+                                                <Text fontWeight="bold">{title}</Text>
+                                                <Text>Handle: {handle}</Text>
+                                              </BlockStack>
+                                              <Button tone="critical" onClick={() => removeBuyCollection(id)} size="medium">
+                                                Remove
+                                              </Button>
+                                            </InlineStack>
+                                          </ResourceItem>
+                                        );
+                                      }}
+                                    />
+                                  ) : (
+                                    <Text>No collections selected</Text>
+                                  )}
+                                </BlockStack>
+                              </Box>
+                            )}
+                          </>
+                        )}
+                      </BlockStack>
+                    </Card>
+                    <Card sectioned>
+                      <BlockStack gap="300">
+                        <Text variant="headingMd" as="h3">Reward Setup</Text>
+                        {rewardType === "discount" && (
+                          <BlockStack gap="300">
+                            <TextField
+                              label="Discount Code"
+                              placeholder="SUMMER20, SAVE15, etc."
+                              value={discountCode}
+                              onChange={setDiscountCode}
+                              helpText="Customers will use this code at checkout"
+                            />
+                            <Select
+                              label="Discount Type"
+                              options={[
+                                { label: "Percentage (%)", value: "percentage" },
+                                { label: "Fixed Amount ($)", value: "amount" },
+                              ]}
+                              value={discountType}
+                              onChange={setDiscountType}
+                            />
+                            <Box paddingBlockStart="200">
+                              <Button onClick={rewardPicker} variant="primary" size="medium">
+                                Select Eligible Products
+                              </Button>
+                              {rewardProducts.length > 0 && (
+                                <Box paddingBlockStart="200">
+                                  <Text fontWeight="semibold">Selected Products:</Text>
+                                  <BlockStack gap="100">
+                                    {rewardProducts.map((item) => (
+                                      <InlineStack key={item.id} align="space-between" blockAlign="center">
+                                        <Text>{item.title}</Text>
+                                        <Button
+                                          tone="critical"
+                                          size="medium"
+                                          onClick={() => removeRewardProduct(item.id)}
+                                        >
+                                          Remove
+                                        </Button>
+                                      </InlineStack>
+                                    ))}
+                                  </BlockStack>
+                                </Box>
+                              )}
+                            </Box>
+                          </BlockStack>
+                        )}
+                        {rewardType === "shipping" && (
+                          <BlockStack gap="300">
+                            <Banner tone="success">
+                              Free shipping will be automatically applied when the goal is reached
+                            </Banner>
+                            <Button onClick={rewardPicker} variant="primary" size="medium">
+                              Select Eligible Products
+                            </Button>
+                            {rewardProducts.length > 0 && (
+                              <Box paddingBlockStart="200">
+                                <Text fontWeight="semibold">Selected Products:</Text>
+                                <BlockStack gap="100">
+                                  {rewardProducts.map((item) => (
+                                    <InlineStack key={item.id} align="space-between" blockAlign="center">
+                                      <Text>{item.title}</Text>
+                                      <Button
+                                        tone="critical"
+                                        size="medium"
+                                        onClick={() => removeRewardProduct(item.id)}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </InlineStack>
+                                  ))}
+                                </BlockStack>
+                              </Box>
+                            )}
+                          </BlockStack>
+                        )}
+                        {rewardType === "gift" && (
+                          <BlockStack gap="300">
+                            <Button onClick={rewardCollectionPicker} variant="primary" size="medium">
+                              Select Reward Collections
+                            </Button>
+                            {rewardCollection.length > 0 && (
+                              <Box>
+                                <Text fontWeight="semibold">Selected Reward Collections:</Text>
+                                <BlockStack gap="100">
+                                  {rewardCollection.map((item) => (
+                                    <InlineStack key={item.id} align="space-between" blockAlign="center">
+                                      <Text>{item.title}</Text>
+                                      <Button
+                                        tone="critical"
+                                        size="medium"
+                                        onClick={() => removeRewardCollection(item.id)}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </InlineStack>
+                                  ))}
+                                </BlockStack>
+                              </Box>
+                            )}
+                          </BlockStack>
+                        )}
+                      </BlockStack>
+                    </Card>
                   </BlockStack>
                 </Card>
               )}
@@ -1019,76 +1218,154 @@ export default function UpsellCampaignForm() {
                   rewardMode={rewardMode}
                   selectedProducts={selectedProducts_Buy}
                   flameLevels={flameLevels}
+
                   setFlameLevels={setFlameLevels}
                   setRewardMode={setRewardMode}
                   setSelectedProducts={setSelectedProducts_Buy}
-
                 />
               )}
               {selectedCampaignType === "buy_one_get_one" && (
-                <BogoUpsell
-                  mode={rewardMode}
-                  initialFreeItems={freeItems}
-                  rules={rules}
-                  setFreeItems={setFreeItems}
-                  setRules={setRules}
+                <>
 
+                  <BogoUpsell
+                    initialFreeItems={freeItems}
+                    rules={rules}
+                    mode={rewardMode}
+                    setMode={setRewardMode}
+                    setFreeItems={setFreeItems}
+                    setRules={setRules}
+                    setBuyProductPicker_BOGO={setBuyProductPicker_BOGO}
+                    buyProductPicker_BOGO={buyProductPicker_BOGO}
+                    buyCollectionPicker_BOGO={buyCollectionPicker_BOGO}
+                    setBuyCollectionPicker_BOGO={setBuyCollectionPicker_BOGO}
+                    productPickType={productPickType}
+                    setProductPickType={setProductPickType}
+                  />
+                </>
+              )}
+              {selectedCampaignType === "order_bump" && (
+                <OrderBump
+                  triggerType={triggerType}
+                  setTriggerType={setTriggerType}
+                  selectedTriggerProducts={selectedTriggerProducts}
+                  setSelectedTriggerProducts={setSelectedTriggerProducts}
+                  selectedTriggerCollections={selectedTriggerCollections}
+                  setSelectedTriggerCollections={setSelectedTriggerCollections}
+                  addOnProduct={addOnProduct}
+                  setAddOnProduct={setAddOnProduct}
+                  offerTitle={offerTitle}
+                  setOfferTitle={setOfferTitle}
+                  offerDescription={offerDescription}
+                  setOfferDescription={setOfferDescription}
+                  preChecked={preChecked}
+                  setPreChecked={setPreChecked}
+                  buttonVariant={buttonVariant}
+                  setButtonVariant={setButtonVariant}
+                  textColor={textColor}
+                  setTextColor={setTextColor}
+                  backgroundColor={backgroundColor}
+                  setBackgroundColor={setBackgroundColor}
+                  iconSize={iconSize}
+                  setIconSize={setIconSize}
+                  targetCountries={targetCountries}
+                  setTargetCountries={setTargetCountries}
+                  excludeCountries={excludeCountries}
+                  setExcludeCountries={setExcludeCountries}
+                  placement={orderBumpPlacement}
+                  setPlacement={setOrderBumpPlacement}
                 />
               )}
-
-
               <Card>
                 <BlockStack gap="200">
                   <Text variant="headingMd">Progress Bar Design</Text>
-                  <Select label="Bar Thickness" options={[{ label: "Thin", value: "thin" }, { label: "Thick", value: "thick" }]} value={barStyle} onChange={setBarStyle} />
-                  <Select label="Corner Radius" options={[{ label: "Square", value: "square" }, { label: "Slightly Rounded", value: "rounded" }, { label: "Fully Rounded", value: "full" }]} value={barRadius} onChange={setBarRadius} />
-                  <BlockStack gap={"200"}>
+                  <Select
+                    label="Bar Thickness"
+                    options={[
+                      { label: "Thin", value: "thin" },
+                      { label: "Thick", value: "thick" },
+                    ]}
+                    value={barStyle}
+                    onChange={setBarStyle}
+                  />
+                  <Select
+                    label="Corner Radius"
+                    options={[
+                      { label: "Square", value: "square" },
+                      { label: "Slightly Rounded", value: "rounded" },
+                      { label: "Fully Rounded", value: "full" },
+                    ]}
+                    value={barRadius}
+                    onChange={setBarRadius}
+                  />
+                  <BlockStack gap="200">
                     <Text variant="headingMd">Progress Bar Colors</Text>
-
                     <InlineStack gap="500">
-                      <BlockStack gap={"150"}>
-                        <Text>
-                          Primary
-                        </Text>
-                        <TextField type="color" value={barColors.primary} onChange={(value) => setBarColors({ ...barColors, primary: value })} />
+                      <BlockStack gap="150">
+                        <Text>Primary</Text>
+                        <TextField
+                          type="color"
+                          value={barColors.primary}
+                          onChange={(value) => setBarColors({ ...barColors, primary: value })}
+                        />
                       </BlockStack>
-                      <TextField label="Secondary" type="color" value={barColors.secondary} onChange={(value) => setBarColors({ ...barColors, secondary: value })} />
-                      <BlockStack gap={"150"}>
-                        <Text>
-                          Background
-                        </Text>
-                        <TextField type="color" value={barColors.background} onChange={(value) => setBarColors({ ...barColors, background: value })} />
+                      <BlockStack gap="150">
+                        <Text>Secondary</Text>
+                        <TextField
+                          type="color"
+                          value={barColors.secondary}
+                          onChange={(value) => setBarColors({ ...barColors, secondary: value })}
+                        />
                       </BlockStack>
-
-                      <BlockStack gap={"150"}>
-                        <Text>
-                          Goal Complete
-                        </Text>
-                        <TextField type="color" value={barColors.goalComplete} onChange={(value) => setBarColors({ ...barColors, goalComplete: value })} />
+                      <BlockStack gap="150">
+                        <Text>Background</Text>
+                        <TextField
+                          type="color"
+                          value={barColors.background}
+                          onChange={(value) => setBarColors({ ...barColors, background: value })}
+                        />
+                      </BlockStack>
+                      <BlockStack gap="150">
+                        <Text>Goal Complete</Text>
+                        <TextField
+                          type="color"
+                          value={barColors.goalComplete}
+                          onChange={(value) => setBarColors({ ...barColors, goalComplete: value })}
+                        />
                       </BlockStack>
                     </InlineStack>
                   </BlockStack>
                 </BlockStack>
               </Card>
-
+              <ProgressBarPreview barStyle={barStyle} barRadius={barRadius} barColors={barColors} />
               <Card title="Goal Text Customization">
                 <BlockStack gap="300">
                   <Text variant="headingSm">Insert Smart Variables into Text</Text>
-                  <Text variant="bodySm" tone="subdued">Add variables like <code>{"{{goal}}"}</code> or <code>{"{{reward}}"}</code> to personalize messaging.</Text>
-                  <TextField label="Goal Reached Text" value={goalText} onChange={setGoalText} multiline helpText="Use variables like {{goal}}, {{reward}}" />
-                  <TextField label="Before Goal Reached Text" value={preGoalText} onChange={setPreGoalText} multiline helpText="Use variables like {{amount_left}}, {{goal}}" />
+                  <Text variant="bodySm" tone="subdued">
+                    Add variables like <code>{"{{goal}}"}</code> or <code>{"{{reward}}"}</code> to personalize messaging.
+                  </Text>
+                  <TextField
+                    label="Goal Reached Text"
+                    value={goalText}
+                    onChange={setGoalText}
+                    multiline
+                    helpText="Use variables like {{goal}}, {{reward}}"
+                  />
+                  <TextField
+                    label="Before Goal Reached Text"
+                    value={preGoalText}
+                    onChange={setPreGoalText}
+                    multiline
+                    helpText="Use variables like {{amount_left}}, {{goal}}"
+                  />
                 </BlockStack>
               </Card>
-
               <InlineStack>
-                <Button onClick={handleSubmit}>Submit</Button>
-
+                <Button onClick={handleSubmit} loading={mainBtnLoading} size="medium">
+                  Submit
+                </Button>
               </InlineStack>
-              <Text></Text>
-
             </BlockStack>
-          </Layout.Section >
-
+          </Layout.Section>
           <Layout.Section variant="oneHalf">
             <BlockStack gap="400">
               <Card>
@@ -1106,7 +1383,6 @@ export default function UpsellCampaignForm() {
                   />
                 </BlockStack>
               </Card>
-
               <Card title="Live Preview">
                 <BlockStack gap="200">
                   <Text variant="headingSm">Preview</Text>
@@ -1118,7 +1394,6 @@ export default function UpsellCampaignForm() {
           </Layout.Section>
         </Layout>
       </FormLayout>
-
     </Page>
   );
 }

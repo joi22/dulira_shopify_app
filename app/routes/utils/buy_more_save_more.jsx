@@ -10,8 +10,7 @@ export const buy_more_save_more = async (
   flameLevel,
   upsellCampaign,
 ) => {
-  console.log(flameLevel, "this flameLevels");
-
+  console.log(flameLevel, "this All Set Upda")
   if (rewardMode === "fixed") {
     for (const product of selectedProducts_Buy) {
       for (const level of product.levels) {
@@ -23,6 +22,17 @@ export const buy_more_save_more = async (
             quantity: parseInt(level.quantity),
             discount: parseFloat(level.discount),
             discountType: level.discountType || "percentage",
+          },
+        });
+        await prisma.UpsellRewardProduct.create({
+          data: {
+            campaignId: upsellCampaign.id,
+            productId: product.id,
+            title: product.title,
+            price: product.price,
+            variantId: String(product.variantId),
+            media: product.media,
+
           },
         });
 
@@ -106,19 +116,35 @@ export const buy_more_save_more = async (
   }
 
   if (rewardMode === "flame") {
+
+    for (const product of selectedProducts_Buy) {
+
+      const products = await prisma.UpsellRewardProduct.create({
+        data: {
+          campaignId: upsellCampaign.id,
+          productId: product.id,
+          title: product.title,
+          price: product.price,
+          variantId: String(product.variantId),
+          media: product.media,
+        },
+      });
+
+    }
     for (const level of flameLevel) {
       // Save each rule per product in DB
-      for (const product of selectedProducts_Buy) {
+
         await prisma.buyMoreRule.create({
           data: {
             campaignId: upsellCampaign.id,
-            productId: product.id,
+            productId: "",
             quantity: parseInt(level.quantity),
             discount: parseFloat(level.discount),
             discountType: level.discountType,
           },
         });
-      }
+
+
 
       // Build discount value object based on type
       let valueObj;

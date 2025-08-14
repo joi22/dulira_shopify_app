@@ -1,10 +1,9 @@
 {% if template == 'cart' %}
   <script>
     document.addEventListener('DOMContentLoaded', async function () {
-      const App_Domain = 'https://strings-movies-vancouver-pda.trycloudflare.com';
+      const App_Domain = 'https://accomplish-steal-canal-selling.trycloudflare.com';
       const shop = Shopify.shop;
 
-      // Function to create the progress bar
       async function createProgressBar({
         goalType,
         goalValue,
@@ -27,7 +26,7 @@
           remaining = Math.max(0, goalValue - cartValue);
           percentage = Math.min(100, (cartValue / goalValue) * 100);
           goalMet = cartValue >= goalValue;
-          progressLabel = goalMet ? `${GoalText}` : `Add ${remaining.toFixed(0)} MAD more to unlock`;
+          progressLabel = goalMet ? GoalText : `Add ${remaining.toFixed(0)} MAD more to unlock`;
         } else {
           remaining = Math.max(0, goalValue - totalItems);
           percentage = Math.min(100, (totalItems / goalValue) * 100);
@@ -40,12 +39,14 @@
 
         const container = document.createElement('div');
         container.className = 'progress_card';
-        container.style.border = '1px solid #ddd';
-        container.style.borderRadius = '12px';
-        container.style.padding = '16px';
-        container.style.background = '#fff';
-        container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.05)';
-        container.style.marginBottom = '20px';
+        container.style.cssText = `
+          border: 1px solid #ddd;
+          border-radius: 12px;
+          padding: 16px;
+          background: #fff;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+          margin-bottom: 20px;
+        `;
 
         const title = document.createElement('p');
         title.textContent = progressLabel;
@@ -53,34 +54,40 @@
         title.style.marginBottom = '10px';
 
         const progressBar = document.createElement('div');
-        progressBar.style.position = 'relative';
-        progressBar.style.width = '100%';
-        progressBar.style.height = '16px';
-        progressBar.style.backgroundColor = backgroundColor;
-        progressBar.style.borderRadius = `${radius}px`;
-        progressBar.style.overflow = 'hidden';
-        progressBar.style.marginBottom = '10px';
+        progressBar.style.cssText = `
+          position: relative;
+          width: 100%;
+          height: 16px;
+          background-color: ${backgroundColor};
+          border-radius: ${radius}px;
+          overflow: hidden;
+          margin-bottom: 10px;
+        `;
 
         const progressFill = document.createElement('div');
-        progressFill.style.height = '100%';
-        progressFill.style.width = `${percentage}%`;
-        progressFill.style.backgroundColor = fillColor;
-        progressFill.style.borderRadius = `${radius}px`;
-        progressFill.style.transition = 'width 0.4s ease';
+        progressFill.style.cssText = `
+          height: 100%;
+          width: ${percentage}%;
+          background-color: ${fillColor};
+          border-radius: ${radius}px;
+          transition: width 0.4s ease;
+        `;
 
         const percentLabel = document.createElement('span');
         percentLabel.textContent = `${Math.round(percentage)}%`;
-        percentLabel.style.position = 'absolute';
-        percentLabel.style.right = '10px';
-        percentLabel.style.top = '-22px';
-        percentLabel.style.fontSize = '12px';
-        percentLabel.style.fontWeight = 'bold';
-        percentLabel.style.color = '#333';
+        percentLabel.style.cssText = `
+          position: absolute;
+          right: 10px;
+          top: -22px;
+          font-size: 12px;
+          font-weight: bold;
+          color: #333;
+        `;
 
         const subtitle = document.createElement('div');
         subtitle.className = 'free_shipping';
-        subtitle.style = 'margin-top: 6px; font-style: italic; color: #666;';
-        subtitle.innerHTML = `🚚 ${preGoalText || ''}`;
+        subtitle.style.cssText = 'margin-top: 6px; font-style: italic; color: #666;';
+        subtitle.innerHTML = `🚚 ${preGoalText}`;
 
         progressBar.appendChild(progressFill);
         progressBar.appendChild(percentLabel);
@@ -90,8 +97,166 @@
 
         return container;
       }
+       function createBOGOCard(campaign, products, goalMet, cartItems, cartVariantIds) {
+          const card = document.createElement('div');
+          card.className = 'upsell-card bogo-card';
+          card.style.cssText = `
+            padding: 20px;
+            border-radius: 12px;
+            background-color: #e6f7ff;
+            margin: 15px 0;
+            border: 2px solid #0099cc;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+          `;
 
-      // Function to fetch and render upsell content
+          const heading = document.createElement('h3');
+          heading.textContent = campaign.title || 'Buy One Get One Free';
+          heading.style.cssText = `margin-bottom: 10px; font-size: 20px; color: #004466;`;
+          card.appendChild(heading);
+
+  // === FIXED MODE ===
+          if (campaign.rewardMode === 'fixed') {
+            const rules = campaign.bogoRules || [];
+            if (!rules.length) return;
+
+            const freeProduct = campaign.bogoFreeItems?.[0];
+            const paidProduct = campaign.rewardProducts?.[0];
+
+            if (freeProduct && paidProduct) {
+              const container = document.createElement('div');
+              container.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+                margin: 20px 0;
+              `;
+
+              const paidContainer = document.createElement('div');
+              paidContainer.style.cssText = 'flex: 1; text-align: center;';
+
+              const paidImg = document.createElement('img');
+              paidImg.src = paidProduct.media;
+              paidImg.alt = paidProduct.title;
+              paidImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+
+              const paidTitle = document.createElement('p');
+              paidTitle.textContent = paidProduct.title;
+              paidTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+
+              paidContainer.appendChild(paidImg);
+              paidContainer.appendChild(paidTitle);
+              container.appendChild(paidContainer);
+
+              const plus = document.createElement('span');
+              plus.textContent = '+';
+              plus.style.cssText = 'font-size: 24px; font-weight: bold; color: #333;';
+              container.appendChild(plus);
+
+              const freeContainer = document.createElement('div');
+              freeContainer.style.cssText = 'flex: 1; text-align: center;';
+
+              const freeImg = document.createElement('img');
+              freeImg.src = freeProduct.media;
+              freeImg.alt = freeProduct.title;
+              freeImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+
+              const freeTitle = document.createElement('p');
+              freeTitle.textContent = freeProduct.title;
+              freeTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+
+              freeContainer.appendChild(freeImg);
+              freeContainer.appendChild(freeTitle);
+              container.appendChild(freeContainer);
+
+              card.appendChild(container);
+            }
+
+            // Dropdown for selecting Buy X Get Y
+            let selectedRule = rules[0];
+
+            const ruleSelector = document.createElement('select');
+            ruleSelector.style.cssText = `
+              margin: 10px 0;
+              padding: 10px;
+              border-radius: 6px;
+              width: 100%;
+              font-size: 16px;
+            `;
+
+            rules.forEach((rule, index) => {
+              const option = document.createElement('option');
+              option.value = index;
+              option.textContent = `Buy ${rule.buyQty} Get ${rule.getQty} Free`;
+              ruleSelector.appendChild(option);
+            });
+
+            ruleSelector.onchange = (e) => {
+              const index = parseInt(e.target.value, 10);
+              selectedRule = rules[index];
+            };
+
+            card.appendChild(ruleSelector);
+
+            // Add to Cart button
+            const addButton = document.createElement('button');
+            addButton.textContent = 'Add to Cart';
+            addButton.style.cssText = `
+              width: 100%;
+              margin-top: 15px;
+              padding: 12px;
+              background-color: #4CAF50;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 16px;
+              font-weight: bold;
+              cursor: pointer;
+              transition: background-color 0.3s;
+            `;
+
+            addButton.onclick = async () => {
+              const paidVariant = campaign.rewardProducts[0]?.variantId;
+              const freeVariant = campaign.bogoFreeItems[0]?.variantId;
+              if (!paidVariant || !freeVariant || !selectedRule) return;
+
+              const buyQty = selectedRule.buyQty || 1;
+              const getQty = selectedRule.getQty || 1;
+
+              const addItems = [
+                {
+                  id: paidVariant,
+                  quantity: buyQty,
+                },
+                {
+                  id: freeVariant,
+                  quantity: getQty,
+                  properties: { _bogo_free: 'true' },
+                },
+              ];
+
+            try {
+              await fetch('/cart/add.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: addItems }),
+              });
+              window.location.href = '/cart';
+              document.dispatchEvent(new CustomEvent('cart:updated'));
+            } catch (error) {
+              console.error('Error adding items to cart:', error);
+              alert('Failed to add items to cart. Please try again.');
+            }
+          };
+
+      card.appendChild(addButton);
+      return card;
+    }
+
+
       async function renderUpsellContent() {
         const cart = await fetch('/cart.js').then((res) => res.json());
         const cartItems = cart.items || [];
@@ -104,32 +269,32 @@
           const upsellTriggers = Array.isArray(data.upsellTriggerProduct)
             ? data.upsellTriggerProduct
             : [data.upsellTriggerProduct];
-
+          console.log(upsellTriggers, 'this APi DAta ');
           const product_info =
             document.querySelector('#main-cart-footer') || document.querySelector('[data-product-upsell-block]');
           let upsellContainer = document.querySelector('.main');
+
           if (!upsellContainer) {
             upsellContainer = document.createElement('div');
-            upsellContainer.style.marginTop = '30px';
             upsellContainer.className = 'main';
+            upsellContainer.style.marginTop = '30px';
             if (product_info) {
               product_info.insertBefore(upsellContainer, product_info.firstChild);
             }
           } else {
-            upsellContainer.innerHTML = ''; // Clear previous content
+            upsellContainer.innerHTML = '';
           }
 
           let anyUpsell = false;
           for (const trigger of upsellTriggers) {
             const campaign = trigger.campaign;
             const rewardProducts = campaign?.rewardProducts || [];
-            const rewardCollectionsWithProducts = campaign?.rewardCollectionsWithProducts || [];
 
             let placementArray = [];
             try {
               placementArray = campaign.placement || '[]';
-            } catch (err) {
-              console.warn('Invalid placement JSON:', campaign.placement);
+            } catch {
+              console.warn('Invalid placement');
             }
 
             if (!placementArray.includes('cart')) continue;
@@ -138,30 +303,37 @@
             const rewardType = campaign.rewardType;
             const discountType = campaign.discountType;
             const discountCode = parseFloat(campaign.discountCode);
+            const goalType = campaign.goalType || (campaign.goalquantity ? 'quantity' : 'amount_cart');
+
+
+          const rewardCollections = campaign.rewardCollectionsWithProducts || [];
+          const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
+          const goalValue = goalType === 'quantity' ? parseInt(campaign.goalquantity || 0) : parseFloat(campaign.goalAmount || 0);
+          const currentValue = goalType === 'quantity' ? cartQuantity : cartTotal;
+          const goalMet = currentValue >= goalValue;
+
+          renderedCampaigns.add(campaign.id);
 
             let barColors;
             try {
               barColors = JSON.parse(campaign.barColors || '{}');
-            } catch (e) {
+            } catch {
               barColors = { background: '#e0e0e0', primary: '#4caf50' };
             }
 
-            const goalType = campaign.goalType || (campaign.goalquantity ? 'quantity' : 'amount_cart');
-            const goalValue = goalType === 'quantity' ? parseInt(campaign.goalquantity) : campaign.goalAmount;
+            const radius = campaign.barRadius === 'rounded' ? 5 : campaign.barRadius ? 10 : 0;
 
             const campaignBlock = document.createElement('div');
             campaignBlock.className = 'under_main';
-            campaignBlock.style.borderTop = '1px dashed #999';
-            campaignBlock.style.paddingTop = '10px';
-            campaignBlock.style.marginBottom = '20px';
-
-            let radius = 0;
-            if (campaign.barRadius === 'rounded') {
-              radius = 5;
-            } else if (campaign.barRadius) {
-              radius = 10;
+            campaignBlock.style.cssText = `
+              border-top: 1px dashed #999;
+              padding-top: 10px;
+              margin-bottom: 20px;
+            `;
+            if (campaign.type === 'buy_one_get_one') {
+              const card = createBOGOCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
+            campaignBlock.appendChild(card);
             }
-            console.log(campaign.goalText);
             const progressBar = await createProgressBar({
               goalType,
               goalValue,
@@ -173,22 +345,14 @@
               GoalText: campaign.goalText || '',
             });
 
-            campaignBlock.appendChild(progressBar);
-
-            console.log(rewardMode, '=======>>', rewardType);
-
             if (rewardMode === 'flame' && rewardType === 'gift') {
               const cartData = await fetch('/cart.js').then((res) => res.json());
-
-              // Check if a gift is already in the cart
               const giftAlreadyInCart = cartData.items.some((item) => item.product_type === 'free_gift');
 
               rewardProducts.forEach((product) => {
-                const price = parseFloat(product.price);
                 const card = document.createElement('div');
                 card.className = 'product_card';
-
-                const disabledAttr = giftAlreadyInCart ? 'disabled' : '';
+                const disabled = giftAlreadyInCart ? 'disabled' : '';
                 const buttonText = giftAlreadyInCart ? 'Gift Already Added' : 'Add Free Gift';
 
                 card.innerHTML = `
@@ -198,36 +362,30 @@
                 }" width="80" height="80" style="object-fit:cover;" />
                     <div style="flex: 1;">
                       <strong>${product.title}</strong><br/>
-                      <span>Price: ${price.toFixed(2)} MAD</span>
                     </div>
-                    <button data-variant="${product.variantId}" ${disabledAttr}>${buttonText}</button>
+                    <button data-variant="${product.variantId}" ${disabled}>${buttonText}</button>
                   </div>
-    `;
+                `;
 
                 const button = card.querySelector('button');
-                button.addEventListener('click', async () => {
+                button?.addEventListener('click', async () => {
                   if (!giftAlreadyInCart) {
                     await addToCart(product.variantId, 1);
                     shopify.toast.show('✅ Gift added to cart');
-                    location.reload(); // force reload to disable all buttons
+                    location.reload();
                   }
                 });
 
                 progressBar.appendChild(card);
               });
-            }
-
-            if (rewardMode !== 'flame' && rewardType !== 'shipping') {
+            } else {
               rewardProducts.forEach((product) => {
                 const price = parseFloat(product.price);
                 let discountedPrice = price;
 
                 if (rewardMode === 'fixed' && rewardType === 'discount') {
-                  if (discountType === 'percentage') {
-                    discountedPrice = price * ((100 - discountCode) / 100);
-                  } else {
-                    discountedPrice = price - discountCode;
-                  }
+                  discountedPrice =
+                    discountType === 'percentage' ? price * ((100 - discountCode) / 100) : price - discountCode;
                 }
 
                 const card = document.createElement('div');
@@ -242,84 +400,51 @@
                       ${
                         rewardMode === 'fixed' && rewardType === 'discount'
                           ? `<span style="text-decoration:line-through;">${price.toFixed(2)} MAD</span>
-                           <span style="color:green;">${discountedPrice.toFixed(2)} MAD</span>`
+                             <span style="color:green;">${discountedPrice.toFixed(2)} MAD</span>`
                           : `<span>Price: ${price.toFixed(2)} MAD</span>`
                       }
                     </div>
                   </div>
                 `;
-                progressBar.appendChild(card);
-              });
-            }
-            if (rewardMode === 'flame' && rewardType === 'gift') {
-              rewardProducts.forEach((product) => {
-                const price = parseFloat(product.price);
-                let discountedPrice = price;
 
-                const card = document.createElement('div');
-                card.className = 'product_card';
-                card.innerHTML = `
-                  <div class="product_upsell">
-                    <img src="${product.media || ''}" alt="${
-                  product.title
-                }" width="80" height="80" style="object-fit:cover;" />
-                    <div style="flex: 1;">
-                      <strong>${product.title}</strong><br/>
-
-                    </div>
-                  </div>
-                `;
                 progressBar.appendChild(card);
               });
             }
 
+            campaignBlock.appendChild(progressBar);
             upsellContainer.appendChild(campaignBlock);
             anyUpsell = true;
           }
 
           if (!anyUpsell && upsellContainer) {
-            upsellContainer.remove(); // Remove container if no upsell content
+            upsellContainer.remove();
           }
         } catch (error) {
-          console.error('Fetch failed:', error);
+          console.error('Upsell fetch failed:', error);
         }
       }
 
-      // Initial render
       await renderUpsellContent();
 
-      // Listen for cart updates
-      document.addEventListener('cart:updated', async () => {
-        await renderUpsellContent();
-      });
+      document.addEventListener('cart:updated', renderUpsellContent);
 
-      // Optional: Poll for cart changes if event listener is not reliable
-      let lastCartState = await fetch('/cart.js').then((res) => res.json());
+      let lastCart = await fetch('/cart.js').then((res) => res.json());
       setInterval(async () => {
-        const currentCart = await fetch('/cart.js').then((res) => res.json());
-        if (JSON.stringify(currentCart) !== JSON.stringify(lastCartState)) {
-          lastCartState = currentCart;
+        const newCart = await fetch('/cart.js').then((res) => res.json());
+        if (JSON.stringify(newCart) !== JSON.stringify(lastCart)) {
+          lastCart = newCart;
           await renderUpsellContent();
         }
-      }, 2000); // Check every 2 seconds
+      }, 2000);
     });
 
     async function addToCart(productId, quantity) {
       try {
-        const response = await fetch('/cart/add.js', {
+        await fetch('/cart/add.js', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            items: [{ id: productId, quantity: parseInt(quantity) }],
-          }),
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ items: [{ id: productId, quantity }] }),
         });
-
-        const data = await response.json();
-        console.log('Added to cart:', data);
-        alert('✅ Product added to cart!');
       } catch (error) {
         console.error('Add to cart failed:', error);
         alert('❌ Failed to add to cart');
@@ -329,9 +454,20 @@
 
   <style>
     .product_upsell {
-      justify-content: center;
-      align-items: center;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .product_card {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+    }
+    .product_card button[disabled] {
+      background: #ccc;
+      cursor: not-allowed;
     }
   </style>
 {% endif %}

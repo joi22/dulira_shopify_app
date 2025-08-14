@@ -1,32 +1,851 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://strings-movies-vancouver-pda.trycloudflare.com';
+    const App_Domain = 'https://accomplish-steal-canal-selling.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
-    const Api = `${App_Domain}/api/products/${productId}/${shop}`;
-
+    const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
     const renderedCampaigns = new Set();
 
-    // Function to add item to cart
-    async function addToCart(variantId, quantity) {
-      try {
+   async function addToCart(variantId, quantity) {
+    try {
         const response = await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: [{ id: variantId, quantity: parseInt(quantity) }] }),
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                items: [{ 
+                    id: variantId, 
+                    quantity: parseInt(quantity) 
+                }] 
+            }),
         });
 
-        if (!response.ok) throw new Error('Failed to add to cart');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.description || 'Failed to add to cart');
+        }
 
-        // Refresh cart and update UI
         const cart = await fetch('/cart.js').then((res) => res.json());
         document.dispatchEvent(new CustomEvent('cart:updated', { detail: cart }));
         return cart;
-      } catch (error) {
+    } catch (error) {
         console.error('Add to cart failed:', error);
-        alert('Failed to add item to cart. Please try again.');
+        alert(error.message || 'Failed to add item to cart. Please try again.');
         throw error;
+    }
+}
+
+    // Function to create progress bar for goal-based campaigns
+function createProgressBar(campaign, currentValue, goalValue, goalType) {
+    const cart_products_quantity = {{ cart.items | json }};
+
+    // Get cart variant IDs
+    const cartVariantIds = cart_products_quantity
+        .map(item => item.variant_id?.toString())
+        .filter(Boolean);
+
+    // Reward product variant IDs
+    const rewardProducts = campaign.rewardProducts.map(p => p.variantId?.toString());
+    const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
+console.log(cartVariantIds,"this varient ID ",rewardProducts)
+    // Check goal type and reward mode/type
+    const validGoalType = ["quantity", "amount"].includes(goalType);
+    const validRewardMode = campaign.rewardMode === "fixed";
+    const validRewardType = ["discount", "freeshipping"].includes(campaign.rewardType);
+
+    // Common progress calculations
+    const percentage = goalValue > 0 ? Math.min(100, (currentValue / goalValue) * 100) : 0;
+    const remaining = Math.max(0, goalValue - currentValue);
+    const goalMet = remaining <= 0;
+    const barColors = campaign.barColors
+        ? JSON.parse(campaign.barColors)
+        : { primary: '#8575ff', background: '#e0e0e0', goalComplete: '#28e2df' };
+
+    let container = document.createElement('div');
+    container.className = 'discount-banner';
+
+    if (hasRewardProduct && validGoalType && validRewardMode && validRewardType) {
+        // First branch — reward products already in cart
+        const productCardsHTML = (campaign.rewardProducts || []).map((item) => `
+            <div class="gift-card unlocked" data-variant-id="${item.variantId}">
+                <div class="gift-image">
+                    <img src="${item.media}" alt="${item.title || 'Gift'}" />
+                </div>
+                <div class="gift-info">
+                    <div class="gift-title">${item.title || 'Gift'}</div>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <div class="discount-header">
+                <div class="discount-title">${campaign.goalText || ''}</div>
+                <div class="discount-subtitle">
+                    ${goalMet 
+                        ? '🎁 Gift already in your cart!' 
+                        : `You're only ${remaining.toFixed(2)} away`}
+                </div>
+            </div>
+
+            <div class="products-grid small-gifts">${productCardsHTML}</div>
+
+            <div class="progress-container">
+                <div class="progress-bar" 
+                    style="width: ${percentage}%; background: ${goalMet ? barColors.goalComplete : barColors.primary}">
+                </div>
+                <span class="progress-percentage">${Math.round(percentage)}%</span>
+            </div>
+        `;
+    } else {
+        // Second branch — upsell free gift
+        const rewardVariantIds = (campaign.UpsellFreeGiftProduct || [])
+            .map(p => p.variantId?.toString())
+            .filter(Boolean);
+
+        const rewardInCart = rewardVariantIds.some(id => cartVariantIds.includes(id));
+
+        const productCardsHTML = (campaign.UpsellFreeGiftProduct || []).map((item) => `
+            <div class="gift-card ${goalMet ? 'unlocked' : 'locked'}" data-variant-id="${item.variantId}">
+                <div class="gift-image">
+                    <img src="${item.media}" alt="${item.title || 'Free Gift'}" />
+                </div>
+                <div class="gift-info">
+                    <div class="gift-title">${item.title || 'Free Gift'}</div>
+                    <button class="select-btn" ${!goalMet || rewardInCart ? 'disabled' : ''}>
+                        ${rewardInCart ? 'Gift Added' : goalMet ? 'Select Gift' : 'Locked'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <div class="discount-header">
+                <div class="discount-title">${campaign.goalText || ''}</div>
+                <div class="discount-subtitle">
+                    ${goalMet 
+                        ? (rewardInCart 
+                            ? '🎁 Gift already in your cart!' 
+                            : '🎉 Goal reached! Choose your free gift.')
+                        : `You're only ${remaining.toFixed(2)} away`}
+                </div>
+            </div>
+
+            <div class="products-grid small-gifts">${productCardsHTML}</div>
+
+            <div class="progress-container">
+                <div class="progress-bar" 
+                    style="width: ${percentage}%; background: ${goalMet ? barColors.goalComplete : barColors.primary}">
+                </div>
+                <span class="progress-percentage">${Math.round(percentage)}%</span>
+            </div>
+        `;
+
+        // Add click events
+        if (goalMet && !rewardInCart) {
+            container.querySelectorAll('.gift-card.unlocked .select-btn:not([disabled])').forEach((btn) => {
+                btn.addEventListener('click', async (e) => {
+                    const variantId = e.target.closest('.gift-card').dataset.variantId;
+                    if (!variantId) return;
+
+                    btn.disabled = true;
+                    btn.textContent = 'Adding...';
+
+                    try {
+                        await addToCart(variantId, 1);
+                        btn.textContent = 'Added!';
+                        document.dispatchEvent(new CustomEvent('cart:updated'));
+                    } catch (err) {
+                        console.error('Failed to add gift:', err);
+                        btn.textContent = 'Error';
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+    }
+
+    return container;
+}
+
+
+
+    // Function to create product card for fixed reward mode
+    function createProductCard(product, rule, goalMet, cartVariantIds, campaign) {
+      console.log("=================================>>>>>>>")
+      const productCard = document.createElement('div');
+      productCard.className = 'bmsm-product-card';
+      productCard.style.cssText = `
+      text-align: center;
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      background: #fff;
+      transition: all 0.3s ease;
+     `;
+
+      const img = document.createElement('img');
+      img.src = product.media;
+      img.alt = product.title || 'Product Image';
+      img.style.cssText = `
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      `;
+      productCard.appendChild(img);
+
+      const title = document.createElement('div');
+      title.textContent = product.title || 'Product';
+      title.style.cssText = 'font-size: 14px; font-weight: 600; margin-bottom: 8px;';
+      productCard.appendChild(title);
+
+      if (rule && goalMet) {
+        const discount = document.createElement('div');
+        discount.textContent =
+          rule.discountType === 'percentage'
+            ? `Save ${rule.discount}%`
+            : `Save ${campaign.currency || 'USD'}${rule.discount}`;
+        discount.style.cssText = 'font-size: 14px; color: #6d00c7; margin-bottom: 8px;';
+        productCard.appendChild(discount);
       }
+
+      const addButton = document.createElement('button');
+      addButton.textContent = cartVariantIds.includes(product.variants?.[0]?.id) ? 'Added' : 'Add to Cart';
+      addButton.disabled = cartVariantIds.includes(product.variants?.[0]?.id);
+      addButton.style.cssText = `
+      padding: 8px 12px;
+      background-color: #8575ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: ${cartVariantIds.includes(product.variants?.[0]?.id) ? 'not-allowed' : 'pointer'};
+     `;
+      addButton.onclick = async () => {
+        if (!cartVariantIds.includes(product.variants?.[0]?.id)) {
+          await addToCart(product.variants?.[0]?.id, 1);
+        }
+      };
+      productCard.appendChild(addButton);
+
+      return productCard;
+    }
+
+        
+    function createBuyMoreCard(campaign, products, goalMet, cartItems, cartVariantIds) {
+              const card = document.createElement('div');
+              card.className = 'upsell-card bmsm-card';
+              card.style.cssText = `
+              padding: 20px;
+              border-radius: 12px;
+              background-color: #f5f5ff;
+              margin: 15px 0;
+              border: 2px solid #8575ff;
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin-left: auto;
+              margin-right: auto;
+                `;
+
+              if (campaign.rewardMode === 'flame') {
+                // Deduplicate buyMoreRules
+                const uniqueRuleMap = new Map();
+                (campaign.buyMoreRules || []).forEach((rule) => {
+                  const key = `${rule.productId}-${rule.quantity}-${rule.discount}-${rule.discountType}`;
+                  if (!uniqueRuleMap.has(key)) {
+                    uniqueRuleMap.set(key, rule);
+                  }
+                });
+                const buyMoreRules = Array.from(uniqueRuleMap.values()).sort((a, b) => a.quantity - b.quantity);
+
+                // Header
+                const mainHeader = document.createElement('h2');
+                mainHeader.textContent = campaign.title || 'Buy More, Save More';
+                mainHeader.style.cssText = `
+                margin: 0 0 10px 0;
+                font-size: 20px;
+                font-weight: 700;
+                color: #333;
+                text-align: center;
+                `;
+                card.appendChild(mainHeader);
+
+                const subHeader = document.createElement('p');
+                subHeader.textContent = campaign.goalText || 'Pick any 2 or more Accessories and save up to 25%';
+                subHeader.style.cssText = `
+                margin: 0 0 20px 0;
+                font-size: 14px;
+                color: #666;
+                text-align: center;
+              `;
+                card.appendChild(subHeader);
+
+                const divider = document.createElement('hr');
+                divider.style.cssText = `
+                border: none;
+                border-top: 1px solid #ddd;
+                  margin: 0 0 20px 0;
+              `;
+                card.appendChild(divider);
+
+                // Discount tiers
+                const discountTiersContainer = document.createElement('div');
+                discountTiersContainer.style.cssText = `
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                margin-bottom: 20px;
+                flex-wrap: wrap;
+                `;
+
+                const discountTiersText = document.createElement('p');
+                discountTiersText.textContent = buyMoreRules
+                  .map((rule) => `Buy ${rule.quantity}, save ${rule.discount}`)
+                  .join(' - ');
+                discountTiersText.style.cssText = `
+                font-size: 14px;
+                color: #333;
+                text-align: center;
+                width: 100%;
+                margin-bottom: 15px;
+                font-weight: bold;
+              `;
+                discountTiersContainer.appendChild(discountTiersText);
+
+                // Uncommented and fixed discount tier boxes
+                buyMoreRules.forEach((rule) => {
+                  const tier = document.createElement('div');
+                  tier.style.cssText = `
+                  padding: 8px 12px;
+                  background-color: white;
+                  border-radius: 6px;
+                  border: 1px solid #eee;
+                  text-align: center;
+                  min-width: 100px;
+                `;
+
+                  const quantity = document.createElement('div');
+                  quantity.textContent = `Buy ${rule.quantity}`;
+                  quantity.style.cssText = `
+                  font-weight: 600;
+                  font-size: 14px;
+                  color: #333;
+                  margin-bottom: 4px;
+                `;
+
+                  const discount = document.createElement('div');
+                  discount.textContent =
+                    rule.discountType === 'percentage'
+                      ? `Save ${rule.discount}%`
+                      : `Save ${campaign.currency || 'USD'}${rule.discount}`;
+                  discount.style.cssText = `
+                  font-size: 14px;
+                  color: #6d00c7;
+                  font-weight: 600;
+                `;
+
+                  tier.appendChild(quantity);
+                  tier.appendChild(discount);
+                  discountTiersContainer.appendChild(tier);
+                });
+
+                card.appendChild(discountTiersContainer);
+
+                // Products grid
+                const productsGrid = document.createElement('div');
+                productsGrid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+              `;
+
+                if (campaign.rewardProducts && campaign.rewardProducts.length === 0) {
+                  const noProducts = document.createElement('p');
+                  noProducts.textContent = campaign.preGoalText || 'Add more products to your cart to unlock savings!';
+                  noProducts.style.cssText = 'font-size: 14px; color: #666; text-align: center;';
+                  card.appendChild(noProducts);
+                } else if (campaign.rewardProducts) {
+                  campaign.rewardProducts.forEach((product) => {
+                    const img = document.createElement('img');
+                    img.src = product.media;
+                    img.alt = product.title || 'Reward Product';
+                    img.style.cssText = `
+                    width: 100%;
+                    height: auto;
+                    object-fit: cover;
+                    border-radius: 8px;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+                  `;
+                    productsGrid.appendChild(img);
+                  });
+                  card.appendChild(productsGrid);
+                }
+
+                // Modal for flame mode
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.innerHTML = `
+                <div class="modal">
+                  <button class="close-btn" id="closeBtn">&times;</button>
+                  <h2>Welcome!</h2>
+                  <p>Thanks for visiting our website!</p>
+                </div>
+                `;
+                document.body.appendChild(modal);
+
+                const closeBtn = modal.querySelector('#closeBtn');
+                closeBtn.addEventListener('click', () => {
+                  modal.style.display = 'none';
+                });
+
+                // Show modal for flame mode
+                modal.style.display = 'flex';
+              } else if (campaign.rewardMode === 'fixed') {
+                const productHeader = document.createElement('div');
+                productHeader.style.cssText = 'margin-bottom: 15px;';
+
+                const productTitle = document.createElement('h3');
+                productTitle.textContent = 'BUY MORE SAVE MORE';
+                productTitle.style.cssText = 'margin: 0 0 5px 0; font-size: 18px; font-weight: 600; color: #333;';
+                productHeader.appendChild(productTitle);
+                card.appendChild(productHeader);
+
+                const savingsBanner = document.createElement('div');
+                savingsBanner.textContent = campaign.goalText || '';
+                savingsBanner.style.cssText = `
+                background-color: #6d00c7;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 15px;
+                text-align: center;
+              `;
+                card.appendChild(savingsBanner);
+
+                // Deduplicate rules
+                const uniqueRuleMap = new Map();
+                (campaign.buyMoreRules || []).forEach((rule) => {
+                  const key = `${rule.productId}-${rule.quantity}-${rule.discount}-${rule.discountType}`;
+                  if (!uniqueRuleMap.has(key)) {
+                    uniqueRuleMap.set(key, rule);
+                  }
+                });
+                const buyMoreRules = Array.from(uniqueRuleMap.values());
+
+                const discountTiers = document.createElement('div');
+                discountTiers.style.cssText = 'margin-bottom: 20px;';
+
+                buyMoreRules.forEach((rule) => {
+                  const tier = document.createElement('div');
+                  tier.style.cssText = 'font-size: 14px; color: #333; margin-bottom: 8px;';
+                  const discountText =
+                    rule.discountType === 'percentage'
+                      ? `${rule.discount}% off each`
+                      : `${campaign.currency || 'USD'}${rule.discount} off each`;
+                  tier.textContent = `Buy ${rule.quantity} and get ${discountText}`;
+                  discountTiers.appendChild(tier);
+                });
+
+                const addMorePrompt = document.createElement('div');
+                addMorePrompt.textContent = campaign.preGoalText || '';
+                addMorePrompt.style.cssText = 'font-size: 14px; color: #6d00c7; font-weight: 600; margin-bottom: 15px;';
+                discountTiers.appendChild(addMorePrompt);
+                card.appendChild(discountTiers);
+
+                // Products grid
+                const productsGrid = document.createElement('div');
+                productsGrid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+              `;
+
+                const uniqueProductIds = [...new Set(buyMoreRules.map((rule) => rule.productId))];
+                const eligibleProducts = products.filter((product) => uniqueProductIds.includes(product.id));
+
+                if (eligibleProducts.length === 0) {
+                  const noProducts = document.createElement('p');
+                  noProducts.textContent = 'No eligible products available.';
+                  noProducts.style.cssText = 'font-size: 14px; color: #666; text-align: center;';
+                  card.appendChild(noProducts);
+                } else {
+                  eligibleProducts.forEach((product) => {
+                    const rule = buyMoreRules.find((r) => r.productId === product.id);
+                    const productCard = createProductCard(product, rule, goalMet, cartVariantIds, campaign);
+                    productsGrid.appendChild(productCard);
+                  });
+                  card.appendChild(productsGrid);
+                }
+              }
+
+              return card;
+    }
+
+    function createBOGOCard(campaign, products, goalMet, cartItems, cartVariantIds) {
+        const card = document.createElement('div');
+        card.className = 'upsell-card bogo-card';
+        card.style.cssText = `
+          padding: 20px;
+          border-radius: 12px;
+          background-color: #e6f7ff;
+          margin: 15px 0;
+          border: 2px solid #0099cc;
+          font-family: Arial, sans-serif;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+        `;
+
+        const heading = document.createElement('h3');
+        heading.textContent = campaign.title || 'Buy One Get One Free';
+        heading.style.cssText = `margin-bottom: 10px; font-size: 20px; color: #004466;`;
+        card.appendChild(heading);
+
+        // === FIXED MODE ===
+        if (campaign.rewardMode === 'fixed') {
+          const rules = campaign.bogoRules || [];
+          if (!rules.length) return;
+
+          const freeProduct = campaign.bogoFreeItems?.[0];
+          const paidProduct = campaign.rewardProducts?.[0];
+
+          if (freeProduct && paidProduct) {
+            const container = document.createElement('div');
+            container.style.cssText = `
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 15px;
+              margin: 20px 0;
+            `;
+
+            const paidContainer = document.createElement('div');
+            paidContainer.style.cssText = 'flex: 1; text-align: center;';
+
+            const paidImg = document.createElement('img');
+            paidImg.src = paidProduct.media;
+            paidImg.alt = paidProduct.title;
+            paidImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+
+            const paidTitle = document.createElement('p');
+            paidTitle.textContent = paidProduct.title;
+            paidTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+
+            paidContainer.appendChild(paidImg);
+            paidContainer.appendChild(paidTitle);
+            container.appendChild(paidContainer);
+
+            const plus = document.createElement('span');
+            plus.textContent = '+';
+            plus.style.cssText = 'font-size: 24px; font-weight: bold; color: #333;';
+            container.appendChild(plus);
+
+            const freeContainer = document.createElement('div');
+            freeContainer.style.cssText = 'flex: 1; text-align: center;';
+
+            const freeImg = document.createElement('img');
+            freeImg.src = freeProduct.media;
+            freeImg.alt = freeProduct.title;
+            freeImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+
+            const freeTitle = document.createElement('p');
+            freeTitle.textContent = freeProduct.title;
+            freeTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+
+            freeContainer.appendChild(freeImg);
+            freeContainer.appendChild(freeTitle);
+            container.appendChild(freeContainer);
+
+            card.appendChild(container);
+          }
+
+          // Dropdown for selecting Buy X Get Y
+          let selectedRule = rules[0];
+
+          const ruleSelector = document.createElement('select');
+          ruleSelector.style.cssText = `
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 16px;
+          `;
+
+          rules.forEach((rule, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `Buy ${rule.buyQty} Get ${rule.getQty} Free`;
+            ruleSelector.appendChild(option);
+          });
+
+          ruleSelector.onchange = (e) => {
+            const index = parseInt(e.target.value, 10);
+            selectedRule = rules[index];
+          };
+
+          card.appendChild(ruleSelector);
+
+          // Add to Cart button
+          const addButton = document.createElement('button');
+          addButton.textContent = 'Add to Cart';
+          addButton.style.cssText = `
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+          `;
+
+          addButton.onclick = async () => {
+            const paidVariant = campaign.rewardProducts[0]?.variantId;
+            const freeVariant = campaign.bogoFreeItems[0]?.variantId;
+            if (!paidVariant || !freeVariant || !selectedRule) return;
+
+            const buyQty = selectedRule.buyQty || 1;
+            const getQty = selectedRule.getQty || 1;
+
+            const addItems = [
+              {
+                id: paidVariant,
+                quantity: buyQty,
+              },
+              {
+                id: freeVariant,
+                quantity: getQty,
+                properties: { _bogo_free: 'true' },
+              },
+            ];
+
+          try {
+            await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: addItems }),
+            });
+            window.location.href = '/cart';
+            document.dispatchEvent(new CustomEvent('cart:updated'));
+          } catch (error) {
+            console.error('Error adding items to cart:', error);
+            alert('Failed to add items to cart. Please try again.');
+          }
+        };
+
+        card.appendChild(addButton);
+        return card;
+      }
+
+     // === FLAME MODE ===
+      const freeItems = campaign.bogoFreeItems || [];
+      const rules = campaign.bogoRules || [];
+
+      if (freeItems.length === 0 || rules.length === 0) {
+        const msg = document.createElement('p');
+        msg.textContent = 'Add an eligible product to unlock free gifts!';
+        msg.style.cssText = 'color: #888;';
+        card.appendChild(msg);
+        return card;
+      }
+
+      // Radio buttons for selecting a BOGO rule
+      const radioGroupName = `bogoRules-${campaign.id}`;
+      const rulesContainer = document.createElement('div');
+      rulesContainer.style.cssText = 'margin-bottom: -minute5px; display: flex; flex-direction: column; gap: 10px;';
+
+      rules.forEach((rule, index) => {
+        const container = document.createElement('div');
+        container.style.cssText = 'display: flex; align-items: center;';
+
+        const radioInput = document.createElement('input');
+        radioInput.type = 'radio';
+        radioInput.name = radioGroupName;
+        radioInput.value = index;
+        radioInput.id = `rule-${campaign.id}-${index}`;
+        radioInput.style.marginRight = '8px';
+
+        const label = document.createElement('label');
+        label.htmlFor = radioInput.id;
+        label.textContent = `Buy ${rule.buyQty} and get ${rule.getQty} free`;
+        label.style.color = '#333';
+
+        container.appendChild(radioInput);
+        container.appendChild(label);
+        rulesContainer.appendChild(container);
+      });
+
+      card.appendChild(rulesContainer);
+
+    
+      const selectorWrapper = document.createElement('div');
+      selectorWrapper.className = 'selector-wrapper';
+      selectorWrapper.style.cssText = 'margin-top: 15px; display: none; flex-direction: column; gap: 20px;';
+
+      // Add to Cart button
+      const addButton = document.createElement('button');
+      addButton.textContent = 'Add to Cart';
+      addButton.disabled = true;
+      addButton.style.cssText = `
+        margin-top: 15px;
+        padding: 10px 16px;
+        background-color: #0099cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: not-allowed;
+        opacity: 0.6;
+      `;
+
+  
+      function updateSelectors(selectedRuleIndex) {
+        const selectedRule = rules[selectedRuleIndex];
+        if (!selectedRule) {
+          selectorWrapper.style.display = 'none';
+          addButton.disabled = true;
+          addButton.style.cursor = 'not-allowed';
+          addButton.style.opacity = '0.6';
+          return;
+        }
+
+        selectorWrapper.innerHTML = ''; // Clear previous selectors
+        selectorWrapper.style.display = 'flex';
+
+        const ruleContainer = document.createElement('div');
+        ruleContainer.style.cssText = 'padding: 10px; border: 1px dashed #0099cc; border-radius: 8px;';
+
+        const ruleLabel = document.createElement('p');
+        ruleLabel.textContent = `Select ${selectedRule.getQty} Free Item${selectedRule.getQty > 1 ? 's' : ''}`;
+        ruleLabel.style.cssText = 'font-weight: bold; color: #004466; margin-bottom: 10px;';
+        ruleContainer.appendChild(ruleLabel);
+
+        const selectsContainer = document.createElement('div');
+        selectsContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
+
+        for (let i = 0; i < selectedRule.getQty; i++) {
+          const select = document.createElement('select');
+          select.style.cssText = 'padding: 8px; border-radius: 6px; border: 1px solid #ccc; min-width: 150px;';
+          select.setAttribute('data-rule-index', selectedRuleIndex);
+
+          const defaultOption = document.createElement('option');
+          defaultOption.value = '';
+          defaultOption.textContent = `Select Free Item ${i + 1}`;
+          select.appendChild(defaultOption);
+
+          freeItems.forEach((item) => {
+            const option = document.createElement('option');
+            option.value = item.variantId;
+            option.textContent = item.title;
+            select.appendChild(option);
+          });
+
+          select.addEventListener('change', checkSelections);
+          selectsContainer.appendChild(select);
+        }
+
+        ruleContainer.appendChild(selectsContainer);
+        selectorWrapper.appendChild(ruleContainer);
+      }
+
+      // Function to check if all dropdowns have valid selections
+      function checkSelections() {
+        const selects = selectorWrapper.querySelectorAll('select');
+        const allSelected = Array.from(selects).every((sel) => sel.value !== '');
+        addButton.disabled = !allSelected;
+        addButton.style.cursor = allSelected ? 'pointer' : 'not-allowed';
+        addButton.style.opacity = allSelected ? '1' : '0.6';
+      }
+
+      // Event listener for radio button changes
+      rulesContainer.addEventListener('change', (event) => {
+        if (event.target.type === 'radio') {
+          updateSelectors(event.target.value);
+          checkSelections();
+        }
+      });
+
+      // Add to cart button logic
+      addButton.onclick = async () => {
+        const selects = selectorWrapper.querySelectorAll('select');
+        const selectedVariantIds = Array.from(selects)
+          .map((sel) => sel.value)
+          .filter((val) => val && !cartVariantIds.includes(val));
+
+        if (!selectedVariantIds.length) {
+          alert('Please select at least one free product.');
+          return;
+        }
+
+        const selectedRuleIndex = document.querySelector('select').getAttribute('data-rule-index');
+        const selectedRule = rules[selectedRuleIndex];
+        if (!selectedRule) {
+          alert('Please select a valid offer.');
+          return;
+        }
+
+        const paidVariant = campaign.rewardProducts[0]?.variantId;
+        if (!paidVariant) {
+          alert('No paid product available for this offer.');
+          return;
+        }
+
+        // Calculate quantities
+        const buyQty = selectedRule.buyQty;
+        const getQty = selectedRule.getQty;
+
+        // Validate cart for buyQty
+        const paidVariantInCart = cartItems.find((item) => item.variant_id.toString() === paidVariant);
+        const currentQuantity = paidVariantInCart ? paidVariantInCart.quantity : 0;
+        const additionalBuyQty = Math.max(0, buyQty - currentQuantity);
+
+        // Validate number of selected free items
+        if (selectedVariantIds.length !== getQty) {
+          alert(`Please select exactly ${getQty} free item${getQty > 1 ? 's' : ''}.`);
+          return;
+        }
+
+        // Prepare items to add
+        const addItems = [];
+
+        // Add paid items if needed
+        if (additionalBuyQty > 0) {
+          addItems.push({
+            id: paidVariant,
+            quantity: additionalBuyQty,
+          });
+        }
+
+        // Add free items
+        selectedVariantIds.forEach((variantId) => {
+          addItems.push({
+            id: variantId,
+            quantity: 1, // One of each selected free item
+            properties: { _bogo_free: 'true' },
+          });
+        });
+
+        try {
+          await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: addItems }),
+          });
+          document.dispatchEvent(new CustomEvent('cart:updated'));
+          window.location.href = '/cart'; // Redirect to cart for review
+        } catch (error) {
+          console.error('Error adding items to cart:', error);
+          alert('Failed to add items to cart. Please try again.');
+        }
+      };
+
+      card.appendChild(selectorWrapper);
+      card.appendChild(addButton);
+      return card;
     }
 
     // Function to render upsell content
@@ -36,34 +855,30 @@
         if (!response.ok) throw new Error('Failed to fetch upsell data');
 
         const data = await response.json();
-        console.log('API Response product page :', data);
+        console.log('API Response product page:', data);
 
-        // Get current cart state
         const cart = await fetch('/cart.js').then((res) => res.json());
         const cartItems = cart.items || [];
         const cartVariantIds = cartItems.map((item) => item.variant_id?.toString());
+        const cartTotal = cart.total_price / 100;
+        const cartQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-        const upsellTriggers = Array.isArray(data.upsellTriggerProduct)
-          ? data.upsellTriggerProduct
-          : [data.upsellTriggerProduct].filter(Boolean);
+        const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
 
         const productInfo =
           document.querySelector('product-info') ||
           document.querySelector('[data-product-upsell-block]') ||
           document.querySelector('.product__info-container');
 
-        // Create or get upsell container
         let upsellContainer = document.querySelector('.main-upsell-container');
-
         if (!upsellContainer && productInfo) {
           upsellContainer = document.createElement('div');
           upsellContainer.className = 'main-upsell-container';
-          upsellContainer.style.marginTop = '30px';
-          upsellContainer.style.padding = '20px';
-          upsellContainer.style.borderRadius = '12px';
-          upsellContainer.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-
-          // Insert after product form or at end of product info
+          upsellContainer.style.cssText = `
+          margin-top:30px;
+          padding:20px;
+          border-radius:12px;
+        `;
           const productForm =
             document.querySelector('form[action="/cart/add"]') || document.querySelector('.product-form');
           if (productForm) {
@@ -75,672 +890,82 @@
           upsellContainer.innerHTML = '';
           renderedCampaigns.clear();
         } else {
-          return; // No suitable container found
+          return;
         }
 
         let anyUpsell = false;
-
         for (const trigger of upsellTriggers) {
           const campaign = trigger?.campaign;
           if (!campaign?.id) continue;
 
-          // Skip if campaign is already rendered
           if (renderedCampaigns.has(campaign.id)) {
             console.log('Skipping duplicate campaign:', campaign.id);
             continue;
           }
 
-          // Check placement
-          const placement = campaign.placement ? campaign.placement.split(',') : [];
-          if (!placement.includes('home')) {
-            continue;
-          }
-
           const rewardProducts = campaign.rewardProducts || [];
           const rewardCollections = campaign.rewardCollectionsWithProducts || [];
-          const rewardType = campaign.rewardType || 'product';
-          const rewardMode = campaign.rewardMode || 'fixed';
+          const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
           const goalType = campaign.goalType || 'amount_cart';
-
-          // Calculate goal progress
           const goalValue =
             goalType === 'quantity' ? parseInt(campaign.goalquantity || 0) : parseFloat(campaign.goalAmount || 0);
-
-          const cartTotal = cart.total_price / 100;
-          const cartQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
           const currentValue = goalType === 'quantity' ? cartQuantity : cartTotal;
           const goalMet = currentValue >= goalValue;
-          const remaining = Math.max(0, goalValue - currentValue);
 
-          // Skip if no valid rewards
-          if (
-            rewardType !== 'shipping' &&
-            rewardProducts.length === 0 &&
-            rewardCollections.flatMap((col) => col.products || []).length === 0
-          ) {
-            continue;
-          }
-
-          // Mark campaign as rendered
           renderedCampaigns.add(campaign.id);
           anyUpsell = true;
 
-          // Create campaign block
           const campaignBlock = document.createElement('div');
           campaignBlock.className = 'upsell-campaign-block';
-          campaignBlock.style.borderTop = '1px dashed #ddd';
-          campaignBlock.style.paddingTop = '20px';
-          campaignBlock.style.marginBottom = '30px';
+          campaignBlock.style.cssText = `
+          border-top:1px dashed #ddd;
+          padding-top:20px;
+          margin-bottom:30px;
+        `;
           campaignBlock.dataset.campaignId = campaign.id;
 
-          // Add title if exists
-          if (campaign.title) {
-            const titleEl = document.createElement('h3');
-            titleEl.textContent = campaign.title;
-            titleEl.style.margin = '0 0 15px 0';
-            titleEl.style.fontSize = '18px';
-            titleEl.style.fontWeight = '600';
-            campaignBlock.appendChild(titleEl);
+          if (goalType !== 'none' && goalValue > 0) {
+            campaignBlock.appendChild(createProgressBar(campaign, currentValue, goalValue, goalType));
           }
+          // if(campaign.type === 'add_to_unlock'){
+          //   const card = add_to_unlock(campaign, allProducts, goalMet, cartItems, cartVariantIds);
+          //   campaignBlock.appendChild(card);
+          // }
 
-          // 🚚 Free Shipping Reward
-          if (rewardType === 'shipping') {
-            console.log(rewardProducts, 'this is rewardProducts For Shipping  ');
-            const card = createShippingCard(rewardProducts, campaign, goalMet, remaining, goalValue, goalType);
+          if (campaign.type === 'buy_more_save_more') {
+            const card = createBuyMoreCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
             campaignBlock.appendChild(card);
-          }
-          // 🔥 Flame Mode (BOGO)
-          else if (rewardMode === 'flame' && rewardType === 'gift') {
-            const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
-
-            if (allProducts.length > 0) {
-              const card = createFlameModeCard(campaign, allProducts, goalMet, remaining, goalType);
-              campaignBlock.appendChild(card);
-            }
-          }
-          // 💰 Discount Reward
-          else if (rewardType === 'discount') {
-            const card = createDiscountCard(rewardProducts,campaign, goalMet, remaining, goalType);
+          } else if (campaign.type === 'buy_one_get_one') {
+            const card = createBOGOCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
             campaignBlock.appendChild(card);
-          }
-          // 🎁 Product Reward
-          else if (rewardType === 'product' || rewardType === 'gift') {
-            const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
-
-            if (allProducts.length > 0) {
-              const card = createProductRewardCard(campaign, allProducts, goalMet, cartVariantIds);
-              campaignBlock.appendChild(card);
-            }
           }
 
           upsellContainer.appendChild(campaignBlock);
         }
 
-        if (!anyUpsell && upsellContainer) {
-          upsellContainer.remove();
+        if (!anyUpsell) {
+          upsellContainer.innerHTML = '<p style="text-align:center; color:#666;">No upsell offers available.</p>';
         }
       } catch (error) {
         console.error('Error rendering upsell content:', error);
-      }
-    }
-
-    // Helper function to create shipping reward card
-    function createShippingCard(rewardProducts, campaign, goalMet, remaining, goalValue, goalType) {
-      const card = document.createElement('div');
-      card.className = 'upsell-card shipping-card';
-      card.style.cssText = `
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #f9f9f9;
-        margin: 15px 0;
-        border: 1px solid #e0e0e0;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        `;
-
-      // Header section
-      const header = document.createElement('div');
-      header.style.display = 'flex';
-      header.style.justifyContent = 'space-between';
-      header.style.alignItems = 'center';
-      header.style.marginBottom = '15px';
-
-      const title = document.createElement('h3');
-      title.textContent = 'Add to unlock free shipping';
-      title.style.margin = '0';
-      title.style.fontSize = '18px';
-      title.style.color = '#333';
-
-      header.appendChild(title);
-      card.appendChild(header);
-
-      // Progress bar
-      const percentage = goalValue > 0 ? Math.min(100, ((goalValue - remaining) / goalValue) * 100) : 100;
-
-      const progressContainer = document.createElement('div');
-      progressContainer.style.margin = '10px 0';
-
-      const progressText = document.createElement('div');
-      progressText.style.marginBottom = '8px';
-      progressText.style.fontSize = '14px';
-      progressText.style.color = '#555';
-
-      if (goalMet) {
-        progressText.textContent = "You've unlocked free shipping!";
-        progressText.style.color = '#4CAF50';
-        progressText.style.fontWeight = '600';
-      } else {
-        progressText.textContent = `Add €${remaining.toFixed(2)} more to unlock free shipping!`;
-      }
-
-      const progressBarWrapper = document.createElement('div');
-      progressBarWrapper.style.width = '100%';
-      progressBarWrapper.style.height = '8px';
-      progressBarWrapper.style.backgroundColor = '#e0e0e0';
-      progressBarWrapper.style.borderRadius = '4px';
-      progressBarWrapper.style.overflow = 'hidden';
-
-      const progressBar = document.createElement('div');
-      progressBar.style.height = '100%';
-      progressBar.style.width = `${percentage}%`;
-      progressBar.style.backgroundColor = '#4CAF50';
-      progressBar.style.borderRadius = '4px';
-      progressBar.style.transition = 'width 0.5s ease';
-
-      progressBarWrapper.appendChild(progressBar);
-      progressContainer.appendChild(progressText);
-      progressContainer.appendChild(progressBarWrapper);
-      card.appendChild(progressContainer);
-
-      // Products grid
-      const productsGrid = document.createElement('div');
-      productsGrid.style.display = 'grid';
-      productsGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
-      productsGrid.style.gap = '10px';
-      productsGrid.style.margin = '15px 0';
-
-      // Sample products data - replace with your actual products
-      {% comment %} const products = rewardProducts.forEach((item)=>{
-
-      }); {% endcomment %}
-      console.log(rewardProducts,"teh function ")
-
-      rewardProducts.forEach((product) => {
-        const productCard = document.createElement('div');
-        productCard.style.textAlign = 'center';
-
-        // Product image placeholder
-        const image = document.createElement('div');
-        image.style.height = '80px';
-        image.style.backgroundColor = '#eee';
-        image.style.borderRadius = '4px';
-        image.style.marginBottom = '8px';
-        // In a real implementation, you would use an actual image:
-        image.style.backgroundImage = `url(${product.media})`;
-        image.style.backgroundSize = 'cover';
-
-        // Product name
-        const name = document.createElement('div');
-        name.textContent = product.title;
-        name.style.fontSize = '14px';
-        name.style.fontWeight = '500';
-        name.style.marginBottom = '4px';
-
-        // Product price
-        const price = document.createElement('div');
-        price.textContent = `€${product.price}`;
-        price.style.fontSize = '14px';
-        price.style.color = '#666';
-
-        // Add to cart button
-        const button = document.createElement('button');
-        button.textContent = 'ADD';
-        button.style.cssText = `
-            margin-top: 8px;
-            padding: 6px 12px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s;
-        `;
-        button.onmouseover = () => (button.style.backgroundColor = '#3e8e41');
-        button.onmouseout = () => (button.style.backgroundColor = '#4CAF50');
-
-        button.addEventListener('click', () => {
-
-          console.log(`Added ${product.name} to cart`);
-
-        });
-
-        productCard.appendChild(image);
-        productCard.appendChild(name);
-        productCard.appendChild(price);
-        productCard.appendChild(button);
-        productsGrid.appendChild(productCard);
-      });
-
-      card.appendChild(productsGrid);
-
-      // Free shipping badge (when goal is met)
-      if (goalMet) {
-        const freeShippingBadge = document.createElement('div');
-        freeShippingBadge.textContent = 'FREE SHIPPING';
-        freeShippingBadge.style.cssText = `
-            text-align: center;
-            padding: 12px;
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 4px;
-            font-weight: bold;
-            margin-top: 10px;
-            font-size: 16px;
-        `;
-        card.appendChild(freeShippingBadge);
-      }
-
-      return card;
-    }
-    // Helper function to create flame mode (BOGO) card
-    function createFlameModeCard(campaign, products, goalMet, remaining, goalType) {
-      const card = document.createElement('div');
-      card.className = 'upsell-card flame-card';
-      card.style.padding = '15px';
-      card.style.borderRadius = '8px';
-      card.style.backgroundColor = '#fff9f0';
-      card.style.border = '1px solid #ffe8c4';
-
-      const title = document.createElement('h4');
-      title.textContent = '🎁 Free Gift with Purchase';
-      title.style.marginTop = '0';
-      title.style.marginBottom = '15px';
-      title.style.color = '#e67e22';
-      card.appendChild(title);
-
-      // Create product grid
-      const productGrid = document.createElement('div');
-      productGrid.style.display = 'grid';
-      productGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
-      productGrid.style.gap = '15px';
-      productGrid.style.marginBottom = '15px';
-
-      products.forEach((product) => {
-        const productCard = document.createElement('div');
-        productCard.className = 'flame-product-card';
-        productCard.style.padding = '10px';
-        productCard.style.borderRadius = '8px';
-        productCard.style.backgroundColor = '#fff';
-        productCard.style.border = '1px solid #eee';
-        productCard.style.cursor = 'pointer';
-        productCard.style.transition = 'all 0.3s ease';
-
-        productCard.innerHTML = `
-        <label style="display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="radio" name="reward_product_${campaign.id}" value="${product.variantId}"
-              style="transform: scale(1.2); accent-color: #e67e22;" />
-            <img src="${product.media || product.variantImage || 'https://via.placeholder.com/80'}"
-              alt="${product.title}" width="60" height="60"
-              style="object-fit:cover; border-radius: 6px;" />
-          </div>
-          <div style="flex: 1;">
-            <strong style="font-size: 14px;">${product.title}</strong><br/>
-            <span style="color: #4CAF50; font-size: 13px;">FREE Gift</span>
-          </div>
-        </label>
-          `;
-
-        // Add hover effect
-        productCard.addEventListener('mouseover', () => {
-          productCard.style.boxShadow = '0 2px 8px rgba(230, 126, 34, 0.2)';
-          productCard.style.borderColor = '#e67e22';
-        });
-
-        productCard.addEventListener('mouseout', () => {
-          productCard.style.boxShadow = 'none';
-          productCard.style.borderColor = '#eee';
-        });
-
-        productGrid.appendChild(productCard);
-      });
-
-      card.appendChild(productGrid);
-
-      const claimGiftBtn = document.createElement('button');
-      claimGiftBtn.textContent = 'Claim Free Gift';
-      claimGiftBtn.disabled = !goalMet;
-      claimGiftBtn.style.cssText = `
-      margin-top: 10px;
-      width: 100%;
-      padding: 12px;
-      background: ${goalMet ? '#e67e22' : '#ccc'};
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: ${goalMet ? 'pointer' : 'not-allowed'};
-      font-size: 14px;
-      transition: all 0.3s ease;
-       `;
-
-      if (goalMet) {
-        claimGiftBtn.addEventListener('mouseover', () => {
-          claimGiftBtn.style.background = '#d35400';
-        });
-
-        claimGiftBtn.addEventListener('mouseout', () => {
-          claimGiftBtn.style.background = '#e67e22';
-        });
-
-        claimGiftBtn.addEventListener('click', () => {
-          const selectedRadio = document.querySelector(`input[name="reward_product_${campaign.id}"]:checked`);
-          if (!selectedRadio) {
-            alert('Please select a gift first!');
-            return;
-          }
-          addToCart(selectedRadio.value, 1);
-        });
-      } else {
-        claimGiftBtn.textContent =
-          goalType === 'quantity'
-            ? `Add ${remaining} more items to unlock`
-            : `Spend ${remaining.toFixed(2)} MAD more to unlock`;
-      }
-
-      card.appendChild(claimGiftBtn);
-      return card;
-    }
-
-    // Helper function to create discount reward card
-   function createDiscountCard(rewardProducts, campaign, goalMet, remaining, goalValue, goalType) {
-    const card = document.createElement('div');
-    card.className = 'upsell-card shipping-card';
-    card.style.cssText = `
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #f9f9f9;
-        margin: 15px 0;
-        border: 1px solid #e0e0e0;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        max-width: 100%;
-        overflow: hidden;
-    `;
-
-    // Header section
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.marginBottom = '15px';
-
-    const title = document.createElement('h3');
-    title.textContent = 'Add to unlock free shipping';
-    title.style.margin = '0';
-    title.style.fontSize = '18px';
-    title.style.color = '#333';
-
-    header.appendChild(title);
-    card.appendChild(header);
-
-    // Progress bar
-    const percentage = goalValue > 0 ? Math.min(100, ((goalValue - remaining) / goalValue) * 100) : 100;
-
-    const progressContainer = document.createElement('div');
-    progressContainer.style.margin = '10px 0';
-
-    const progressText = document.createElement('div');
-    progressText.style.marginBottom = '8px';
-    progressText.style.fontSize = '14px';
-    progressText.style.color = '#555';
-
-    if (goalMet) {
-        progressText.textContent = "You've unlocked free shipping!";
-        progressText.style.color = '#4CAF50';
-        progressText.style.fontWeight = '600';
-    } else {
-        progressText.textContent = `Add €${remaining.toFixed(2)} more to unlock free shipping!`;
-    }
-
-    const progressBarWrapper = document.createElement('div');
-    progressBarWrapper.style.width = '100%';
-    progressBarWrapper.style.height = '8px';
-    progressBarWrapper.style.backgroundColor = '#e0e0e0';
-    progressBarWrapper.style.borderRadius = '4px';
-    progressBarWrapper.style.overflow = 'hidden';
-
-    const progressBar = document.createElement('div');
-    progressBar.style.height = '100%';
-    progressBar.style.width = `${percentage}%`;
-    progressBar.style.backgroundColor = '#4CAF50';
-    progressBar.style.borderRadius = '4px';
-    progressBar.style.transition = 'width 0.5s ease';
-
-    progressBarWrapper.appendChild(progressBar);
-    progressContainer.appendChild(progressText);
-    progressContainer.appendChild(progressBarWrapper);
-    card.appendChild(progressContainer);
-
-    // Products container with horizontal scrolling
-    const productsContainer = document.createElement('div');
-    productsContainer.style.overflowX = 'auto';
-    productsContainer.style.paddingBottom = '10px'; // Space for scrollbar
-    productsContainer.style.margin = '15px 0';
-    productsContainer.style.whiteSpace = 'nowrap';
-
-    // Add scrollbar styling (works in most modern browsers)
-    productsContainer.style.scrollbarWidth = 'thin';
-    productsContainer.style.scrollbarColor = '#cccccc #f0f0f0';
-
-    // Products wrapper
-    const productsWrapper = document.createElement('div');
-    productsWrapper.style.display = 'inline-flex';
-    productsWrapper.style.gap = '15px';
-    productsWrapper.style.padding = '5px 5px 15px 5px'; // Extra bottom padding for scrollbar
-
-    // Add products (using rewardProducts instead of sample data)
-      rewardProducts.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.style.display = 'inline-block';
-        productCard.style.width = '120px';
-        productCard.style.textAlign = 'center';
-        productCard.style.verticalAlign = 'top';
-        productCard.style.whiteSpace = 'normal';
-
-        // Product image placeholder
-        const image = document.createElement('div');
-        image.style.height = '80px';
-        image.style.width = '100%';
-        image.style.backgroundColor = '#eee';
-        image.style.borderRadius = '4px';
-        image.style.marginBottom = '8px';
-        image.style.backgroundSize = 'cover';
-        image.style.backgroundPosition = 'center';
-        // Use actual product image if available
-        if (product.media) {
-            image.style.backgroundImage = `url(${product.media})`;
+        if (document.querySelector('.main-upsell-container')) {
+          document.querySelector('.main-upsell-container').innerHTML =
+            '<p style="text-align:center; color:#666;">Unable to load upsell offers.</p>';
         }
-
-        // Product name
-        const name = document.createElement('div');
-        name.textContent = product.title || 'Product';
-        name.style.fontSize = '14px';
-        name.style.fontWeight = '500';
-        name.style.marginBottom = '4px';
-        name.style.height = '36px';
-        name.style.overflow = 'hidden';
-        name.style.textOverflow = 'ellipsis';
-        name.style.display = '-webkit-box';
-        name.style.webkitLineClamp = '2';
-        name.style.webkitBoxOrient = 'vertical';
-
-        // Product price
-        const price = document.createElement('div');
-        price.textContent = product.price ? `€${product.price}` : '€0.00';
-        price.style.fontSize = '14px';
-        price.style.color = '#666';
-        price.style.marginBottom = '8px';
-
-        // Add to cart button
-        const button = document.createElement('button');
-        button.textContent = 'ADD';
-        button.style.cssText = `
-            padding: 6px 12px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s;
-        `;
-        button.onmouseover = () => button.style.backgroundColor = '#3e8e41';
-        button.onmouseout = () => button.style.backgroundColor = '#4CAF50';
-
-        button.addEventListener('click', () => {
-            // Add your add-to-cart logic here
-            console.log(`Added ${product.name} to cart`);
-            // Example: addToCart(product.id, 1);
-        });
-
-        productCard.appendChild(image);
-        productCard.appendChild(name);
-        productCard.appendChild(price);
-        productCard.appendChild(button);
-        productsWrapper.appendChild(productCard);
-    });
-
-    productsContainer.appendChild(productsWrapper);
-    card.appendChild(productsContainer);
-
-    // Free shipping badge (when goal is met)
-    if (goalMet) {
-        const freeShippingBadge = document.createElement('div');
-        freeShippingBadge.textContent = 'FREE SHIPPING';
-        freeShippingBadge.style.cssText = `
-            text-align: center;
-            padding: 12px;
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 4px;
-            font-weight: bold;
-            margin-top: 10px;
-            font-size: 16px;
-        `;
-        card.appendChild(freeShippingBadge);
-    }
-
-    return card;
-  }
-
-    // Helper function to create product reward card
-    function createProductRewardCard(campaign, products, goalMet, cartVariantIds) {
-      const card = document.createElement('div');
-      card.className = 'upsell-card product-reward-card';
-      card.style.padding = '15px';
-      card.style.borderRadius = '8px';
-      card.style.backgroundColor = '#f5fff0';
-      card.style.border = '1px solid #c8e6c9';
-
-      const title = document.createElement('h4');
-      title.textContent = goalMet ? '🎉 Select Your Free Gift' : '🎁 Special Offer';
-      title.style.marginTop = '0';
-      title.style.marginBottom = '15px';
-      title.style.color = '#2e7d32';
-      card.appendChild(title);
-
-      if (!goalMet) {
-        const status = document.createElement('p');
-        status.textContent = campaign.preGoalText || 'Add more items to unlock this offer';
-        status.style.color = '#555';
-        status.style.fontSize = '14px';
-        status.style.marginBottom = '15px';
-        card.appendChild(status);
       }
-
-      const productList = document.createElement('div');
-      productList.style.display = 'flex';
-      productList.style.flexDirection = 'column';
-      productList.style.gap = '10px';
-
-      products.forEach((product) => {
-        const variantInCart = cartVariantIds.includes(product.variantId?.toString());
-        const disabled = !goalMet || variantInCart;
-
-        const productItem = document.createElement('div');
-        productItem.style.display = 'flex';
-        productItem.style.alignItems = 'center';
-        productItem.style.gap = '12px';
-        productItem.style.padding = '10px';
-        productItem.style.borderRadius = '6px';
-        productItem.style.backgroundColor = '#fff';
-        productItem.style.border = `1px solid ${disabled ? '#eee' : '#a5d6a7'}`;
-        productItem.style.opacity = disabled ? 0.7 : 1;
-        productItem.style.transition = 'all 0.2s ease';
-
-        productItem.innerHTML = `
-        <img src="${product.media || product.variantImage || 'https://via.placeholder.com/60'}"
-          alt="${product.title}" width="50" height="50"
-          style="object-fit:cover; border-radius: 4px;" />
-        <div style="flex: 1;">
-          <strong style="font-size: 14px;">${product.title}</strong>
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-            <span style="color: #2e7d32; font-size: 13px; font-weight: 500;">
-              ${variantInCart ? 'Already in cart' : 'FREE'}
-            </span>
-            ${
-              product.price
-                ? `<span style="text-decoration: line-through; color: #999; font-size: 12px;">${product.price} MAD</span>`
-                : ''
-            }
-          </div>
-        </div>
-        <button class="add-gift-btn" data-variant-id="${product.variantId}"
-          style="padding: 6px 12px; background: ${disabled ? '#ccc' : '#2e7d32'};
-          color: white; border: none; border-radius: 4px; font-size: 12px;
-          cursor: ${disabled ? 'not-allowed' : 'pointer'};"
-          ${disabled ? 'disabled' : ''}>
-          ${variantInCart ? 'Added ✓' : 'Add to Cart'}
-        </button>
-      `;
-
-        if (!disabled) {
-          productItem.addEventListener('mouseover', () => {
-            productItem.style.boxShadow = '0 2px 8px rgba(46, 125, 50, 0.2)';
-          });
-
-          productItem.addEventListener('mouseout', () => {
-            productItem.style.boxShadow = 'none';
-          });
-
-          const addBtn = productItem.querySelector('.add-gift-btn');
-          addBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            addToCart(addBtn.dataset.variantId, 1);
-          });
-        }
-
-        productList.appendChild(productItem);
-      });
-
-      card.appendChild(productList);
-      return card;
     }
 
     // Initial render
     await renderUpsellContent();
 
-    // Listen for cart updates
-    document.addEventListener('cart:updated', async () => {
-      await renderUpsellContent();
-    });
+// Listen for cart updates
+document.addEventListener('cart:updated', async () => {
+    await renderUpsellContent();
+});
 
     // Polling fallback for cart changes
     let lastCartState = await fetch('/cart.js').then((res) => res.json());
-    setInterval(async () => {
+     setInterval(async () => {
       try {
         const currentCart = await fetch('/cart.js').then((res) => res.json());
         if (JSON.stringify(currentCart) !== JSON.stringify(lastCartState)) {
@@ -750,468 +975,272 @@
       } catch (error) {
         console.error('Cart polling error:', error);
       }
-    }, 2000);
+    }, 2000); 
   });
 </script>
 
 <style>
-  /* Responsive styles */
-  @media (max-width: 768px) {
-    .main-upsell-container {
-      padding: 15px !important;
-      margin-top: 20px !important;
-    }
+        .plus {
+          display: inline-block;
+          font-size: 40px;
+          text-align: center;
+          width: 100%;
+        }
 
-    .upsell-card {
-      padding: 12px !important;
-    }
+        .products-grid {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-top: 20px;
+        }
 
-    .flame-product-card,
-    .product-reward-card > div {
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-    }
+        .products-grid img {
+          width: 100%;
+          height: auto;
+          border-radius: 8px;
+        }
+
+        .main-upsell-container {
+          padding: 20px;
+          margin-top: 30px;
+          border-radius: 12px;
+        }
+
+        .upsell-card.bmsm-card {
+          padding: 20px;
+          border-radius: 12px;
+          background-color: #f5f5ff;
+          border: 2px solid #8575ff;
+        }
+
+        .bmsm-product-card {
+          text-align: center;
+          padding: 10px;
+          border: 1px solid #eee;
+          border-radius: 8px;
+          background: #fff;
+          transition: all 0.3s ease;
+        }
+
+        .bmsm-product-card:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .add-btn:hover {
+          background-color: #6d00c7;
+        }
+
+        .progress-card {
+          width: 100%;
+        }
+
+        @media (max-width: 768px) {
+          .main-upsell-container {
+            padding: 15px;
+            margin-top: 20px;
+          }
+          .upsell-card.bmsm-card {
+            padding: 12px;
+          }
+          .bmsm-product-card {
+            padding: 8px;
+          }
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+        }
+
+        .modal-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+        }
+
+        .modal {
+          background: white;
+          padding: 30px;
+          border-radius: 12px;
+          max-width: 400px;
+          text-align: center;
+          position: relative;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+          animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .close-btn {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: #ff5c5c;
+          border: none;
+          color: white;
+          font-size: 18px;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          cursor: pointer;
+        }
+      // CSS Styles
+      .discount-banner {
+          font-family: 'Arial', sans-serif;
+          background: white;
+          border-radius: 10px;
+          padding: 20px;
+          max-width: 500px;
+          margin: 20px auto;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          text-align: center;
+      }
+
+      .discount-header {
+          margin-bottom: 15px;
+      }
+
+      .discount-title {
+          font-size: 22px;
+          font-weight: bold;
+          color: #2a5a8d;
+          margin-bottom: 5px;
+      }
+
+      .discount-subtitle {
+          font-size: 14px;
+          color: #666;
+      }
+
+      .progress-container {
+          position: relative;
+          height: 12px;
+          background: ${barColors.background};
+          border-radius: 6px;
+          margin: 20px 0;
+          overflow: hidden;
+      }
+
+      .progress-bar {
+          height: 100%;
+          border-radius: 6px;
+          transition: width 0.5s ease;
+      }
+
+      .progress-percentage {
+          position: absolute;
+          right: 10px;
+          top: -20px;
+          font-size: 12px;
+          font-weight: bold;
+          color: #333;
+      }
+
+      .discount-message {
+          font-size: 16px;
+          margin: 15px 0;
+          color: #333;
+          font-weight: 500;
+      }
+
+      .discount-banner{
+          padding: 10px;
+          box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+          border-radius: 10px;
+      }
+
+   .products-grid.small-gifts {
+      display: flex;
+      flex-wrap: wrap;
   }
 
-  @media (max-width: 480px) {
-    .upsell-campaign-block {
-      padding-top: 15px !important;
-      margin-bottom: 20px !important;
+  .gift-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      width: 120px;
+      text-align: center;
+      background: #fff;
+      overflow: hidden;
+      margin: 0px 5px;
+      transition: border 0.3s ease;
+  }
+
+  .gift-card.unlocked {
+      border-color: #28e2df;
+  }
+
+  .gift-card.locked {
+      opacity: 0.6;
+       margin: 0px 5px;
+      pointer-events: none;
+  }
+
+  .gift-image img {
+      width: 100%;
+      height: auto;
+      display: block;
+  }
+
+  .gift-info {
+      padding: 6px;
+  }
+
+  .gift-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+  }
+
+  .select-btn {
+      background: #8575ff;
+      color: white;
+      border: none;
+      padding: 4px 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+  }
+
+  .select-btn:hover {
+      background: #6a5de0;
+  }
+
+  .select-btn[disabled] {
+      background: #aaa;
+      cursor: not-allowed;
+  }
+
+
+    .progress-percentage {
+        position: absolute;
+        top: -20px;
+        right: 0;
+        font-size: 0.8rem;
     }
 
-    .product_upsell {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 8px !important;
-    }
-  }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
 </style>
-
-<style>
-  .under_main {
-    display: flex;
-    justify-content: start;
-    align-items: center;
-    overflow-y: hidden;
-  }
-  .product_card {
-    border: 1px solid rgb(221, 221, 221);
-    display: flex;
-    justify-content: center;
-    align-items: start;
-    flex-direction: column;
-    padding: 10px;
-    background: white;
-    border-radius: 10px;
-    margin: 15px 10px;
-  }
-
-  .product_card .product_upsell {
-    width: 100%;
-    display: flex;
-    justify-content: start;
-    align-items: center;
-    padding: 10px 0px;
-    font-size: 14px;
-  }
-
-  p {
-    margin: 0px;
-    width: 100%;
-    text-align: center;
-    font-size: 14px;
-  }
-
-  .custom-radio-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    height: 20px;
-    width: 20px;
-    margin-right: 10px;
-  }
-
-  .custom-radio-wrapper input[type='radio'] {
-    opacity: 0;
-    position: absolute;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-  }
-
-  .custom-radio {
-    height: 20px;
-    width: 20px;
-    border-radius: 50%;
-    border: 2px solid #000;
-    display: inline-block;
-    position: relative;
-    transition: all 0.2s ease-in-out;
-  }
-  .goaltext {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    width: 100%;
-  }
-  .custom-radio-wrapper input:checked + .custom-radio {
-    background-color: #000;
-    border-color: #000;
-  }
-
-  .custom-radio-wrapper input:checked + .custom-radio::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: white;
-  }
-</style>
-
-<script>
-  document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://strings-movies-vancouver-pda.trycloudflare.com';
-    const shop = Shopify.shop;
-
-    function normalizeVariantId(gid) {
-      return gid?.includes('gid://') ? gid.split('/').pop() : gid?.toString() || null;
-    }
-
-    function isRewardVariant(variantId, campaign) {
-      return (campaign.rewardProducts || []).some((p) => normalizeVariantId(p?.variantId) === variantId?.toString());
-    }
-
-    async function addToCart(productId, quantity) {
-      try {
-        const cart = await fetch('/cart.js').then((res) => res.json());
-        const variantIds = cart.items.map((item) => item.variant_id?.toString());
-        console.log(productId, quantity, '=============>>>><<<<<>>>>>');
-        if (variantIds.includes(productId.toString())) {
-          alert('🎁 This reward is already in your cart.');
-          return;
-        }
-
-        const response = await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            id: productId,
-            quantity: 1,
-          }),
-        });
-
-        if (!response.ok) throw new Error(`Cart add failed: ${response.status}`);
-        await response.json();
-        document.dispatchEvent(new CustomEvent('cart:updated'));
-      } catch (err) {
-        console.error('Add To Cart error:', err);
-        alert('❌ Could not add item to cart.');
-      }
-    }
-
-    async function createProgressBar({
-      goalType,
-      goalValue,
-      cartItems,
-      rewardVariantIds = [],
-      barColors = {},
-      barRadius,
-      preGoalText = '',
-      GoalText = '',
-    }) {
-      const nonRewardItems = cartItems.filter((item) => rewardVariantIds.includes(item.variant_id.toString()));
-      const totalItems = nonRewardItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
-      let cartValue = nonRewardItems.reduce((sum, item) => sum + item.line_price, 0) / 100;
-      console.log(nonRewardItems, '============>>><<<< >>>>');
-      const percentage = Math.min(
-        100,
-        goalType === 'amount_cart' ? (cartValue / goalValue) * 100 : (totalItems / goalValue) * 100
-      );
-
-      const remaining =
-        goalType === 'amount_cart' ? Math.max(0, goalValue - cartValue) : Math.max(0, goalValue - totalItems);
-
-      const goalMet = remaining <= 0;
-      const fillColor = goalMet ? barColors.goalComplete || '#4caf50' : barColors.primary || '#4caf50';
-      const backgroundColor = barColors.background || '#e0e0e0';
-      const radius = barRadius || 0;
-
-      const progressLabel = goalMet
-        ? GoalText || '🎉 Goal Reached!'
-        : `👉 Add More ${
-            goalType === 'amount_cart' ? remaining.toFixed(0) + ' MAD' : remaining + ' item(s)'
-          } to unlock`;
-
-      const container = document.createElement('div');
-      container.className = 'progress_card';
-      container.style = 'width: 100%';
-      container.innerHTML = `
-      <p style="font-weight:600; margin-bottom:10px;">${progressLabel}</p>
-      <div style="position:relative; width:100%; height:16px; background:${backgroundColor}; border-radius:${radius}px; overflow:hidden; margin-bottom:10px;">
-        <div style="height:100%; width:${percentage}%; background:${fillColor}; border-radius:${radius}px; transition:width 0.4s ease;"></div>
-        <span style="position:absolute; right:10px; top:-22px; font-size:12px; font-weight:bold; color:#333;">${Math.round(
-          percentage
-        )}%</span>
-      </div>
-      <div class="free_shipping" style="margin-top:6px; font-style:italic; color:#666;">🚚 ${preGoalText || ''}</div>
-    `;
-      return container;
-    }
-
-    async function renderUpsellContent() {
-      try {
-        const cart = await fetch('/cart.js').then((res) => res.json());
-        const cartItems = cart.items || [];
-        const productIds = cartItems.map((item) => item.product_id?.toString()).filter(Boolean);
-        const variantIds = cartItems.map((item) => item.variant_id?.toString()).filter(Boolean);
-
-        const Api = `${App_Domain}/api/add_unlock/${productIds.length > 0 ? productIds.join(',') : 'default'}/${shop}`;
-        const res = await fetch(Api);
-        if (!res.ok) return;
-
-        const data = await res.json();
-        const triggers = Array.isArray(data.upsellTriggerProduct)
-          ? data.upsellTriggerProduct
-          : [data.upsellTriggerProduct];
-
-        const headerContainer = document.querySelector('.drawer__header');
-        const footerContainer = document.querySelector('.drawer__footer');
-        const cartContainer = document.querySelector('cart-drawer-items');
-        if (!headerContainer || !footerContainer || !cartContainer) return;
-
-        // Clear existing upsell content
-        document
-          .querySelectorAll('.gift_campaign_container, .discount_campaign_container')
-          .forEach((el) => el.remove());
-        document.querySelector('.progress_card')?.remove();
-
-        let upsellFooter = document.querySelector('.main_upsell');
-        if (!upsellFooter) {
-          upsellFooter = document.createElement('div');
-          upsellFooter.className = 'main_upsell';
-          footerContainer.insertBefore(upsellFooter, footerContainer.firstChild);
-        } else {
-          upsellFooter.innerHTML = '';
-        }
-
-        let anyUpsell = false;
-        const campaigns = [];
-
-        // Calculate non-reward items for all campaigns
-        const nonRewardItems = cartItems.filter((item) => {
-          return triggers.some((trigger) => isRewardVariant(item.variant_id?.toString(), trigger.campaign));
-        });
-        const totalItems = nonRewardItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        const cartValue = nonRewardItems.reduce((sum, item) => sum + item.line_price, 0) / 100;
-
-        for (const trigger of triggers) {
-          const campaign = trigger?.campaign;
-          if (!campaign) continue;
-
-          const goalType = campaign.goalType || (campaign.goalquantity ? 'quantity' : 'amount_cart');
-          const goalValue = goalType === 'quantity' ? parseInt(campaign.goalquantity) : parseFloat(campaign.goalAmount);
-          const rewardVariantIds = (campaign.rewardProducts || [])
-            .map((p) => normalizeVariantId(p?.variantId))
-            .filter(Boolean);
-
-          campaigns.push({ campaign, goalType, goalValue, rewardVariantIds });
-        }
-
-        campaigns.sort((a, b) => {
-          const aValue = a.goalType === 'amount_cart' ? a.goalValue : a.goalValue * 100;
-          const bValue = b.goalType === 'amount_cart' ? b.goalValue : b.goalValue * 100;
-          return aValue - bValue;
-        });
-
-        let selectedCampaign = null;
-        for (const { campaign, goalType, goalValue, rewardVariantIds } of campaigns) {
-          const remaining =
-            goalType === 'amount_cart' ? Math.max(0, goalValue - cartValue) : Math.max(0, goalValue - totalItems);
-
-          if (remaining > 0 || !selectedCampaign) {
-            selectedCampaign = { campaign, goalType, goalValue, rewardVariantIds };
-          }
-          if (remaining > 0) break;
-        }
-
-        if (selectedCampaign) {
-          let barColors;
-          try {
-            barColors = JSON.parse(selectedCampaign.campaign.barColors || '{}');
-          } catch {
-            barColors = { primary: '#4caf50', background: '#e0e0e0', goalComplete: '#4caf50' };
-          }
-
-          const radius =
-            selectedCampaign.campaign.barRadius === 'rounded' ? 5 : parseInt(selectedCampaign.campaign.barRadius) || 0;
-
-          const progressBar = await createProgressBar({
-            goalType: selectedCampaign.goalType,
-            goalValue: selectedCampaign.goalValue,
-            cartItems,
-            rewardVariantIds: selectedCampaign.rewardVariantIds,
-            barColors,
-            barRadius: radius,
-            preGoalText: selectedCampaign.campaign.preGoalText,
-            GoalText: selectedCampaign.campaign.goalText,
-          });
-
-          headerContainer.insertBefore(progressBar, headerContainer.firstChild);
-        }
-
-        for (const { campaign, rewardVariantIds, goalType, goalValue } of campaigns) {
-          const UpsellFreeGiftProduct = campaign.UpsellFreeGiftProduct || [];
-          const triggerProducts = campaign.triggerProducts || [];
-          const rewardType = campaign.rewardType;
-          const remaining =
-            goalType === 'amount_cart' ? Math.max(0, goalValue - cartValue) : Math.max(0, goalValue - totalItems);
-          const goalMet = remaining <= 0;
-
-          if (rewardType === 'gift') {
-            anyUpsell = true;
-            const campaignContainer = document.createElement('div');
-            campaignContainer.className = 'gift_campaign_container';
-            campaignContainer.style.cssText =
-              'margin-bottom:20px; padding:15px; border:1px solid #e0e0e0; border-radius:8px;';
-
-            const title = document.createElement('h4');
-            title.textContent = campaign.title || 'Special Offer';
-            title.style.cssText = 'margin:0 0 10px 0; color:#333; font-size:16px; font-weight:600;';
-            campaignContainer.appendChild(title);
-
-            const status = document.createElement('p');
-            status.textContent = goalMet
-              ? '🎉 Offer Unlocked! Select a free gift below.'
-              : `Add ${
-                  goalType === 'amount_cart' ? remaining.toFixed(0) + ' MAD' : remaining + ' item(s)'
-                } to unlock this offer`;
-            status.style.cssText = `margin:0 0 10px 0; color:${goalMet ? '#4caf50' : '#e74c3c'}; font-size:14px;`;
-            campaignContainer.appendChild(status);
-
-            const form = document.createElement('div');
-            form.className = `gift_reward_form gift_reward_form_${campaign.id}`;
-            let selectedVariantId = null;
-
-            UpsellFreeGiftProduct.forEach((product, index) => {
-              const variantId = normalizeVariantId(product.variantId);
-              const disabled = variantIds.includes(variantId) || !goalMet;
-
-              const inputId = `gift-option-${campaign.id}-${index}`;
-
-              const card = document.createElement('div');
-              card.className = 'product_card_dwer';
-              card.innerHTML = `
-              <label style="display:flex; align-items:center; gap:10px; cursor:${
-                disabled ? 'not-allowed' : 'pointer'
-              }; opacity:${disabled ? 0.5 : 1}">
-                <input type="radio" name="giftReward_${
-                  campaign.id
-                }" id="${inputId}" value="${variantId}" style="transform:scale(1.3);" ${disabled ? 'disabled' : ''} />
-                <img src="${product.media || 'https://via.placeholder.com/50'}" alt="${
-                product.title
-              }" width="50" height="60" style="object-fit:cover;" />
-                <div style="flex:1;"><strong>${product.title}</strong><br/><span>FREE Gift</span></div>
-              </label>`;
-              const radio = card.querySelector('input[type="radio"]');
-              if (!disabled) {
-                radio.addEventListener('change', () => {
-                  selectedVariantId = radio.value;
-                  console.log('Selected Variant ID:', selectedVariantId);
-                });
-              }
-              form.appendChild(card);
-            });
-
-            const addGiftButton = document.createElement('button');
-            addGiftButton.textContent = goalMet ? '🎁 Add Gift to Cart' : '🔒 Offer Locked';
-            addGiftButton.disabled = !goalMet;
-            addGiftButton.style.cssText = `margin-top:12px; padding:10px 16px; font-weight:bold; background:${
-              goalMet ? '#4caf50' : '#ccc'
-            }; color:white; border:none; border-radius:4px; cursor:${goalMet ? 'pointer' : 'not-allowed'};`;
-            addGiftButton.addEventListener('click', async () => {
-              if (!selectedVariantId) return alert('Please select a gift product.');
-              await addToCart(selectedVariantId, 1);
-            });
-
-            form.appendChild(addGiftButton);
-            campaignContainer.appendChild(form);
-            cartContainer.appendChild(campaignContainer);
-          }
-
-          if (rewardType === 'discount' && triggerProducts.length > 0) {
-            anyUpsell = true;
-            const campaignContainer = document.createElement('div');
-            campaignContainer.className = 'discount_campaign_container';
-            campaignContainer.style.cssText =
-              'margin-bottom:20px; padding:15px; border:1px solid #e0e0e0; border-radius:8px;';
-
-            triggerProducts.forEach((product) => {
-              const price = parseFloat(product.price || 0);
-              const variantId = normalizeVariantId(product?.variantId);
-              if (!variantId) return;
-
-              const card = document.createElement('div');
-              card.className = 'product_card_dwer';
-              card.innerHTML = `
-              <div style="display:flex; gap:10px; align-items:center;">
-                <img src="${product.media || 'https://via.placeholder.com/50'}" alt="${
-                product.title || 'Product'
-              }" width="50" height="60" style="object-fit:cover;" />
-                <div style="flex:1;">
-                  <strong>${product.title || 'Unnamed Product'}</strong><br/>
-                  <span>${price.toFixed(2)} MAD</span>
-                </div>
-                <button data-variant="${variantId}"  style="padding:8px 12px; background:'#4caf50'
-              }; color:white; border:none; border-radius:4px; cursor: 'pointer' ">Add To Cart</button>
-              </div>
-            `;
-
-              card.querySelector('button').addEventListener('click', async () => {
-                await addToCart(variantId, 1);
-              });
-
-              campaignContainer.appendChild(card);
-            });
-
-            footerContainer.insertBefore(campaignContainer, footerContainer.firstChild);
-          }
-        }
-
-        if (!anyUpsell && upsellFooter) upsellFooter.remove();
-      } catch (err) {
-        console.error('Error rendering upsell:', err);
-      }
-    }
-
-    await renderUpsellContent();
-
-    document.addEventListener('cart:updated', renderUpsellContent);
-
-    let lastCart = await fetch('/cart.js').then((res) => res.json());
-    setInterval(async () => {
-      try {
-        const newCart = await fetch('/cart.js').then((res) => res.json());
-        if (JSON.stringify(newCart) !== JSON.stringify(lastCart)) {
-          lastCart = newCart;
-          document.dispatchEvent(new CustomEvent('cart:updated'));
-        }
-      } catch (error) {
-        console.error('Cart polling error:', error);
-      }
-    }, 2000);
-  });
-</script>
 
 {% schema %}
 {
-  "name": "DragOn Bundales Upsell",
+  "name": "DragOn Bundles Upsell",
   "target": "section",
   "settings": []
 }

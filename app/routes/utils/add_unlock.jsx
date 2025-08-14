@@ -94,13 +94,12 @@ export const add_to_unlock_ = async (
   selectedCollections
 ) => {
 
+  console.log("this is the reward collection", reward_collection)
   let discountId = null;
-
   try {
     if (rewardType === "gift") {
 
       const campaignId = upsellCampaign.id;
-      console.log(reward_collection, "this Fronted ")
       const rewads_product = await Reward_collection(reward_collection, shop, accessToken, campaignId)
 
       await prisma.UpsellRewardProduct.createMany({
@@ -219,9 +218,6 @@ export const add_to_unlock_ = async (
                 },
               },
             }
-
-
-
 
           },
         }

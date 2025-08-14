@@ -21,6 +21,8 @@ export const loader = async ({ request, params }) => {
           triggerProducts: true,
           UpsellFreeGiftProduct: true,
           buyMoreRules: true,
+          bogoFreeItems:true,
+          bogoRules:true,
         }
       }
     }
