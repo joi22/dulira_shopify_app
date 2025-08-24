@@ -29,6 +29,7 @@ import { add_to_unlock_ } from "./utils/add_unlock";
 import { buy_more_save_more } from "./utils/buy_more_save_more";
 import { Bogo } from "./utils/BoGo";
 import OrderBump from "./components/order_bump";
+import { OrderBump_backend } from "./utils/Bump_Order";
 
 const SHOPIFY_API_VERSION = "2024-10";
 
@@ -153,6 +154,15 @@ export const action = async ({ request }) => {
   const flameLevel = JSON.parse(formData.get("flameLevels") || "[]");
   const freeItems = JSON.parse(formData.get("freeItems") || "[]");
   const Rules = JSON.parse(formData.get("rules_BOGO") || "[]");
+  //Order Pump id 4
+  const bump_title = formData.get("bump_title");
+  const bump_description = formData.get("bump_description");
+  const bump_iconUrl = formData.get("bump_iconUrl");
+  const precheck = formData.get("preChecked")? true : false;
+  const bump_onetickProducts = formData.get("button_variant");
+  const tick_products = JSON.parse(formData.get("addOnProduct"));
+  const bump_countries = JSON.parse(formData.get("targetCountries"));
+
 
   const showConfetti = formData.get("showConfetti");
   const goalText = formData.get("goalText");
@@ -163,7 +173,6 @@ export const action = async ({ request }) => {
   const barStyle = formData.get("barStyle");
   const barRadius = formData.get("barRadius");
   const barColors = JSON.parse(formData.get("barColors"));
-
   const upsellCampaign = await prisma.UpsellCampaign.create({
     data: {
       name: campaignName,
@@ -178,8 +187,8 @@ export const action = async ({ request }) => {
       rewardType,
       discountCode,
       discountType,
-      showConfetti: showConfetti === "on",
-      showLockedGoals: showLockedGoals === "on",
+      // showConfetti: showConfetti === "on" || false,
+      // showLockedGoals: showLockedGoals === "on", ===========>>> Please Fix` Error
       badgeImageUrl,
       barStyle,
       barRadius,
@@ -256,6 +265,18 @@ export const action = async ({ request }) => {
       buyCollectionPicker_BOGO, // Use BOGO-specific collection picker
       reward_collection // Use reward_collection instead of freeCollections
     );
+  } else if (selectedCampaignType === "order_bump") {
+    const Bumpdata = await OrderBump_backend(
+      admin,
+      upsellCampaign,
+      bump_title,
+      bump_description,
+      bump_onetickProducts,
+      bump_countries,
+      bump_iconUrl,
+      precheck,
+      tick_products,
+    )
   }
 
   return { success: true, campaignID: upsellCampaign.id, message: "Campaign created successfully!" };
@@ -597,21 +618,19 @@ export default function UpsellCampaignForm() {
     }
   };
 
-  const addRule = () => {
-    setRules([...rules, { buy: "1", get: "1" }]);
-  };
+  // const addRule = () => {
+  //   setRules([...rules, { buy: "1", get: "1" }]);
+  // };
 
-  const updateRule = (index, field, value) => {
-    const newRules = [...rules];
-    newRules[index][field] = value;
-    setRules(newRules);
-  };
+  // const updateRule = (index, field, value) => {
+  //   const newRules = [...rules];
+  //   newRules[index][field] = value;
+  //   setRules(newRules);
+  // };
 
-  const removeRule = (index) => {
-    setRules(rules.filter((_, i) => i !== index));
-  };
-
-
+  // const removeRule = (index) => {
+  //   setRules(rules.filter((_, i) => i !== index));
+  // };
 
 
   const handleSubmit = () => {
@@ -621,9 +640,9 @@ export default function UpsellCampaignForm() {
     }
 
     if (selectedCampaignType === "add_to_unlock") {
-      console.log(discountType,"thsi New VAlue")
+      console.log(discountType, "thsi New VAlue")
       if (
-        
+
         discountType === "percentage" &&
         (discountCode <= 0 || discountCode > 100.1)
       ) {
@@ -640,16 +659,11 @@ export default function UpsellCampaignForm() {
       }
     }
 
-
-
     if (selectedCampaignType === "buy_one_get_one" && (!freeItems.length || !rules.length)) {
 
       shopify.toast.show("BOGO requires free items and rules.", { isError: true });
       return;
     }
-
-
-
 
     if (selectedCampaignType === "buy_more_save_more") {
       // 🔹 Validate Buy More Save More + Fixed
@@ -701,6 +715,15 @@ export default function UpsellCampaignForm() {
     formData.append("campaignName", campaignName);
     formData.append("selectedCampaignType", selectedCampaignType);
     formData.append("selectedTriggerType", selectedTriggerType);
+
+    formData.append("iconSize", iconSize);
+    formData.append("addOnProduct", JSON.stringify(addOnProduct || {}));
+    formData.append("bump_title", offerTitle);
+    formData.append("bump_description", offerDescription);
+    formData.append("preChecked", preChecked ? "true" : "false");
+    formData.append("button_variant", buttonVariant);
+    formData.append("targetCountries", JSON.stringify(targetCountries));
+    formData.append("excludeCountries", JSON.stringify(excludeCountries));
 
     if (selectedTriggerType === "products") {
       formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
@@ -758,20 +781,15 @@ export default function UpsellCampaignForm() {
   ];
 
   // Order Bump state variables
-  const [triggerType, setTriggerType] = useState("all");
-  const [selectedTriggerProducts, setSelectedTriggerProducts] = useState([]);
-  const [selectedTriggerCollections, setSelectedTriggerCollections] = useState([]);
   const [addOnProduct, setAddOnProduct] = useState(null);
   const [offerTitle, setOfferTitle] = useState("");
   const [offerDescription, setOfferDescription] = useState("");
   const [preChecked, setPreChecked] = useState(false);
   const [buttonVariant, setButtonVariant] = useState("primary");
-  const [textColor, setTextColor] = useState("#000000");
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [iconSize, setIconSize] = useState("medium");
   const [targetCountries, setTargetCountries] = useState([]);
   const [excludeCountries, setExcludeCountries] = useState([]);
-  const [orderBumpPlacement, setOrderBumpPlacement] = useState(["cart"]);
+
 
   return (
     <Page title="Create Upsell Campaign" fullWidth padding="400">
@@ -1109,10 +1127,11 @@ export default function UpsellCampaignForm() {
                         {rewardType === "discount" && (
                           <BlockStack gap="300">
                             <TextField
-                              label="Discount Code"
-                              placeholder="SUMMER20, SAVE15, etc."
+                              label="Discount Value"
+                              placeholder="10, 20, etc."
                               value={discountCode}
                               onChange={setDiscountCode}
+                              type="number"
                               helpText="Customers will use this code at checkout"
                             />
                             <Select
@@ -1245,12 +1264,6 @@ export default function UpsellCampaignForm() {
               )}
               {selectedCampaignType === "order_bump" && (
                 <OrderBump
-                  triggerType={triggerType}
-                  setTriggerType={setTriggerType}
-                  selectedTriggerProducts={selectedTriggerProducts}
-                  setSelectedTriggerProducts={setSelectedTriggerProducts}
-                  selectedTriggerCollections={selectedTriggerCollections}
-                  setSelectedTriggerCollections={setSelectedTriggerCollections}
                   addOnProduct={addOnProduct}
                   setAddOnProduct={setAddOnProduct}
                   offerTitle={offerTitle}
@@ -1261,18 +1274,12 @@ export default function UpsellCampaignForm() {
                   setPreChecked={setPreChecked}
                   buttonVariant={buttonVariant}
                   setButtonVariant={setButtonVariant}
-                  textColor={textColor}
-                  setTextColor={setTextColor}
-                  backgroundColor={backgroundColor}
-                  setBackgroundColor={setBackgroundColor}
                   iconSize={iconSize}
                   setIconSize={setIconSize}
                   targetCountries={targetCountries}
                   setTargetCountries={setTargetCountries}
                   excludeCountries={excludeCountries}
                   setExcludeCountries={setExcludeCountries}
-                  placement={orderBumpPlacement}
-                  setPlacement={setOrderBumpPlacement}
                 />
               )}
               <Card>
@@ -1367,30 +1374,33 @@ export default function UpsellCampaignForm() {
             </BlockStack>
           </Layout.Section>
           <Layout.Section variant="oneHalf">
-            <BlockStack gap="400">
-              <Card>
-                <BlockStack gap="200">
-                  <ChoiceList
-                    title="Select Campaign Placement"
-                    choices={[
-                      { label: "Homepage", value: "home" },
-                      { label: "Checkout", value: "checkout" },
-                      { label: "Cart Page", value: "cart" },
-                    ]}
-                    selected={placement}
-                    allowMultiple
-                    onChange={setPlacement}
-                  />
-                </BlockStack>
-              </Card>
-              <Card title="Live Preview">
-                <BlockStack gap="200">
-                  <Text variant="headingSm">Preview</Text>
-                  <Text>{formattedGoalText}</Text>
-                  <Text>{formattedPreGoalText}</Text>
-                </BlockStack>
-              </Card>
-            </BlockStack>
+            <div style={{ position: "sticky", top: "20px" }}>
+              <BlockStack gap="400">
+                <Card>
+                  <BlockStack gap="200">
+                    <ChoiceList
+                      title="Select Campaign Placement"
+                      choices={[
+                        { label: "Homepage", value: "home" },
+                        { label: "Checkout", value: "checkout" },
+                        { label: "Cart Page", value: "cart" },
+                      ]}
+                      selected={placement}
+                      allowMultiple
+                      onChange={setPlacement}
+                    />
+                  </BlockStack>
+                </Card>
+                <Card title="Live Preview">
+                  <BlockStack gap="200">
+                    <Text variant="headingSm">Preview</Text>
+                    <Text>{formattedGoalText}</Text>
+                    <Text>{formattedPreGoalText}</Text>
+                  </BlockStack>
+                </Card>
+              </BlockStack>
+
+            </div>
           </Layout.Section>
         </Layout>
       </FormLayout>

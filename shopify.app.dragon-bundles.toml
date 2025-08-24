@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "bc86448bb3e4820788b5d259f1d20323"
-application_url = "https://accomplish-steal-canal-selling.trycloudflare.com"
+application_url = "https://leo-supplies-effort-mice.trycloudflare.com"
 embedded = true
 name = "dragon-bundles"
 handle = "dragon-bundles"
@@ -19,9 +19,9 @@ scopes = "write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://accomplish-steal-canal-selling.trycloudflare.com/auth/callback",
-  "https://accomplish-steal-canal-selling.trycloudflare.com/auth/shopify/callback",
-  "https://accomplish-steal-canal-selling.trycloudflare.com/api/auth/callback"
+  "https://leo-supplies-effort-mice.trycloudflare.com/auth/callback",
+  "https://leo-supplies-effort-mice.trycloudflare.com/auth/shopify/callback",
+  "https://leo-supplies-effort-mice.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

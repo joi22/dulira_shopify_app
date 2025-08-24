@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://accomplish-steal-canal-selling.trycloudflare.com';
+    const App_Domain = 'https://fans-port-vacations-star.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -46,7 +46,7 @@ function createProgressBar(campaign, currentValue, goalValue, goalType) {
     // Reward product variant IDs
     const rewardProducts = campaign.rewardProducts.map(p => p.variantId?.toString());
     const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
-console.log(cartVariantIds,"this varient ID ",rewardProducts)
+    console.log(cartVariantIds,"this varient ID ",rewardProducts)
     // Check goal type and reward mode/type
     const validGoalType = ["quantity", "amount"].includes(goalType);
     const validRewardMode = campaign.rewardMode === "fixed";

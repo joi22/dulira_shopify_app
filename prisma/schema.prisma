@@ -47,9 +47,6 @@ model UpsellCampaign {
   currency     String?
   shop         String
 
-  showConfetti    Boolean @default(false)
-  showLockedGoals Boolean @default(false)
-
   badgeImageUrl String?
   barStyle      String
   barRadius     String
@@ -70,6 +67,11 @@ model UpsellCampaign {
   bogoFreeItems          BogoFreeItem[]
   UpsellRewardCollection UpsellRewardCollection[]
   UpsellFreeGiftProduct  UpsellFreeGiftProduct[]
+
+  // 👇 Country targeting relations
+  orderBump        OrderBump[]
+  targetCountries  CampaignTargetCountry[]
+  excludeCountries CampaignExcludeCountry[]
 }
 
 model UpsellTriggerProduct {
@@ -108,7 +110,6 @@ model UpsellRewardProduct {
 }
 
 model UpsellFreeGiftProduct {
-
   id         Int     @id @default(autoincrement())
   campaignId Int
   productId  String
@@ -152,13 +153,45 @@ model BogoRule {
 }
 
 model BogoFreeItem {
-  id         Int    @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   campaignId Int
   productId  String
   variantId  String?
   title      String?
   price      String?
   media      String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model OrderBump {
+  id               Int     @id @default(autoincrement())
+  offerTitle       String?
+  offerDescription String?
+  preChecked       Boolean @default(false)
+  iconUrl          String?
+  onetickProducts  String?
+
+  showConfetti     Boolean         @default(false)
+  showLockedGoals  Boolean         @default(false)
+  UpsellCampaign   UpsellCampaign? @relation(fields: [upsellCampaignId], references: [id])
+  upsellCampaignId Int?
+}
+
+model CampaignTargetCountry {
+  id         Int     @id @default(autoincrement())
+  campaignId Int
+  code       String? // e.g. "US", "CA"
+  name       String?
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model CampaignExcludeCountry {
+  id         Int     @id @default(autoincrement())
+  campaignId Int
+  code       String?
+  name       String?
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
 }

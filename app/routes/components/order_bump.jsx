@@ -18,12 +18,7 @@ import {
 import { UploadIcon } from "@shopify/polaris-icons";
 
 const OrderBump = ({
-  triggerType,
-  setTriggerType,
-  selectedTriggerProducts,
-  setSelectedTriggerProducts,
-  selectedTriggerCollections,
-  setSelectedTriggerCollections,
+
   addOnProduct,
   setAddOnProduct,
   offerTitle,
@@ -32,99 +27,14 @@ const OrderBump = ({
   setOfferDescription,
   preChecked,
   setPreChecked,
-  buttonVariant,
-  setButtonVariant,
-  textColor,
-  setTextColor,
-  backgroundColor,
-  setBackgroundColor,
-  iconSize,
-  setIconSize,
   targetCountries,
   setTargetCountries,
   excludeCountries,
   setExcludeCountries,
-  placement,
-  setPlacement,
 }) => {
   const [iconFile, setIconFile] = useState(null);
 
-  const triggerOptions = [
-    { label: "All Products", value: "all" },
-    { label: "Specific Products", value: "products" },
-    { label: "Specific Collections", value: "collections" },
-  ];
 
-  const placementOptions = [
-    { label: "Cart Page", value: "cart" },
-    { label: "Checkout Page", value: "checkout" },
-  ];
-
-  const buttonVariantOptions = [
-    { label: "Switch", value: "switch" },
-    { label: "Square", value: "square" },
-    { label: "Circle", value: "circle" },
-  ];
-
-  const iconSizeOptions = [
-    { label: "Small", value: "small" },
-    { label: "Medium", value: "medium" },
-    { label: "Large", value: "large" },
-  ];
-
-  const handleTriggerProductPicker = async () => {
-    try {
-      const selectedItems = await window.shopify.resourcePicker({
-        type: "product",
-        action: "select",
-        multiple: true,
-        showVariants: false,
-        query: "status:active AND published_status:published",
-      });
-
-      if (selectedItems) {
-        const products = selectedItems.map((item) => ({
-          id: item.id.split("/").pop(),
-          title: item.title,
-          handle: item.handle,
-          price: item.variants?.[0]?.price,
-          media: item.images?.[0]?.originalSrc || item.images?.[0]?.src || null,
-        }));
-
-        const unique = products.filter(
-          (p) => !selectedTriggerProducts.some((existing) => existing.id === p.id)
-        );
-        setSelectedTriggerProducts((prev) => [...prev, ...unique]);
-      }
-    } catch (error) {
-      console.error("Trigger product picker failed:", error);
-    }
-  };
-
-  const handleTriggerCollectionPicker = async () => {
-    try {
-      const selectedItems = await window.shopify.resourcePicker({
-        type: "collection",
-        action: "select",
-        multiple: true,
-      });
-
-      if (selectedItems) {
-        const collections = selectedItems.map((item) => ({
-          id: item.id.split("/").pop(),
-          title: item.title,
-          handle: item.handle,
-        }));
-
-        const unique = collections.filter(
-          (c) => !selectedTriggerCollections.some((existing) => existing.id === c.id)
-        );
-        setSelectedTriggerCollections((prev) => [...prev, ...unique]);
-      }
-    } catch (error) {
-      console.error("Trigger collection picker failed:", error);
-    }
-  };
 
   const handleAddOnProductPicker = async () => {
     try {
@@ -159,13 +69,6 @@ const OrderBump = ({
     }
   };
 
-  const removeTriggerProduct = (id) => {
-    setSelectedTriggerProducts((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const removeTriggerCollection = (id) => {
-    setSelectedTriggerCollections((prev) => prev.filter((c) => c.id !== id));
-  };
 
   const removeAddOnProduct = () => {
     setAddOnProduct(null);
@@ -173,98 +76,6 @@ const OrderBump = ({
 
   return (
     <BlockStack gap="400">
-      {/* Placement Selection */}
-      <Card sectioned>
-        <BlockStack gap="300">
-          <Text variant="headingMd" as="h3">Placement</Text>
-          <ChoiceList
-            title="Select where the order bump appears"
-            choices={placementOptions}
-            selected={[placement]}
-            onChange={(value) => setPlacement(value[0])}
-          />
-        </BlockStack>
-      </Card>
-
-      {/* Trigger Products/Collections */}
-      <Card sectioned>
-        <BlockStack gap="300">
-          <Text variant="headingMd" as="h3">Trigger Products</Text>
-          <ChoiceList
-            title="Show offer when these products are in the cart"
-            choices={triggerOptions}
-            selected={[triggerType]}
-            onChange={(value) => setTriggerType(value[0])}
-          />
-          {triggerType === "products" && (
-            <BlockStack gap="200">
-              <Button onClick={handleTriggerProductPicker} variant="primary">
-                Select Products
-              </Button>
-              {selectedTriggerProducts.length > 0 && (
-                <ResourceList
-                  resourceName={{ singular: "product", plural: "products" }}
-                  items={selectedTriggerProducts}
-                  renderItem={(item) => (
-                    <ResourceItem id={item.id}>
-                      <InlineStack align="space-between" blockAlign="center">
-                        <InlineStack gap="300" blockAlign="center">
-                          {item.media && (
-                            <Image
-                              source={item.media}
-                              alt={item.title}
-                              width={60}
-                              height={60}
-                              style={{ borderRadius: "4px" }}
-                            />
-                          )}
-                          <Box>
-                            <Text fontWeight="semibold">{item.title}</Text>
-                            <Text tone="subdued">${item.price}</Text>
-                          </Box>
-                        </InlineStack>
-                        <Button
-                          tone="critical"
-                          onClick={() => removeTriggerProduct(item.id)}
-                        >
-                          Remove
-                        </Button>
-                      </InlineStack>
-                    </ResourceItem>
-                  )}
-                />
-              )}
-            </BlockStack>
-          )}
-          {triggerType === "collections" && (
-            <BlockStack gap="200">
-              <Button onClick={handleTriggerCollectionPicker} variant="primary">
-                Select Collections
-              </Button>
-              {selectedTriggerCollections.length > 0 && (
-                <ResourceList
-                  resourceName={{ singular: "collection", plural: "collections" }}
-                  items={selectedTriggerCollections}
-                  renderItem={(item) => (
-                    <ResourceItem id={item.id}>
-                      <InlineStack align="space-between" blockAlign="center">
-                        <Text fontWeight="semibold">{item.title}</Text>
-                        <Button
-                          tone="critical"
-                          onClick={() => removeTriggerCollection(item.id)}
-                        >
-                          Remove
-                        </Button>
-                      </InlineStack>
-                    </ResourceItem>
-                  )}
-                />
-              )}
-            </BlockStack>
-          )}
-        </BlockStack>
-      </Card>
-
       {/* Add-On Product */}
       <Card sectioned>
         <BlockStack gap="300">
@@ -364,7 +175,7 @@ const OrderBump = ({
       </Card>
 
       {/* Design Options */}
-      <Card sectioned>
+      {/* <Card sectioned>
         <BlockStack gap="300">
           <Text variant="headingMd" as="h3">Design Options</Text>
           <Select
@@ -392,7 +203,7 @@ const OrderBump = ({
             onChange={setIconSize}
           />
         </BlockStack>
-      </Card>
+      </Card> */}
 
       {/* Country Targeting */}
       <Card sectioned>
