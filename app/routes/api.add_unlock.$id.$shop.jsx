@@ -23,6 +23,9 @@ export const loader = async ({ request, params }) => {
           buyMoreRules: true,
           bogoFreeItems: true,
           bogoRules: true,
+          orderBump: true,
+          targetCountries: true,
+          excludeCountries: true
         }
       }
     }

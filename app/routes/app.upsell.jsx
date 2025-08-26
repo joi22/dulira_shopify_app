@@ -134,11 +134,14 @@ export const action = async ({ request }) => {
   const selectedTriggerType = formData.get("selectedTriggerType");
 
   const selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
+console.log(selectedProducts,"this BUY X Products ")
+
   const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
   const rewardProducts = JSON.parse(formData.get("rewardProducts") || "[]");
   const reward_collection = JSON.parse(formData.get("reward_collection") || "[]");
   const buyCollectionPicker_BOGO = JSON.parse(formData.get("buyCollectionPicker_BOGO") || "[]"); // Extract BOGO collection picker
   const buyProductPicker_BOGO = JSON.parse(formData.get("buyProductPicker_BOGO") || "[]"); // Extract BOGO product picker
+  const Buy_products = JSON.parse(formData.get("buyProductPicker") || "[]"); // Extract BOGO product picker
   const upsell_allproducts = formData.get("upsell_allproducts");
   const goalType = formData.get("goalType");
   const goalAmounts = formData.get("goalAmount") || "0";
@@ -158,11 +161,11 @@ export const action = async ({ request }) => {
   const bump_title = formData.get("bump_title");
   const bump_description = formData.get("bump_description");
   const bump_iconUrl = formData.get("bump_iconUrl");
-  const precheck = formData.get("preChecked")? true : false;
+  const precheck = formData.get("preChecked") ? true : false;
   const bump_onetickProducts = formData.get("button_variant");
   const tick_products = JSON.parse(formData.get("addOnProduct"));
   const bump_countries = JSON.parse(formData.get("targetCountries"));
-
+  const offerType = formData.get("OfferType");
 
   const showConfetti = formData.get("showConfetti");
   const goalText = formData.get("goalText");
@@ -239,7 +242,7 @@ export const action = async ({ request }) => {
       rewardMode,
       discountType,
       admin,
-      selectedProducts,
+      selectedProducts_Buy,
       selectedCollections
     );
   } else if (selectedCampaignType === "buy_more_save_more") {
@@ -276,6 +279,7 @@ export const action = async ({ request }) => {
       bump_iconUrl,
       precheck,
       tick_products,
+      offerType,
     )
   }
 
@@ -357,6 +361,7 @@ export default function UpsellCampaignForm() {
   const [buyProductPicker_BOGO, setBuyProductPicker_BOGO] = useState([]);
   const [productPickType, setProductPickType] = useState("products");
   const [freeGiftProducts, setFreeGiftProducts] = useState([]);
+  const [offerType, setOfferType] = useState("shipping");
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data) {
@@ -706,6 +711,12 @@ export default function UpsellCampaignForm() {
         }
       }
     }
+    if (selectedCampaignType === "order_bump") {
+      if (addOnProduct === null) {
+        shopify.toast.show("Please select a product for the Order Bump", { isError: true });
+        return;
+      }
+    }
 
 
 
@@ -724,6 +735,7 @@ export default function UpsellCampaignForm() {
     formData.append("button_variant", buttonVariant);
     formData.append("targetCountries", JSON.stringify(targetCountries));
     formData.append("excludeCountries", JSON.stringify(excludeCountries));
+    formData.append("OfferType", offerType);
 
     if (selectedTriggerType === "products") {
       formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
@@ -747,6 +759,7 @@ export default function UpsellCampaignForm() {
     formData.append("freeItems", JSON.stringify(freeItems));
     formData.append("buyCollectionPicker_BOGO", JSON.stringify(buyCollectionPicker_BOGO)); // Add BOGO collection picker
     formData.append("buyProductPicker_BOGO", JSON.stringify(buyProductPicker_BOGO)); // Add BOGO product picker
+    formData.append("Buy_productPicker", JSON.stringify(buyProductPicker));
     formData.append("rules_BOGO", JSON.stringify(rules));
     formData.append("showConfetti", showConfetti ? "on" : "off");
     formData.append("goalText", goalText);
@@ -1280,6 +1293,8 @@ export default function UpsellCampaignForm() {
                   setTargetCountries={setTargetCountries}
                   excludeCountries={excludeCountries}
                   setExcludeCountries={setExcludeCountries}
+                  offerType={offerType}
+                  setOfferType={setOfferType}
                 />
               )}
               <Card>

@@ -21,12 +21,16 @@ export const loader = async ({ request, params }) => {
           triggerProducts: true,
           UpsellFreeGiftProduct: true,
           buyMoreRules: true,
-          bogoFreeItems:true,
-          bogoRules:true,
+          bogoFreeItems: true,
+          bogoRules: true,
+          orderBump: true,
+          targetCountries: true,
+          excludeCountries: true
         }
       }
     }
   });
+  console.log(upsellTriggerProduct,"this Update Product tigger ")
 
   const enrichedCampaigns = await Promise.all(
     upsellTriggerProduct.map(async (trigger) => {

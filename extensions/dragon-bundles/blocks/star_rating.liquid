@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://fans-port-vacations-star.trycloudflare.com';
+    const App_Domain = 'https://pursuant-corners-warnings-frequently.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -36,135 +36,140 @@
 
     // Function to create progress bar for goal-based campaigns
 function createProgressBar(campaign, currentValue, goalValue, goalType) {
-    const cart_products_quantity = {{ cart.items | json }};
+  const cart_products_quantity = {{ cart.items | json }};
 
-    // Get cart variant IDs
-    const cartVariantIds = cart_products_quantity
-        .map(item => item.variant_id?.toString())
-        .filter(Boolean);
+  // Get cart variant IDs
+  const cartVariantIds = cart_products_quantity
+    .map(item => item.variant_id?.toString())
+    .filter(Boolean);
 
-    // Reward product variant IDs
-    const rewardProducts = campaign.rewardProducts.map(p => p.variantId?.toString());
-    const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
-    console.log(cartVariantIds,"this varient ID ",rewardProducts)
-    // Check goal type and reward mode/type
-    const validGoalType = ["quantity", "amount"].includes(goalType);
-    const validRewardMode = campaign.rewardMode === "fixed";
-    const validRewardType = ["discount", "freeshipping"].includes(campaign.rewardType);
+  // Reward product variant IDs
+  const rewardProducts = (campaign.rewardProducts || []).map(p => p.variantId?.toString());
+  const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
 
-    // Common progress calculations
-    const percentage = goalValue > 0 ? Math.min(100, (currentValue / goalValue) * 100) : 0;
-    const remaining = Math.max(0, goalValue - currentValue);
-    const goalMet = remaining <= 0;
-    const barColors = campaign.barColors
-        ? JSON.parse(campaign.barColors)
-        : { primary: '#8575ff', background: '#e0e0e0', goalComplete: '#28e2df' };
+  // Check goal type and reward mode/type
+  const validGoalType = ["quantity", "amount", "amount_cart"].includes(goalType);
+  const goalMet = goalValue > 0 && currentValue >= goalValue;
+  const remaining = Math.max(0, goalValue - currentValue);
+  const percentage = goalValue > 0 ? Math.min(100, (currentValue / goalValue) * 100) : 0;
 
-    let container = document.createElement('div');
-    container.className = 'discount-banner';
+  const barColors = campaign.barColors
+    ? JSON.parse(campaign.barColors)
+    : { primary: '#8575ff', background: '#e0e0e0', goalComplete: '#28e2df' };
 
-    if (hasRewardProduct && validGoalType && validRewardMode && validRewardType) {
-        // First branch — reward products already in cart
-        const productCardsHTML = (campaign.rewardProducts || []).map((item) => `
-            <div class="gift-card unlocked" data-variant-id="${item.variantId}">
-                <div class="gift-image">
-                    <img src="${item.media}" alt="${item.title || 'Gift'}" />
-                </div>
-                <div class="gift-info">
-                    <div class="gift-title">${item.title || 'Gift'}</div>
-                </div>
-            </div>
-        `).join('');
+  let container = document.createElement('div');
+  container.className = 'discount-banner';
 
-        container.innerHTML = `
-            <div class="discount-header">
-                <div class="discount-title">${campaign.goalText || ''}</div>
-                <div class="discount-subtitle">
-                    ${goalMet 
-                        ? '🎁 Gift already in your cart!' 
-                        : `You're only ${remaining.toFixed(2)} away`}
-                </div>
-            </div>
+  if (campaign.rewardMode === "flame") {
+    // Flame Mode — Progress Bar with Gifts
+    const productCardsHTML = (campaign.rewardProducts || []).map((item) => `
+      <div class="gift-card unlocked" data-variant-id="${item.variantId}">
+        <div class="gift-image">
+          <img src="${item.media}" alt="${item.title || 'Gift'}" />
+        </div>
+        <div class="gift-info">
+          <div class="gift-title">${item.title || 'Gift'}</div>
+        </div>
+      </div>
+    `).join('');
 
-            <div class="products-grid small-gifts">${productCardsHTML}</div>
+    container.innerHTML = `
+      <div class="discount-header">
+        <div class="discount-title">${campaign.goalText || ''}</div>
+        <div class="promo-badge">
+          ${campaign.goalType === "quantity"
+            ? `Buy ${campaign.goalquantity}`
+            : campaign.goalType === "amount_cart"
+            ? `Spend ${campaign.currency}${campaign.goalAmount}`
+            : ""}
+        </div>
+        <div class="discount-subtitle">
+          ${goalMet
+            ? '🎁 Gift already in your cart!'
+            : `🔥 You’re only ${remaining.toFixed(2)} ${campaign.currency} away`}
+        </div>
+      </div>
 
-            <div class="progress-container">
-                <div class="progress-bar" 
-                    style="width: ${percentage}%; background: ${goalMet ? barColors.goalComplete : barColors.primary}">
-                </div>
-                <span class="progress-percentage">${Math.round(percentage)}%</span>
-            </div>
-        `;
-    } else {
-        // Second branch — upsell free gift
-        const rewardVariantIds = (campaign.UpsellFreeGiftProduct || [])
-            .map(p => p.variantId?.toString())
-            .filter(Boolean);
+      <div class="products-grid small-gifts">${productCardsHTML}</div>
 
-        const rewardInCart = rewardVariantIds.some(id => cartVariantIds.includes(id));
+      <div class="progress-container">
+        <div class="progress-track" style="background:${barColors.background}">
+          <div class="progress-bar" 
+            style="width:${percentage}%; background:${goalMet ? barColors.goalComplete : barColors.primary}">
+          </div>
+        </div>
+        <span class="progress-percentage">${Math.round(percentage)}%</span>
+      </div>
+    `;
+  } else {
+    // Fixed Mode — Offer Unlock Row
+    const rewardVariantIds = (campaign.UpsellFreeGiftProduct || [])
+      .map(p => p.variantId?.toString())
+      .filter(Boolean);
 
-        const productCardsHTML = (campaign.UpsellFreeGiftProduct || []).map((item) => `
-            <div class="gift-card ${goalMet ? 'unlocked' : 'locked'}" data-variant-id="${item.variantId}">
-                <div class="gift-image">
-                    <img src="${item.media}" alt="${item.title || 'Free Gift'}" />
-                </div>
-                <div class="gift-info">
-                    <div class="gift-title">${item.title || 'Free Gift'}</div>
-                    <button class="select-btn" ${!goalMet || rewardInCart ? 'disabled' : ''}>
-                        ${rewardInCart ? 'Gift Added' : goalMet ? 'Select Gift' : 'Locked'}
-                    </button>
-                </div>
-            </div>
-        `).join('');
+    const rewardInCart = rewardVariantIds.some(id => cartVariantIds.includes(id));
 
-        container.innerHTML = `
-            <div class="discount-header">
-                <div class="discount-title">${campaign.goalText || ''}</div>
-                <div class="discount-subtitle">
-                    ${goalMet 
-                        ? (rewardInCart 
-                            ? '🎁 Gift already in your cart!' 
-                            : '🎉 Goal reached! Choose your free gift.')
-                        : `You're only ${remaining.toFixed(2)} away`}
-                </div>
-            </div>
+    const totalPrice = (campaign.rewardProducts || []).reduce(
+      (sum, item) => sum + parseFloat(item.price || 0),
+      0
+    );
 
-            <div class="products-grid small-gifts">${productCardsHTML}</div>
+    const discountValue = parseFloat(campaign.discountCode || 0);
+    let discountedPrice = totalPrice;
 
-            <div class="progress-container">
-                <div class="progress-bar" 
-                    style="width: ${percentage}%; background: ${goalMet ? barColors.goalComplete : barColors.primary}">
-                </div>
-                <span class="progress-percentage">${Math.round(percentage)}%</span>
-            </div>
-        `;
-
-        // Add click events
-        if (goalMet && !rewardInCart) {
-            container.querySelectorAll('.gift-card.unlocked .select-btn:not([disabled])').forEach((btn) => {
-                btn.addEventListener('click', async (e) => {
-                    const variantId = e.target.closest('.gift-card').dataset.variantId;
-                    if (!variantId) return;
-
-                    btn.disabled = true;
-                    btn.textContent = 'Adding...';
-
-                    try {
-                        await addToCart(variantId, 1);
-                        btn.textContent = 'Added!';
-                        document.dispatchEvent(new CustomEvent('cart:updated'));
-                    } catch (err) {
-                        console.error('Failed to add gift:', err);
-                        btn.textContent = 'Error';
-                        btn.disabled = false;
-                    }
-                });
-            });
-        }
+    if (campaign.discountType === 'percentage' && discountValue > 0) {
+      discountedPrice = totalPrice * (1 - discountValue / 100);
+    } else if (campaign.discountType === 'amount' && discountValue > 0) {
+      discountedPrice = Math.max(0, totalPrice - discountValue);
     }
 
-    return container;
+    container.innerHTML = `
+      <div class="promotion-offer-row ${goalMet ? 'unlocked' : 'locked'}">
+        <div class="offer-info">
+          <input type="radio" ${goalMet ? 'checked' : 'disabled'} />
+          <span class="offer-text">
+            ${campaign.goalType === "quantity"
+              ? `Buy ${campaign.goalquantity} to unlock ${discountValue}${campaign.discountType === 'percentage' ? '%' : campaign.currency} off`
+              : campaign.goalType === "amount_cart"
+              ? `Spend ${campaign.currency}${campaign.goalAmount} to unlock ${discountValue}${campaign.discountType === 'percentage' ? '%' : campaign.currency} off`
+              : ""}
+          </span>
+        </div>
+
+        <div class="offer-pricing">
+          <span class="original-price">${campaign.currency}${totalPrice.toFixed(2)}</span>
+          <span class="discount-price">${campaign.currency}${discountedPrice.toFixed(2)}</span>
+        </div>
+      </div>
+    `;
+
+    // Add click events
+    if (goalMet && !rewardInCart) {
+      container.querySelectorAll('.gift-card.unlocked .select-btn:not([disabled])').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const variantId = e.target.closest('.gift-card').dataset.variantId;
+          if (!variantId) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Adding...';
+
+          try {
+            await addToCart(variantId, 1);
+            btn.textContent = 'Added!';
+            document.dispatchEvent(new CustomEvent('cart:updated'));
+          } catch (err) {
+            console.error('Failed to add gift:', err);
+            btn.textContent = 'Error';
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+  }
+
+  return container;
 }
+
 
 
 
@@ -978,6 +983,61 @@ document.addEventListener('cart:updated', async () => {
     }, 2000); 
   });
 </script>
+
+{% comment %} new Style tag {% endcomment %}
+<style>
+  .promotion-offer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    margin: 8px 0;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #fff;
+    font-family: system-ui, sans-serif;
+    transition: all 0.2s ease;
+  }
+
+  .promotion-offer-row.unlocked {
+    border-color: #4caf50;
+    background: #f6fff8;
+  }
+
+  .promotion-offer-row.locked {
+    opacity: 0.7;
+  }
+
+  .offer-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .offer-text {
+    font-weight: 600;
+    font-size: 14px;
+    color: #222;
+  }
+
+  .offer-pricing {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .original-price {
+    text-decoration: line-through;
+    font-size: 13px;
+    color: #999;
+  }
+
+  .discount-price {
+    font-weight: 700;
+    font-size: 15px;
+    color: #111;
+  }
+</style>
 
 <style>
         .plus {

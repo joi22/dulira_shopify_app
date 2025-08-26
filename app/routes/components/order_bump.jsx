@@ -14,6 +14,7 @@ import {
   ResourceList,
   ResourceItem,
   Icon,
+  RadioButton,
 } from "@shopify/polaris";
 import { UploadIcon } from "@shopify/polaris-icons";
 
@@ -31,6 +32,8 @@ const OrderBump = ({
   setTargetCountries,
   excludeCountries,
   setExcludeCountries,
+  offerType,
+  setOfferType,
 }) => {
   const [iconFile, setIconFile] = useState(null);
 
@@ -121,10 +124,15 @@ const OrderBump = ({
         </BlockStack>
       </Card>
 
-      {/* Customize Offer Content */}
+
+
       <Card sectioned>
         <BlockStack gap="300">
           <Text variant="headingMd" as="h3">Customize Offer Content</Text>
+
+          {/* Radio options: Only one can be selected */}
+
+
           <TextField
             label="Offer Title"
             value={offerTitle}
@@ -137,6 +145,16 @@ const OrderBump = ({
             onChange={setOfferDescription}
             placeholder="Covers loss, theft, or damage – just {{9.90 MAD}}"
             multiline={3}
+          />
+          <ChoiceList
+            title="Offer Type"
+            choices={[
+              { label: "Shipping Protection", value: "shipping" },
+              { label: "Gift Wrap", value: "giftwrap" },
+              { label: "Priority Handling", value: "priority" },
+            ]}
+            selected={[offerType]}
+            onChange={(value) => setOfferType(value[0])}
           />
           <Box>
             <Text variant="bodyMd" fontWeight="semibold">Optional Icon</Text>
@@ -166,6 +184,7 @@ const OrderBump = ({
               )}
             </Box>
           </Box>
+
           <Checkbox
             label="Pre-check by default"
             checked={preChecked}
@@ -173,6 +192,7 @@ const OrderBump = ({
           />
         </BlockStack>
       </Card>
+
 
       {/* Design Options */}
       {/* <Card sectioned>

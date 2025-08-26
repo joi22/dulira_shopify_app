@@ -171,6 +171,7 @@ model OrderBump {
   preChecked       Boolean @default(false)
   iconUrl          String?
   onetickProducts  String?
+  offerType        String?
 
   showConfetti     Boolean         @default(false)
   showLockedGoals  Boolean         @default(false)

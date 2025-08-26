@@ -71,6 +71,7 @@ const Reward_collection = async (reward_collection, shop, accessToken, campaignI
         data: productData,
       });
     }
+    return productData;
   }
 };
 
@@ -90,20 +91,19 @@ export const add_to_unlock_ = async (
   rewardMode,
   discountType,
   admin,
-  selectedProducts,
+  selectedProducts_Buy,
   selectedCollections
 ) => {
 
-  console.log("this is the reward collection", reward_collection)
+  console.log("this is the reward collection", selectedProducts_Buy)
   let discountId = null;
   try {
     if (rewardType === "gift") {
 
       const campaignId = upsellCampaign.id;
       const rewads_product = await Reward_collection(reward_collection, shop, accessToken, campaignId)
-
       await prisma.UpsellRewardProduct.createMany({
-        data: selectedProducts.map((p) => ({
+        data: selectedProducts_Buy.map((p) => ({
           campaignId: upsellCampaign.id,
           productId: p.id,
           variantId: String(p.variantId),
@@ -179,10 +179,10 @@ export const add_to_unlock_ = async (
                   ? { quantity: String(goalQuantity) }
                   : { amount: String(goalAmounts) },
 
-                items: selectedProducts?.length
+                items: selectedProducts_Buy?.length
                   ? {
                     products: {
-                      productsToAdd: selectedProducts.map(
+                      productsToAdd: selectedProducts_Buy.map(
                         (item) => `gid://shopify/Product/${item.id}`
                       ),
                     },
