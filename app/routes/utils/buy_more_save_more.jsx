@@ -10,7 +10,7 @@ export const buy_more_save_more = async (
   flameLevel,
   upsellCampaign,
 ) => {
-  console.log(flameLevel, "this All Set Upda")
+  console.log(selectedProducts_Buy.map(p => p.levels), "this All Set level thsib buy")
   if (rewardMode === "fixed") {
     for (const product of selectedProducts_Buy) {
       for (const level of product.levels) {
@@ -21,7 +21,7 @@ export const buy_more_save_more = async (
             productId: product.id,
             quantity: parseInt(level.quantity),
             discount: parseFloat(level.discount),
-            discountType: level.discountType || "percentage",
+            discountType: level.DiscountType || "percentage",
           },
         });
         await prisma.UpsellRewardProduct.create({
@@ -37,12 +37,12 @@ export const buy_more_save_more = async (
         });
 
         // Construct the correct value object for discount
-        const discountType = level.discountType || "percentage"; // Ensure fallback
+        const discountType = level.DiscountType || "percentage"; // Ensure fallback
 
         let valueObj;
         if (discountType === "percentage") {
           valueObj = { percentage: parseFloat(level.discount) / 100 };
-        } else if (discountType === "fixed") {
+        } else if (discountType === "amount") {
           valueObj = {
             discountAmount: {
               amount: parseFloat(level.discount).toFixed(2),

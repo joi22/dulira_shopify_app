@@ -69,9 +69,11 @@ model UpsellCampaign {
   UpsellFreeGiftProduct  UpsellFreeGiftProduct[]
 
   // 👇 Country targeting relations
-  orderBump        OrderBump[]
-  targetCountries  CampaignTargetCountry[]
-  excludeCountries CampaignExcludeCountry[]
+  orderBump          OrderBump[]
+  targetCountries    CampaignTargetCountry[]
+  excludeCountries   CampaignExcludeCountry[]
+  checkout_upsell    checkout_upsell[]
+  PostPurchaseUpsell PostPurchaseUpsell[]
 }
 
 model UpsellTriggerProduct {
@@ -195,4 +197,22 @@ model CampaignExcludeCountry {
   name       String?
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model checkout_upsell {
+  id           Int            @id @default(autoincrement())
+  campaignId   Int
+  productId    String?
+  discountType String?
+  discountCode String?
+  campaign     UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model PostPurchaseUpsell {
+  id           Int            @id @default(autoincrement())
+  campaignId   Int
+  productId    String?
+  discountType String?
+  discountCode String?
+  campaign     UpsellCampaign @relation(fields: [campaignId], references: [id])
 }

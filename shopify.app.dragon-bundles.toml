@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "bc86448bb3e4820788b5d259f1d20323"
-application_url = "https://pursuant-corners-warnings-frequently.trycloudflare.com"
+application_url = "https://processes-beneath-worm-exceptional.trycloudflare.com"
 embedded = true
 name = "dragon-bundles"
 handle = "dragon-bundles"
@@ -19,9 +19,9 @@ scopes = "write_discounts,write_products,read_publications,write_publications"
 
 [auth]
 redirect_urls = [
-  "https://pursuant-corners-warnings-frequently.trycloudflare.com/auth/callback",
-  "https://pursuant-corners-warnings-frequently.trycloudflare.com/auth/shopify/callback",
-  "https://pursuant-corners-warnings-frequently.trycloudflare.com/api/auth/callback"
+  "https://processes-beneath-worm-exceptional.trycloudflare.com/auth/callback",
+  "https://processes-beneath-worm-exceptional.trycloudflare.com/auth/shopify/callback",
+  "https://processes-beneath-worm-exceptional.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

@@ -91,11 +91,11 @@ export const add_to_unlock_ = async (
   rewardMode,
   discountType,
   admin,
-  selectedProducts_Buy,
+  Buy_products,
   selectedCollections
 ) => {
 
-  console.log("this is the reward collection", selectedProducts_Buy)
+  console.log("this is the reward collection", Buy_products)
   let discountId = null;
   try {
     if (rewardType === "gift") {
@@ -103,7 +103,7 @@ export const add_to_unlock_ = async (
       const campaignId = upsellCampaign.id;
       const rewads_product = await Reward_collection(reward_collection, shop, accessToken, campaignId)
       await prisma.UpsellRewardProduct.createMany({
-        data: selectedProducts_Buy.map((p) => ({
+        data: Buy_products.map((p) => ({
           campaignId: upsellCampaign.id,
           productId: p.id,
           variantId: String(p.variantId),
@@ -179,10 +179,10 @@ export const add_to_unlock_ = async (
                   ? { quantity: String(goalQuantity) }
                   : { amount: String(goalAmounts) },
 
-                items: selectedProducts_Buy?.length
+                items: Buy_products?.length
                   ? {
                     products: {
-                      productsToAdd: selectedProducts_Buy.map(
+                      productsToAdd: Buy_products.map(
                         (item) => `gid://shopify/Product/${item.id}`
                       ),
                     },

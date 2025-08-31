@@ -18,7 +18,9 @@ import {
   ChoiceList,
   FormLayout,
   Banner,
+  Icon,
 } from "@shopify/polaris";
+import './_index/style.css'
 import { useEffect, useState } from "react";
 import BuyMore from "./components/BuyMore";
 import BogoUpsell from "./components/BogoUpsell";
@@ -30,6 +32,12 @@ import { buy_more_save_more } from "./utils/buy_more_save_more";
 import { Bogo } from "./utils/BoGo";
 import OrderBump from "./components/order_bump";
 import { OrderBump_backend } from "./utils/Bump_Order";
+import CheckoutUI from "./components/Checkout_upsell";
+import { checkout_upsell_backend } from "./utils/checkout_upsell";
+import Post_Perchess from "./components/Post_Perchess";
+import { Post_Perchess_backend } from "./utils/Post_Perchess_beckend";
+import { ButtonIcon, CartFilledIcon, DesktopIcon, HomeFilledIcon, ProductIcon } from "@shopify/polaris-icons";
+import HomePreview from "./components/preview/HomePreview";
 
 const SHOPIFY_API_VERSION = "2024-10";
 
@@ -123,6 +131,100 @@ const trigger_coll = async (collectionIds, shop, accessToken, campaignId) => {
   }
 };
 
+const trigger_all = async (shop, upsell_allproducts, accessToken, campaignId) => {
+  try {
+    let hasNextPage = true;
+    let cursor = null;
+
+    while (hasNextPage) {
+      const gql = `
+        query($cursor: String) {
+          products(first: 250, after: $cursor) {
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                variants(first: 1) {
+                  edges {
+                    node {
+                      id
+                      price
+                    }
+                  }
+                }
+                media(first: 1) {
+                  edges {
+                    node {
+                      preview {
+                        image {
+                          url
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `;
+
+      const response = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+        body: JSON.stringify({ query: gql, variables: { cursor } }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const products = result?.data?.products?.edges || [];
+
+      if (!products.length) {
+        console.warn("No products returned.");
+        break;
+      }
+
+      const productData = products.map(({ node }) => ({
+        campaignId,
+        productId: node.id.split("/").pop(),
+        productTitle: node.title,
+        handle: node.handle,
+        variantId: node.variants.edges?.[0]?.node?.id.split("/").pop() || null,
+        price: node.variants?.edges?.[0]?.node?.price || "0",
+        media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
+      }));
+
+      // ⚡ Insert into DB
+      if (productData.length > 0) {
+        await prisma.upsellTriggerProduct.createMany({
+          data: productData,
+          skipDuplicates: true, // ✅ avoids duplicate rows if run again
+        });
+      }
+
+      // pagination info
+      hasNextPage = result?.data?.products?.pageInfo?.hasNextPage || false;
+      cursor = result?.data?.products?.pageInfo?.endCursor || null;
+    }
+  } catch (error) {
+    console.error("Error in trigger_all:", error);
+    throw error;
+  }
+};
+
+
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
@@ -134,14 +236,13 @@ export const action = async ({ request }) => {
   const selectedTriggerType = formData.get("selectedTriggerType");
 
   const selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
-console.log(selectedProducts,"this BUY X Products ")
 
   const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
   const rewardProducts = JSON.parse(formData.get("rewardProducts") || "[]");
   const reward_collection = JSON.parse(formData.get("reward_collection") || "[]");
   const buyCollectionPicker_BOGO = JSON.parse(formData.get("buyCollectionPicker_BOGO") || "[]"); // Extract BOGO collection picker
   const buyProductPicker_BOGO = JSON.parse(formData.get("buyProductPicker_BOGO") || "[]"); // Extract BOGO product picker
-  const Buy_products = JSON.parse(formData.get("buyProductPicker") || "[]"); // Extract BOGO product picker
+  const Buy_products = JSON.parse(formData.get("Buy_productPicker") || "[]"); // Extract BOGO product picker
   const upsell_allproducts = formData.get("upsell_allproducts");
   const goalType = formData.get("goalType");
   const goalAmounts = formData.get("goalAmount") || "0";
@@ -152,11 +253,13 @@ console.log(selectedProducts,"this BUY X Products ")
   const rewardMode = formData.get("rewardMode");
   const discountCode = formData.get("discountCode");
   const discountType = formData.get("discountType");
+  const discount_Value = formData.get("discount_Value") || "0";
 
   const selectedProducts_Buy = JSON.parse(formData.get("selectedProducts_Buy") || "[]");
   const flameLevel = JSON.parse(formData.get("flameLevels") || "[]");
   const freeItems = JSON.parse(formData.get("freeItems") || "[]");
   const Rules = JSON.parse(formData.get("rules_BOGO") || "[]");
+  const checkout_products = JSON.parse(formData.get("checkout_products") || "[]");
   //Order Pump id 4
   const bump_title = formData.get("bump_title");
   const bump_description = formData.get("bump_description");
@@ -224,8 +327,11 @@ console.log(selectedProducts,"this BUY X Products ")
     });
     const collectionIds = selectedCollections.map(col => col.id);
     await trigger_coll(collectionIds, shop, accessToken, upsellCampaign.id);
+  } else {
+    await trigger_all(shop, upsell_allproducts, accessToken, upsellCampaign.id);
   }
-  console.log(selectedProducts_Buy, "main page action Page ")
+
+
   if (selectedCampaignType === "add_to_unlock") {
     await add_to_unlock_(
       shop,
@@ -242,7 +348,7 @@ console.log(selectedProducts,"this BUY X Products ")
       rewardMode,
       discountType,
       admin,
-      selectedProducts_Buy,
+      Buy_products,
       selectedCollections
     );
   } else if (selectedCampaignType === "buy_more_save_more") {
@@ -280,6 +386,31 @@ console.log(selectedProducts,"this BUY X Products ")
       precheck,
       tick_products,
       offerType,
+    )
+  } else if (selectedCampaignType === "checkout_upsell") {
+    console.log(selectedProducts, ",,,<<<<<<<<<<<<<===============")
+    checkout_upsell_backend(
+      admin,
+      upsellCampaign,
+      rewardType,
+      rewardMode,
+      discountType,
+      discount_Value,
+      checkout_products,
+      selectedProducts,
+
+    )
+  } else if (selectedCampaignType === "post_purchase") {
+    Post_Perchess_backend(
+      admin,
+      upsellCampaign,
+      rewardType,
+      rewardMode,
+      discountType,
+      discount_Value,
+      checkout_products,
+      selectedProducts,
+
     )
   }
 
@@ -346,6 +477,7 @@ export default function UpsellCampaignForm() {
   const [showLockedGoals, setShowLockedGoals] = useState(false);
   const [badgeImage, setBadgeImage] = useState(null);
   const [rewardCollection, setRewardCollection] = useState([]);
+  const [checkout_products, setCheckout_Products] = useState([]);
 
   const [barStyle, setBarStyle] = useState("thin");
   const [barRadius, setBarRadius] = useState("rounded");
@@ -639,11 +771,11 @@ export default function UpsellCampaignForm() {
 
 
   const handleSubmit = () => {
+
     if (!campaignName) {
       shopify.toast.show("Campaign name is required.", { isError: true });
       return;
     }
-
     if (selectedCampaignType === "add_to_unlock") {
       console.log(discountType, "thsi New VAlue")
       if (
@@ -663,13 +795,11 @@ export default function UpsellCampaignForm() {
         return;
       }
     }
-
     if (selectedCampaignType === "buy_one_get_one" && (!freeItems.length || !rules.length)) {
 
       shopify.toast.show("BOGO requires free items and rules.", { isError: true });
       return;
     }
-
     if (selectedCampaignType === "buy_more_save_more") {
       // 🔹 Validate Buy More Save More + Fixed
       if (rewardMode === "fixed") {
@@ -736,6 +866,8 @@ export default function UpsellCampaignForm() {
     formData.append("targetCountries", JSON.stringify(targetCountries));
     formData.append("excludeCountries", JSON.stringify(excludeCountries));
     formData.append("OfferType", offerType);
+    formData.append("checkout_products", JSON.stringify(checkout_products));
+
 
     if (selectedTriggerType === "products") {
       formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
@@ -750,8 +882,9 @@ export default function UpsellCampaignForm() {
     formData.append("goalAmount", goalAmount || "0");
     formData.append("goalquantity", goalquantity || "0");
     formData.append("currency", currency);
+    formData.append("discount_Value", discount_Value || "0");
     formData.append("discountCode", discountCode);
-    formData.append("discountType", discountType);
+    formData.append("discountType", discountType) || "percentage";
     formData.append("rewardProducts", JSON.stringify(rewardProducts));
     formData.append("reward_collection", JSON.stringify(rewardCollection));
     formData.append("selectedProducts_Buy", JSON.stringify(selectedProducts_Buy));
@@ -786,12 +919,15 @@ export default function UpsellCampaignForm() {
     { label: "Buy More Save More", value: "buy_more_save_more" },
     { label: "Buy One Get One", value: "buy_one_get_one" },
     { label: "Order Bump", value: "order_bump" },
+    { label: "Checkout Upsell", value: "checkout_upsell" },
+    { label: "Post Purchase", value: "post_purchase" },
   ];
   const currencies = [
     { label: "MAD", value: "MAD" },
     { label: "USD", value: "USD" },
     { label: "EUR", value: "EUR" },
   ];
+
 
   // Order Bump state variables
   const [addOnProduct, setAddOnProduct] = useState(null);
@@ -1297,6 +1433,31 @@ export default function UpsellCampaignForm() {
                   setOfferType={setOfferType}
                 />
               )}
+              {selectedCampaignType === "checkout_upsell" && (
+                <CheckoutUI
+                  discountType={discountType}
+                  setDiscountType={setDiscountType}
+                  discountValue={discount_Value}
+                  setDiscountValue={setDiscount_Value}
+                  setUpsellType={setRewardMode}
+                  upsellType={rewardMode}
+                  selectedProducts={checkout_products}
+                  setSelectedProducts={setCheckout_Products}
+                />
+              )}
+              {selectedCampaignType === "post_purchase" && (
+                <Post_Perchess
+                  discountType={discountType}
+                  setDiscountType={setDiscountType}
+                  discountValue={discount_Value}
+                  setDiscountValue={setDiscount_Value}
+                  setUpsellType={setRewardMode}
+                  upsellType={rewardMode}
+                  selectedProducts={checkout_products}
+                  setSelectedProducts={setCheckout_Products}
+                />
+              )}
+
               <Card>
                 <BlockStack gap="200">
                   <Text variant="headingMd">Progress Bar Design</Text>
@@ -1389,30 +1550,39 @@ export default function UpsellCampaignForm() {
             </BlockStack>
           </Layout.Section>
           <Layout.Section variant="oneHalf">
-            <div style={{ position: "sticky", top: "20px" }}>
+            <div className="sticky-section">
               <BlockStack gap="400">
-                <Card>
-                  <BlockStack gap="200">
-                    <ChoiceList
-                      title="Select Campaign Placement"
-                      choices={[
-                        { label: "Homepage", value: "home" },
-                        { label: "Checkout", value: "checkout" },
-                        { label: "Cart Page", value: "cart" },
-                      ]}
-                      selected={placement}
-                      allowMultiple
-                      onChange={setPlacement}
-                    />
-                  </BlockStack>
-                </Card>
                 <Card title="Live Preview">
                   <BlockStack gap="200">
-                    <Text variant="headingSm">Preview</Text>
-                    <Text>{formattedGoalText}</Text>
-                    <Text>{formattedPreGoalText}</Text>
+                    <InlineStack align="space-between" gap={300}>
+                      <Text variant="headingSm">Preview</Text>
+                      <InlineStack align="center" gap={200}>
+                        {placement.includes("home") && (
+                          <Button><Icon tone="subdued" source={HomeFilledIcon} /></Button>
+                        )}
+                        {placement.includes("product") && (
+                          <Button><Icon tone="subdued" source={ProductIcon} /></Button>
+                        )}
+                        {placement.includes("cart") && (
+                          <Button><Icon tone="subdued" source={CartFilledIcon} /></Button>
+                        )}
+                        {placement.includes("checkout") && (
+                          <Button><Icon tone="subdued" source={CheckoutIcon} /></Button>
+                        )}
+                      </InlineStack>
+                    </InlineStack>
+
+                    {/* ✅ Render dynamic preview */}
+                    {placement.includes("home") && <HomePreview />}
+                    {/* {placement.includes("product") && <ProductPagePreview />}
+                    {placement.includes("cart") && <CartPagePreview />}
+                    {placement.includes("checkout") && <CheckoutPreview />}
+                    {placement.includes("post_purchase") && <PostPurchasePreview />} */}
+
+                
                   </BlockStack>
                 </Card>
+
               </BlockStack>
 
             </div>
