@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "bc86448bb3e4820788b5d259f1d20323"
-application_url = "https://processes-beneath-worm-exceptional.trycloudflare.com"
+application_url = "https://rebound-patrick-spec-rock.trycloudflare.com"
 embedded = true
 name = "dragon-bundles"
 handle = "dragon-bundles"
@@ -18,11 +18,7 @@ api_version = "2025-04"
 scopes = "write_discounts,write_products,read_publications,write_publications"
 
 [auth]
-redirect_urls = [
-  "https://processes-beneath-worm-exceptional.trycloudflare.com/auth/callback",
-  "https://processes-beneath-worm-exceptional.trycloudflare.com/auth/shopify/callback",
-  "https://processes-beneath-worm-exceptional.trycloudflare.com/api/auth/callback"
-]
+redirect_urls = ["https://rebound-patrick-spec-rock.trycloudflare.com/auth/callback", "https://rebound-patrick-spec-rock.trycloudflare.com/auth/shopify/callback", "https://rebound-patrick-spec-rock.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

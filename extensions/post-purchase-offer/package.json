@@ -1,5 +1,5 @@
 {
-  "name": "my-post-purchase-ui-extension",
+  "name": "post-purchase-offer",
   "private": true,
   "version": "1.0.0",
   "main": "dist/main.js",

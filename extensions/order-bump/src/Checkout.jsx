@@ -35,7 +35,7 @@ function Extension() {
     .filter(Boolean);
 
 
-  const domain = "https://brain-hz-detailed-behind.trycloudflare.com";
+  const domain = "https://rebound-patrick-spec-rock.trycloudflare.com";
 
   useEffect(() => {
     async function fetchData() {

@@ -23,7 +23,13 @@ import {
   View,
 } from "@shopify/post-purchase-ui-extensions-react";
 
-
+/**
+ * Entry point for the `ShouldRender` Extension Point.
+ *
+ * Returns a value indicating whether or not to render a PostPurchase step, and
+ * optionally allows data to be stored on the client for use in the `Render`
+ * extension point.
+ */
  extend("Checkout::PostPurchase::ShouldRender", async ({ storage }) => {
   const initialState = await getRenderData();
   const render = true;
@@ -45,14 +51,20 @@ async function getRenderData() {
   };
 }
 
-
+/**
+* Entry point for the `Render` Extension Point
+*
+* Returns markup composed of remote UI components.  The Render extension can
+* optionally make use of data stored during `ShouldRender` extension point to
+* expedite time-to-first-meaningful-paint.
+*/
 render("Checkout::PostPurchase::Render", App);
 
 // Top-level React component
 export function App({ extensionPoint, storage }) {
-
-
   const initialState = storage.initialData;
+
+  
 
   return (
       <BlockStack spacing="loose">
