@@ -68,10 +68,7 @@ export function App({ extensionPoint, storage }) {
 
   return (
       <BlockStack spacing="loose">
-      <CalloutBanner title="Post-purchase extension template">
-          Use this template as a starting point to build a great post-purchase
-          extension.
-      </CalloutBanner>
+
       <Layout
           maxInlineSize={0.95}
           media={[
@@ -80,28 +77,8 @@ export function App({ extensionPoint, storage }) {
           { viewportSize: "large", sizes: [400, 30, 0.33] },
           ]}
       >
-          <View>
-          <Image source="https://cdn.shopify.com/static/images/examples/img-placeholder-1120x1120.png" />
-          </View>
-          <View />
-          <BlockStack spacing="xloose">
-          <TextContainer>
-              <Heading>Post-purchase extension</Heading>
-              <TextBlock>
-              Here you can cross-sell other products, request a product review
-              based on a previous purchase, and much more.
-              </TextBlock>
-          </TextContainer>
-          <Button
-              submit
-              onPress={() => {
-              // eslint-disable-next-line no-console
-              console.log(`Extension point ${extensionPoint}`, initialState);
-              }}
-          >
-              Primary button
-          </Button>
-          </BlockStack>
+
+      
       </Layout>
       </BlockStack>
   );

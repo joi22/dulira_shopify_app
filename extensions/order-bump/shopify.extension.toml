@@ -6,29 +6,25 @@
 api_version = "2025-07"
 
 [[extensions]]
-name = "Order_bump"
+name = "Dragon Upsell Engine"
 handle = "order-bump"
+
+uid = "4cdfbd05-2386-d837-891e-758373ace0a9db545297"
+
 type = "ui_extension"
 
-
-# Controls where in Shopify your extension will be injected,
-# and the file that contains your extension’s source code. Learn more:
-# https://shopify.dev/docs/api/checkout-ui-extensions/unstable/extension-targets-overview
+[[extensions.targeting]]
+target = "purchase.checkout.block.render"
+module = "./src/Checkout.jsx"
+export = "CheckoutUpsell"
 
 [[extensions.targeting]]
+target = "purchase.thank-you.cart-line-list.render-after"
 module = "./src/Checkout.jsx"
-target = "purchase.checkout.block.render"
-  export = "checkoutUI"
-
-[[extensions.target]]
-module = "./src/Checkout.jsx"
-target = "purchase.thank-you.block.render"
-export = "ThenkyouUI"
+export = "ThankYouUpsell"
 
 
 [extensions.capabilities]
-# Gives your extension access to directly query Shopify’s storefront API.
-# https://shopify.dev/docs/api/checkout-ui-extensions/unstable/configuration#api-access
 api_access = true
 network_access = true
 

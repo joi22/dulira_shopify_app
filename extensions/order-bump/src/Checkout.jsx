@@ -1,23 +1,20 @@
 import {
   reactExtension,
-  Banner,
   BlockStack,
+  Banner,
   Button,
-  Image,
   Text,
+  Image,
   InlineStack,
   useApi,
-  useApplyCartLinesChange,
   useCartLines,
-  useTranslate,
+  Layout,
+  useApplyCartLinesChange,
 } from "@shopify/ui-extensions-react/checkout";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
-export default reactExtension("purchase.checkout.block.render", () => <Extension />);
-
-
-function Extension() {
-  const translate = useTranslate();
+/* ---------------- CHECKOUT UPSELL ---------------- */
+function CheckoutUpsellUI() {
   const { shop } = useApi();
   const applyCartLinesChange = useApplyCartLinesChange();
   const lines = useCartLines();
@@ -27,172 +24,140 @@ function Extension() {
   const [error, setError] = useState(null);
 
   const productIds = lines
-    .map((item) => {
-      const id = item?.merchandise?.product?.id;
-      if (!id || !id.includes("/")) return null;
-      return id.split("/").pop();
-    })
+    .map((l) => l?.merchandise?.product?.id?.split("/").pop())
     .filter(Boolean);
 
-
-  const domain = "https://rebound-patrick-spec-rock.trycloudflare.com";
+  const domain = "https://arabia-losing-wednesday-superintendent.trycloudflare.com";
 
   useEffect(() => {
     async function fetchData() {
       try {
-        if (productIds.length === 0) {
+        if (!productIds.length) {
           setLoading(false);
           return;
         }
         const api = `${domain}/api/products/${productIds.join(",")}/${shop.myshopifyDomain}`;
-        const response = await fetch(api);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        console.log("Fetched API data:", data);
-        setApiData(data);
+        const res = await fetch(api);
+        if (!res.ok) throw new Error(`Fetch error ${res.status}`);
+        setApiData(await res.json());
       } catch (err) {
-        console.error("API fetch failed:", err);
+        setError("Could not load upsell");
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [productIds, shop.myshopifyDomain]);
+  }, [productIds.join(","), shop.myshopifyDomain]);
 
-  // Add reward to order
   const handleAddToOrder = async (reward) => {
-    if (!reward?.variantId) {
-      console.error("Invalid variant ID");
-      setError("Cannot add product to cart: Invalid variant");
-      return;
-    }
     try {
       const result = await applyCartLinesChange({
         type: "addCartLine",
         merchandiseId: `gid://shopify/ProductVariant/${reward.variantId}`,
         quantity: 1,
-        attributes: [{ key: "checkout_upsell", value: reward.title || "Upsell" }],
       });
-      if (result.type === "error") {
-        console.error("Failed to add to cart:", result.message);
-        setError("Failed to add item to cart");
-      } else {
-        console.log("Checkout Upsell added:", result);
-      }
-    } catch (err) {
-      console.error("Cart update failed:", err);
-      setError("Error updating cart");
+      if (result.type === "error") setError("Failed to add item");
+    } catch {
+      setError("Error updating order");
     }
   };
 
-  if (loading) {
-    return <Text>Loading offers...</Text>;
-  }
+  if (loading) return <Text>Loading offer…</Text>;
+  if (error) return <Banner status="critical">{error}</Banner>;
 
-  if (error) {
-    return (
-      <Banner status="critical" title="Error">
-        {error}
-      </Banner>
-    );
-  }
+  const offer = apiData?.upsellTriggerProduct?.[0]?.campaign;
+  if (!offer?.rewardProducts?.length) return <Text>No upsell available</Text>;
 
-  if (!apiData?.upsellTriggerProduct?.length) {
-    return <Text>No upsell available for these products.</Text>;
-  }
+  const reward = offer.rewardProducts[0];
 
-  const latestOffer = apiData.upsellTriggerProduct[apiData.upsellTriggerProduct.length - 1];
-  if (!latestOffer || !latestOffer.campaign) {
-    return <Text>No valid offer available.</Text>;
-  }
+  return (
+  
 
-  const rewardProducts = latestOffer.campaign.rewardProducts || [];
-  const currency = apiData.currency || "USD";
+      <BlockStack spacing="tight">
+        <Banner title="Special Checkout Offer" />
+        <InlineStack spacing="loose" blockAlign="center">
+          <Image aspectRatio={1}
+            fit="cover"
+             source={reward.media} description={reward.productTitle} />
+          <BlockStack spacing="extraTight">
+            <Text>{reward.productTitle}</Text>
+            <Text>{reward.price} {apiData.currency || "USD"}</Text>
+            <Button onPress={() => handleAddToOrder(reward)}>Add to Order</Button>
+          </BlockStack>
+        </InlineStack>
+      </BlockStack>
+   
+  );
+}
 
-  console.log("Reward Mode:", latestOffer.campaign.rewardMode);
-  console.log("Reward Products:", rewardProducts);
+/* ---------------- THANK YOU UPSELL ---------------- */
+function ThankYouUpsellUI() {
+  const { shop } = useApi();
+  const lines = useCartLines();
+  const [apiData, setApiData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [show, setShow] = useState(true);
+
+  const productIds = lines
+    .map((l) => l?.merchandise?.product?.id?.split("/").pop())
+    .filter(Boolean);
+
+  const domain = "https://arabia-losing-wednesday-superintendent.trycloudflare.com";
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        if (!productIds.length) {
+          setLoading(false);
+          return;
+        }
+        const api = `${domain}/api/products/${productIds.join(",")}/${shop.myshopifyDomain}`;
+        const res = await fetch(api);
+        if (!res.ok) throw new Error(`Fetch error ${res.status}`);
+        setApiData(await res.json());
+      } catch (err) {
+        setError("Could not load thank-you upsell");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [productIds.join(","), shop.myshopifyDomain]);
+
+  if (loading) return <Text>Loading offer…</Text>;
+  if (error) return <Banner status="critical">{error}</Banner>;
+  if (!show) return null;
+
+  const offer = apiData?.upsellTriggerProduct?.[0]?.campaign;
+  if (!offer?.rewardProducts?.length) return <Text>No thank-you offer</Text>;
+
+  const reward = offer.rewardProducts[0];
+  const checkoutUrl = `/cart/${reward.variantId}:1`;
 
   return (
     <BlockStack spacing="tight">
-      <Banner title="Special Offer" />
+      <Text size="large" emphasis="bold">🎁 Special Thank You Offer!</Text>
+      <Image source={reward.media} description={reward.productTitle} />
+      <Text>{reward.productTitle}</Text>
+      <Text>{reward.price} {apiData.currency || "USD"}</Text>
 
-      {/* --- Checkout Upsell --- */}
-      {latestOffer.campaign.type === "checkout_upsell" && rewardProducts.length > 0 && (
-        <BlockStack spacing="tight" border="base" padding="loose">
-          <Text size="medium" emphasis="bold">
-            Complete your order with this deal
-          </Text>
-          <Text tone="subdued">
-            Save {latestOffer.campaign.discount_Value}
-            {latestOffer.campaign.discountType === "percentage" ? "%" : ""} when you add this now
-          </Text>
-
-          {(latestOffer.campaign.rewardMode === "flame" ? rewardProducts : [rewardProducts[0]])
-            .filter(Boolean) // Ensure no undefined items
-            .map((reward) => {
-              if (!reward?.id || !reward?.price) {
-                console.warn("Invalid reward product:", reward);
-                return null;
-              }
-              const originalPrice = parseFloat(reward.price).toFixed(2);
-              const discountedPrice =
-                latestOffer.campaign.discountType === "percentage"
-                  ? (
-                      reward.price -
-                      (reward.price * parseFloat(latestOffer.campaign.discount_Value)) / 100
-                    ).toFixed(2)
-                  : (reward.price - parseFloat(latestOffer.campaign.discount_Value)).toFixed(2);
-
-              return (
-                <BlockStack key={reward.id} spacing="tight">
-                  <InlineStack spacing="tight" blockAlign="center">
-                    <Image
-                      source={reward.media || ""}
-                      description={reward.title || "Product image"}
-                      style={{ width: "80px", height: "80px" }}
-                    />
-                    <BlockStack spacing="extraTight">
-                      <Text size="medium" emphasis="bold">
-                        {reward.title || "Product"}
-                      </Text>
-                      <Text size="large" tone="positive">
-                        {discountedPrice} {currency}
-                      </Text>
-                      <Text tone="subdued" strikethrough>
-                        {originalPrice} {currency}
-                      </Text>
-                    </BlockStack>
-                    <Button onPress={() => handleAddToOrder(reward)}>Add to Order</Button>
-                  </InlineStack>
-                </BlockStack>
-              );
-            })}
-        </BlockStack>
-      )}
-
-      {/* --- Order Bump Fallback --- */}
-      {latestOffer.campaign.orderBump?.length > 0 && (
-        <BlockStack border="dotted" padding="tight" spacing="tight">
-          {latestOffer.campaign.orderBump[0]?.iconUrl && (
-            <Image
-              source={latestOffer.campaign.orderBump[0].iconUrl}
-              description={latestOffer.campaign.orderBump[0].offerTitle || "Offer"}
-              style={{ width: "80px", height: "80px" }}
-            />
-          )}
-          {latestOffer.campaign.orderBump[0]?.offerTitle && (
-            <Text size="medium">{latestOffer.campaign.orderBump[0].offerTitle}</Text>
-          )}
-          {latestOffer.campaign.orderBump[0]?.offerDescription && (
-            <Text tone="subdued">{latestOffer.campaign.orderBump[0].offerDescription}</Text>
-          )}
-          {rewardProducts[0] && (
-            <Button onPress={() => handleAddToOrder(rewardProducts[0])}>
-              Add this to my order
-            </Button>
-          )}
-        </BlockStack>
-      )}
+      <InlineStack spacing="loose" alignment="center">
+        {/* redirect via anchor/button since useRedirect not supported here */}
+        <Button to={checkoutUrl}>✅ Yes, add it</Button>
+        <Button kind="secondary" onPress={() => setShow(false)}>❌ No thanks</Button>
+      </InlineStack>
     </BlockStack>
   );
 }
+
+/* ---------------- EXPORTS FOR TARGETS ---------------- */
+export const CheckoutUpsell = reactExtension(
+  "purchase.checkout.block.render",
+  () => <CheckoutUpsellUI />
+);
+
+export const ThankYouUpsell = reactExtension(
+  "purchase.thank-you.cart-line-list.render-after",
+  () => <ThankYouUpsellUI />
+);
