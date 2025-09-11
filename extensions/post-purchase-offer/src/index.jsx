@@ -1,12 +1,4 @@
-/**
- * Extend Shopify Checkout with a custom Post Purchase user experience.
- * This template provides two extension points:
- *
- *  1. ShouldRender - Called first, during the checkout process, when the
- *     payment page loads.
- *  2. Render - If requested by `ShouldRender`, will be rendered after checkout
- *     completes
- */
+
 import React from 'react';
 
 import {
@@ -21,28 +13,23 @@ import {
   TextBlock,
   TextContainer,
   View,
+  Text,
 } from "@shopify/post-purchase-ui-extensions-react";
 
-/**
- * Entry point for the `ShouldRender` Extension Point.
- *
- * Returns a value indicating whether or not to render a PostPurchase step, and
- * optionally allows data to be stored on the client for use in the `Render`
- * extension point.
- */
- extend("Checkout::PostPurchase::ShouldRender", async ({ storage }) => {
-  const initialState = await getRenderData();
-  const render = true;
 
-  if (render) {
-    // Saves initial state, provided to `Render` via `storage.initialData`
-    await storage.update(initialState);
-  }
+extend("Checkout::PostPurchase::ShouldRender", async ({ storage, inputData }) => {
+  const shopDomain = inputData.shop.domain;
+  const productIds = inputData.initialPurchase.lineItems.map(
+    (li) => li.product.variant.id
+  );
 
-  return {
-    render,
-  };
+  const res = await fetch(`https://facilities-generates-thing-opposed.trycloudflare.com/api/products/${productIds}/${shopDomain}`);
+  const data = await res.json();
+console.log(data,"<<<<<<<_____",productIds)
+  await storage.update({ offer: data });
+  return { render: true };
 });
+
 
 // Simulate results of network call, etc.
 async function getRenderData() {
@@ -58,28 +45,33 @@ async function getRenderData() {
 * optionally make use of data stored during `ShouldRender` extension point to
 * expedite time-to-first-meaningful-paint.
 */
-render("Checkout::PostPurchase::Render", App);
+render("Checkout::PostPurchase::Render", ({ storage }) => {
+  const { offer } = storage.initialData || {};
+console.log(offer,"this render ")
+  if (!offer) return <Text>No offer available</Text>;
 
-// Top-level React component
-export function App({ extensionPoint, storage }) {
-  const initialState = storage.initialData;
+  const reward = offer.rewardProducts[0];
 
-  
+  const handleAccept = () => ({
+    type: "addLineItems",
+    addedLineItems: [
+      {
+        variantId: reward.variantId,
+        quantity: 1,
+      },
+    ],
+  });
+
+  const handleDecline = () => ({ type: "dismiss" });
 
   return (
-      <BlockStack spacing="loose">
+    <BlockStack spacing="loose">
+      <Text size="large" emphasis="bold">🎁 Special Offer!</Text>
+      <Text>{reward.productTitle}</Text>
+      <Text>{reward.price} USD</Text>
 
-      <Layout
-          maxInlineSize={0.95}
-          media={[
-          { viewportSize: "small", sizes: [1, 30, 1] },
-          { viewportSize: "medium", sizes: [300, 30, 0.5] },
-          { viewportSize: "large", sizes: [400, 30, 0.33] },
-          ]}
-      >
-
-      
-      </Layout>
-      </BlockStack>
+      <Button onPress={handleAccept}>✅ Yes, add it</Button>
+      <Button onPress={handleDecline}>❌ No thanks</Button>
+    </BlockStack>
   );
-}
+});

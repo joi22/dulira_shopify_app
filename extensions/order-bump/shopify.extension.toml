@@ -19,9 +19,10 @@ module = "./src/Checkout.jsx"
 export = "CheckoutUpsell"
 
 [[extensions.targeting]]
-target = "purchase.thank-you.cart-line-list.render-after"
+target = "purchase.thank-you.block.render"
 module = "./src/Checkout.jsx"
 export = "ThankYouUpsell"
+
 
 
 [extensions.capabilities]

@@ -9,7 +9,9 @@ import {
   useApi,
   useCartLines,
   Layout,
+
   useApplyCartLinesChange,
+  useSubscription,
 } from "@shopify/ui-extensions-react/checkout";
 import { useState, useEffect } from "react";
 
@@ -27,7 +29,7 @@ function CheckoutUpsellUI() {
     .map((l) => l?.merchandise?.product?.id?.split("/").pop())
     .filter(Boolean);
 
-  const domain = "https://arabia-losing-wednesday-superintendent.trycloudflare.com";
+  const domain = "https://facilities-generates-thing-opposed.trycloudflare.com";
 
   useEffect(() => {
     async function fetchData() {
@@ -71,39 +73,54 @@ function CheckoutUpsellUI() {
   const reward = offer.rewardProducts[0];
 
   return (
-  
 
-      <BlockStack spacing="tight">
-        <Banner title="Special Checkout Offer" />
-        <InlineStack spacing="loose" blockAlign="center">
-          <Image aspectRatio={1}
-            fit="cover"
-             source={reward.media} description={reward.productTitle} />
-          <BlockStack spacing="extraTight">
-            <Text>{reward.productTitle}</Text>
-            <Text>{reward.price} {apiData.currency || "USD"}</Text>
-            <Button onPress={() => handleAddToOrder(reward)}>Add to Order</Button>
-          </BlockStack>
-        </InlineStack>
-      </BlockStack>
-   
+
+    <BlockStack spacing="tight">
+      <Banner title="Special Checkout Offer" />
+      <InlineStack spacing="loose" blockAlign="center">
+        <Image aspectRatio={1}
+          fit="cover"
+          source={reward.media} description={reward.productTitle} />
+        <BlockStack spacing="extraTight">
+          <Text>{reward.productTitle}</Text>
+          <Text>{reward.price} {apiData.currency || "USD"}</Text>
+          <Button onPress={() => handleAddToOrder(reward)}>Add to Order</Button>
+        </BlockStack>
+      </InlineStack>
+    </BlockStack>
+
   );
 }
 
+
+export const CheckoutUpsell = reactExtension(
+  "purchase.checkout.block.render",
+  () => <CheckoutUpsellUI />
+);
+
 /* ---------------- THANK YOU UPSELL ---------------- */
+
+
 function ThankYouUpsellUI() {
+
+
+
+
+
   const { shop } = useApi();
   const lines = useCartLines();
   const [apiData, setApiData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [show, setShow] = useState(true);
-
+  const { orderConfirmation } = useApi();
+  const subscriptionResult = useSubscription(orderConfirmation);
+  const id = subscriptionResult.order.id.split('/').pop();
   const productIds = lines
     .map((l) => l?.merchandise?.product?.id?.split("/").pop())
     .filter(Boolean);
 
-  const domain = "https://arabia-losing-wednesday-superintendent.trycloudflare.com";
+  const domain = "https://facilities-generates-thing-opposed.trycloudflare.com";
 
   useEffect(() => {
     async function fetchData() {
@@ -112,7 +129,7 @@ function ThankYouUpsellUI() {
           setLoading(false);
           return;
         }
-        const api = `${domain}/api/products/${productIds.join(",")}/${shop.myshopifyDomain}`;
+        const api = `${domain}/api/products/${productIds}/${shop.myshopifyDomain}`;
         const res = await fetch(api);
         if (!res.ok) throw new Error(`Fetch error ${res.status}`);
         setApiData(await res.json());
@@ -123,7 +140,7 @@ function ThankYouUpsellUI() {
       }
     }
     fetchData();
-  }, [productIds.join(","), shop.myshopifyDomain]);
+  }, [productIds, shop.myshopifyDomain]);
 
   if (loading) return <Text>Loading offer…</Text>;
   if (error) return <Banner status="critical">{error}</Banner>;
@@ -133,31 +150,97 @@ function ThankYouUpsellUI() {
   if (!offer?.rewardProducts?.length) return <Text>No thank-you offer</Text>;
 
   const reward = offer.rewardProducts[0];
+
+  const handleUpsell = async () => {
+    try {
+      const res = await fetch(`${domain}/api/checkout_create/${reward.variantId}/${shop.myshopifyDomain}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variantId: reward.variantId, OrderId: id }),
+      });
+
+      const data = await res.json();
+      console.log(data, ",,,,>>>>>>>>>.......")
+      if (data.webUrl) {
+        window.location.href = data.webUrl; // redirect customer to new checkout
+      } else {
+        setError("Could not create upsell checkout");
+      }
+    } catch (err) {
+      console.error("Upsell error", err);
+      setError("Could not process upsell");
+    }
+  };
   const checkoutUrl = `/cart/${reward.variantId}:1`;
 
   return (
     <BlockStack spacing="tight">
-      <Text size="large" emphasis="bold">🎁 Special Thank You Offer!</Text>
+      <Text size="large" emphasis="bold">
+        🎁 Special Thank You Offer!
+      </Text>
       <Image source={reward.media} description={reward.productTitle} />
       <Text>{reward.productTitle}</Text>
-      <Text>{reward.price} {apiData.currency || "USD"}</Text>
+      <Text>
+        {reward.price} {apiData.currency || "USD"}
+      </Text>
 
       <InlineStack spacing="loose" alignment="center">
-        {/* redirect via anchor/button since useRedirect not supported here */}
-        <Button to={checkoutUrl}>✅ Yes, add it</Button>
-        <Button kind="secondary" onPress={() => setShow(false)}>❌ No thanks</Button>
+        <Button onPress={checkoutUrl}>✅ Yes, add it</Button>
+        <Button kind="secondary" onPress={() => setShow(false)}>
+          ❌ No thanks
+        </Button>
       </InlineStack>
     </BlockStack>
   );
 }
 
-/* ---------------- EXPORTS FOR TARGETS ---------------- */
-export const CheckoutUpsell = reactExtension(
-  "purchase.checkout.block.render",
-  () => <CheckoutUpsellUI />
-);
-
+/* ---------------- EXPORT FOR TARGET ---------------- */
 export const ThankYouUpsell = reactExtension(
-  "purchase.thank-you.cart-line-list.render-after",
+  "purchase.thank-you.block.render",
   () => <ThankYouUpsellUI />
 );
+
+
+
+
+// function PostPurchaseUpsellUI() {
+//   const applyCartLinesChange = useApplyCartLinesChange();
+//   const { query } = useApi();
+//   const [loading, setLoading] = useState(false);
+
+//   const offer = {
+//     title: "The Collection Snowboard: Liquid",
+//     price: "MAD 674.96",
+//     variantId: "gid://shopify/ProductVariant/1234567890",
+//     media: "https://cdn.shopify.com/snowboard.png",
+//   };
+
+//   const handleAdd = async () => {
+//     setLoading(true);
+//     await applyCartLinesChange({
+//       type: "addCartLine",
+//       merchandiseId: offer.variantId,
+//       quantity: 1,
+//     });
+//     setLoading(false);
+//   };
+
+//   return (
+//     <BlockStack spacing="loose">
+//       <Text size="large" emphasis="bold">
+//         🎁 Special Post-purchase Upsell!
+//       </Text>
+//       <Image source={offer.media} description={offer.title} />
+//       <Text>{offer.title}</Text>
+//       <Text>{offer.price}</Text>
+//       <Button onPress={handleAdd} loading={loading}>
+//         Add to order
+//       </Button>
+//     </BlockStack>
+//   );
+// }
+
+// export const PostPurchaseUpsellExtension = reactExtension(
+//   "purchase.post-purchase.render",
+//   () => <PostPurchaseUpsellUI />
+// );
