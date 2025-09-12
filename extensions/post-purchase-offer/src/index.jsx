@@ -23,7 +23,7 @@ extend("Checkout::PostPurchase::ShouldRender", async ({ storage, inputData }) =>
     (li) => li.product.variant.id
   );
 
-  const res = await fetch(`https://facilities-generates-thing-opposed.trycloudflare.com/api/products/${productIds}/${shopDomain}`);
+  const res = await fetch(`https://eddie-protected-vast-felt.trycloudflare.com /api/products/${productIds}/${shopDomain}`);
   const data = await res.json();
 console.log(data,"<<<<<<<_____",productIds)
   await storage.update({ offer: data });

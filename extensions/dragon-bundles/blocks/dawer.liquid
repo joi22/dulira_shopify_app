@@ -1,7 +1,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
     // Configuration
-    const App_Domain = window.App_Domain || 'https://facilities-generates-thing-opposed.trycloudflare.com';
+    const App_Domain ='https://eddie-protected-vast-felt.trycloudflare.com';
     const shop = window.Shopify?.shop || document.querySelector('meta[name="shopify-shop-domain"]')?.content;
     if (!shop) {
       console.error('Shopify shop domain not found');
@@ -289,78 +289,78 @@
       const totalItems = nonRewardItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
       console.log(totalItems, 'Total Items==================', rules, freeItems);
 
-    if (rules.some(rule => totalItems === parseFloat(rule.buyQty))) {
-  const freeContainer = document.querySelector('cart-drawer-items');
+      if (rules.some(rule => totalItems === parseFloat(rule.buyQty))) {
+      const freeContainer = document.querySelector('cart-drawer-items');
 
-  // Create container only once
-  let createFreeContainer = freeContainer.querySelector('.free_container');
-  if (!createFreeContainer) {
-    createFreeContainer = document.createElement('div');
-    createFreeContainer.className = 'free_container';
-    freeContainer.appendChild(createFreeContainer);
-  }
-
-  // Clear previous radios
-  createFreeContainer.innerHTML = '';
-
-// ✅ Remove duplicates by variantId
-const uniqueFreeItems = freeItems.filter(
-  (item, index, self) =>
-    index === self.findIndex((t) => t.variantId === item.variantId)
-);
-
-// Add free items with radio buttons
-uniqueFreeItems.forEach((item) => {
-  const freeproducts = document.createElement('div');
-  freeproducts.className = 'free_products';
-  freeproducts.innerHTML = `
-    <img src="${sanitizeHTML(item.media || 'https://via.placeholder.com/80')}"
-        alt="${sanitizeHTML(item.title)}"
-        style="width: 60px; object-fit: cover; border-radius: 6px; margin-bottom: 6px;" />
-    <div style="font-size: 12px;">
-      <strong>${sanitizeHTML(item.title)}</strong><br/>
-    </div>
-    <input type="radio"
-          name="free_product_choice" 
-          value="${item.variantId}" id="free_product_${item.variantId}"
-          ${cartVariantIds.includes(item.variantId) ? 'disabled' : ''}
-          style="margin-left: 10px; width: 20px; height: 20px;" />`;
-
-  createFreeContainer.appendChild(freeproducts);
-});
-
-
-  // Event listener for all radio buttons
-  const addcartfreeRadios = document.querySelectorAll('[name="free_product_choice"]');
-
-addcartfreeRadios.forEach((radio) => {
-  radio.addEventListener('change', function () {
-    if (this.checked) {
-      const selectedVariantId = this.value;
-
-      // total cart items count le aao
-      const totalItems = Array.from(document.querySelectorAll('cart-drawer-items cart-drawer-item'))
-        .reduce((sum, item) => {
-          const qty = parseInt(item.querySelector('input[name="quantity"]')?.value || 0, 10);
-          return sum + qty;
-        }, 0);
-
-      // default qty = 1
-      let qtyToAdd = 1;
-
-      // check matching rule
-      if (rules && rules.length > 0) {
-        const matchedRule = rules.find(rule => totalItems === parseInt(rule.buyQty));
-        console.log(matchedRule, 'Matched Rule==================');
-        if (matchedRule) {
-          qtyToAdd = matchedRule.getQty;
-        }
+      // Create container only once
+      let createFreeContainer = freeContainer.querySelector('.free_container');
+      if (!createFreeContainer) {
+        createFreeContainer = document.createElement('div');
+        createFreeContainer.className = 'free_container';
+        freeContainer.appendChild(createFreeContainer);
       }
 
-      addToCart(selectedVariantId, qtyToAdd); // Add to cart without reload
-    }
-  });
-});
+      // Clear previous radios
+      createFreeContainer.innerHTML = '';
+
+      // ✅ Remove duplicates by variantId
+      const uniqueFreeItems = freeItems.filter(
+        (item, index, self) =>
+          index === self.findIndex((t) => t.variantId === item.variantId)
+       );
+
+      // Add free items with radio buttons
+      uniqueFreeItems.forEach((item) => {
+        const freeproducts = document.createElement('div');
+        freeproducts.className = 'free_products';
+        freeproducts.innerHTML = `
+          <img src="${sanitizeHTML(item.media || 'https://via.placeholder.com/80')}"
+              alt="${sanitizeHTML(item.title)}"
+              style="width: 60px; object-fit: cover; border-radius: 6px; margin-bottom: 6px;" />
+          <div style="font-size: 12px;">
+            <strong>${sanitizeHTML(item.title)}</strong><br/>
+          </div>
+          <input type="radio"
+                name="free_product_choice" 
+                value="${item.variantId}" id="free_product_${item.variantId}"
+                ${cartVariantIds.includes(item.variantId) ? 'disabled' : ''}
+                style="margin-left: 10px; width: 20px; height: 20px;" />`;
+
+      createFreeContainer.appendChild(freeproducts);
+     });
+
+
+      // Event listener for all radio buttons
+      const addcartfreeRadios = document.querySelectorAll('[name="free_product_choice"]');
+
+      addcartfreeRadios.forEach((radio) => {
+        radio.addEventListener('change', function () {
+          if (this.checked) {
+            const selectedVariantId = this.value;
+
+            // total cart items count le aao
+            const totalItems = Array.from(document.querySelectorAll('cart-drawer-items cart-drawer-item'))
+              .reduce((sum, item) => {
+                const qty = parseInt(item.querySelector('input[name="quantity"]')?.value || 0, 10);
+                return sum + qty;
+              }, 0);
+
+            // default qty = 1
+            let qtyToAdd = 1;
+
+            // check matching rule
+            if (rules && rules.length > 0) {
+              const matchedRule = rules.find(rule => totalItems === parseInt(rule.buyQty));
+              console.log(matchedRule, 'Matched Rule==================');
+              if (matchedRule) {
+                qtyToAdd = matchedRule.getQty;
+              }
+            }
+
+            addToCart(selectedVariantId, qtyToAdd); // Add to cart without reload
+          }
+        });
+    });
     }
 
       

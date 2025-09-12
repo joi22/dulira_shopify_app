@@ -29,7 +29,7 @@ function CheckoutUpsellUI() {
     .map((l) => l?.merchandise?.product?.id?.split("/").pop())
     .filter(Boolean);
 
-  const domain = "https://facilities-generates-thing-opposed.trycloudflare.com";
+  const domain = "https://eddie-protected-vast-felt.trycloudflare.com ";
 
   useEffect(() => {
     async function fetchData() {
@@ -120,7 +120,7 @@ function ThankYouUpsellUI() {
     .map((l) => l?.merchandise?.product?.id?.split("/").pop())
     .filter(Boolean);
 
-  const domain = "https://facilities-generates-thing-opposed.trycloudflare.com";
+  const domain = "https://eddie-protected-vast-felt.trycloudflare.com ";
 
   useEffect(() => {
     async function fetchData() {

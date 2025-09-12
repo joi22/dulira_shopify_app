@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://processes-beneath-worm-exceptional.trycloudflare.com';
+    const App_Domain = 'https://eddie-protected-vast-felt.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -171,7 +171,7 @@
 
       return container;
     }
-    // Done this Add_to_Unlock
+  
 
       
 
@@ -804,9 +804,11 @@
         `;
           campaignBlock.dataset.campaignId = campaign.id;
 
-         if (campaign.type === "add_to_unlock") {
-            const card = await createProgressBar(campaign, currentValue, goalValue, goalType);
-            campaignBlock.appendChild(card); // ✅ this is safe (Node)
+         if (campaign.type === "add_to_unlock" ) {
+            if (campaign.placement.includes("Page")) {
+              const card = await createProgressBar(campaign, currentValue, goalValue, goalType);
+              campaignBlock.appendChild(card);
+            }
           }
 
           if (campaign.type === 'buy_more_save_more') {

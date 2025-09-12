@@ -1550,39 +1550,30 @@ export default function UpsellCampaignForm() {
             </BlockStack>
           </Layout.Section>
           <Layout.Section variant="oneHalf">
-            <div className="sticky-section">
+            <div style={{ position: "sticky", top: "20px" }}>
               <BlockStack gap="400">
-                <Card title="Live Preview">
+                <Card>
                   <BlockStack gap="200">
-                    <InlineStack align="space-between" gap={300}>
-                      <Text variant="headingSm">Preview</Text>
-                      <InlineStack align="center" gap={200}>
-                        {placement.includes("home") && (
-                          <Button><Icon tone="subdued" source={HomeFilledIcon} /></Button>
-                        )}
-                        {placement.includes("product") && (
-                          <Button><Icon tone="subdued" source={ProductIcon} /></Button>
-                        )}
-                        {placement.includes("cart") && (
-                          <Button><Icon tone="subdued" source={CartFilledIcon} /></Button>
-                        )}
-                        {placement.includes("checkout") && (
-                          <Button><Icon tone="subdued" source={CheckoutIcon} /></Button>
-                        )}
-                      </InlineStack>
-                    </InlineStack>
-
-                    {/* ✅ Render dynamic preview */}
-                    {placement.includes("home") && <HomePreview />}
-                    {/* {placement.includes("product") && <ProductPagePreview />}
-                    {placement.includes("cart") && <CartPagePreview />}
-                    {placement.includes("checkout") && <CheckoutPreview />}
-                    {placement.includes("post_purchase") && <PostPurchasePreview />} */}
-
-                
+                    <ChoiceList
+                      title="Select Campaign Placement"
+                      choices={[
+                        // { label: "Homepage", value: "home" },
+                        { label: "Product", value: "Page" },
+                        { label: "Cart Page", value: "cart" },
+                      ]}
+                      selected={placement}
+                      allowMultiple
+                      onChange={setPlacement}
+                    />
                   </BlockStack>
                 </Card>
-
+                <Card title="Live Preview">
+                  <BlockStack gap="200">
+                    <Text variant="headingSm">Preview</Text>
+                    <Text>{formattedGoalText}</Text>
+                    <Text>{formattedPreGoalText}</Text>
+                  </BlockStack>
+                </Card>
               </BlockStack>
 
             </div>
@@ -1592,3 +1583,34 @@ export default function UpsellCampaignForm() {
     </Page>
   );
 }
+
+                // <Card title="Live Preview">
+                //   <BlockStack gap="200">
+                //     <InlineStack align="space-between" gap={300}>
+                //       <Text variant="headingSm">Preview</Text>
+                //       <InlineStack align="center" gap={200}>
+                //         {placement.includes("home") && (
+                //           <Button><Icon tone="subdued" source={HomeFilledIcon} /></Button>
+                //         )}
+                //         {placement.includes("product") && (
+                //           <Button><Icon tone="subdued" source={ProductIcon} /></Button>
+                //         )}
+                //         {placement.includes("cart") && (
+                //           <Button><Icon tone="subdued" source={CartFilledIcon} /></Button>
+                //         )}
+                //         {placement.includes("checkout") && (
+                //           <Button><Icon tone="subdued" source={CheckoutIcon} /></Button>
+                //         )}
+                //       </InlineStack>
+                //     </InlineStack>
+
+                //     {/* ✅ Render dynamic preview */}
+                //     {placement.includes("home") && <HomePreview />}
+                //     {/* {placement.includes("product") && <ProductPagePreview />}
+                //     {placement.includes("cart") && <CartPagePreview />}
+                //     {placement.includes("checkout") && <CheckoutPreview />}
+                //     {placement.includes("post_purchase") && <PostPurchasePreview />} */}
+
+
+                //   </BlockStack>
+                // </Card>
