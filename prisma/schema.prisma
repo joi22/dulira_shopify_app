@@ -32,53 +32,87 @@ model Session {
 }
 
 model UpsellCampaign {
-  id           Int     @id @default(autoincrement())
-  name         String
-  type         String
-  placement    String
-  rewardMode   String
-  rewardType   String
-  discountCode String?
-  discountType String?
-
-  goalType     String?
-  goalAmount   Int?
-  goalquantity Int?
-  currency     String?
-  shop         String
-
-  badgeImageUrl String?
-  barStyle      String
-  barRadius     String
-  barColors     Json
-
-  goalText    String
-  preGoalText String
+  id        Int     @id @default(autoincrement())
+  name      String
+  type      String
+  placement String
+  status    String?
+  shop      String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🔗 Relations
+  // Relations
+  offers                 AddToUnlockOffer[]
   triggerProducts        UpsellTriggerProduct[]
   triggerCollections     UpsellTriggerCollection[]
   rewardProducts         UpsellRewardProduct[]
-  buyMoreRules           BuyMoreRule[]
-  bogoRules              BogoRule[]
-  bogoFreeItems          BogoFreeItem[]
-  UpsellRewardCollection UpsellRewardCollection[]
-  UpsellFreeGiftProduct  UpsellFreeGiftProduct[]
+  rewardCollections      UpsellRewardCollection[]
+  freeGiftProducts       UpsellFreeGiftProduct[]
+  customization          customiz?
+  BuyMoreRule            BuyMoreRule[]
+  BogoRule               BogoRule[]
+  BogoFreeItem           BogoFreeItem[]
+  OrderBump              OrderBump[]
+  CampaignTargetCountry  CampaignTargetCountry[]
+  CampaignExcludeCountry CampaignExcludeCountry[]
+  checkout_upsell        checkout_upsell[]
+  PostPurchaseUpsell     PostPurchaseUpsell[]
+}
 
-  // 👇 Country targeting relations
-  orderBump          OrderBump[]
-  targetCountries    CampaignTargetCountry[]
-  excludeCountries   CampaignExcludeCountry[]
-  checkout_upsell    checkout_upsell[]
-  PostPurchaseUpsell PostPurchaseUpsell[]
+model customiz {
+  id            Int            @id @default(autoincrement())
+  campaignId    Int            @unique
+  badgeImageUrl String?
+  barStyle      String
+  barRadius     String
+  barColors     Json
+  campaign      UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+model AddToUnlockOffer {
+  id         Int     @id @default(autoincrement())
+  campaignId Int
+  shop       String?
+
+  // Goal
+  goalType     String? // "amount_cart" | "quantity"
+  goalAmount   Int?
+  goalQuantity Int?
+
+  // Reward
+  rewardType     String? // "discount" | "gift"
+  rewardMode     String? // "fixed" | "flame"
+  discountType   String? // "percentage" | "amount"
+  discountCode   Float?
+  goalTextBefore String?
+  goalTextAfter  String?
+
+  // Relations
+  rewardProducts    UpsellRewardProduct[]
+  rewardCollections UpsellRewardCollection[]
+  buyProducts       UpsellTriggerProduct[]
+  buyCollections    UpsellTriggerCollection[]
+
+  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+
+  BuyXProduct BuyXProduct[]
+}
+
+model BuyXProduct {
+  id        Int     @id @default(autoincrement())
+  offerId   Int
+  productId String
+  variantId String?
+  title     String?
+
+  offer AddToUnlockOffer @relation(fields: [offerId], references: [id])
 }
 
 model UpsellTriggerProduct {
   id           Int     @id @default(autoincrement())
   campaignId   Int
+  shop         String?
   productId    String
   variantId    String?
   productTitle String
@@ -87,21 +121,28 @@ model UpsellTriggerProduct {
   media        String?
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+
+  AddToUnlockOffer AddToUnlockOffer[]
 }
 
 model UpsellTriggerCollection {
-  id           Int    @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   campaignId   Int
+  shop         String?
   collectionId String
   title        String
   handle       String
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+
+  AddToUnlockOffer AddToUnlockOffer[]
 }
 
 model UpsellRewardProduct {
   id         Int     @id @default(autoincrement())
   campaignId Int
+  offerId    Int?
+  shop       String?
   productId  String
   variantId  String?
   title      String?
@@ -109,11 +150,15 @@ model UpsellRewardProduct {
   media      String?
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+
+  AddToUnlockOffer AddToUnlockOffer[]
 }
 
 model UpsellFreeGiftProduct {
   id         Int     @id @default(autoincrement())
   campaignId Int
+  offerId    Int?
+  shop       String?
   productId  String
   variantId  String?
   title      String?
@@ -126,17 +171,22 @@ model UpsellFreeGiftProduct {
 model UpsellRewardCollection {
   id           Int     @id @default(autoincrement())
   campaignId   Int
+  offerId      Int?
+  shop         String?
   collectionid String
   title        String?
   price        String?
   media        String?
 
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+
+  AddToUnlockOffer AddToUnlockOffer[]
 }
 
 model BuyMoreRule {
-  id           Int    @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   campaignId   Int
+  shop         String?
   productId    String
   quantity     Int
   discount     Float
@@ -146,8 +196,9 @@ model BuyMoreRule {
 }
 
 model BogoRule {
-  id         Int    @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   campaignId Int
+  shop       String?
   buyQty     String
   getQty     String
 
@@ -157,6 +208,7 @@ model BogoRule {
 model BogoFreeItem {
   id         Int     @id @default(autoincrement())
   campaignId Int
+  shop       String?
   productId  String
   variantId  String?
   title      String?
@@ -168,6 +220,8 @@ model BogoFreeItem {
 
 model OrderBump {
   id               Int     @id @default(autoincrement())
+  campaignId       Int
+  shop             String?
   offerTitle       String?
   offerDescription String?
   preChecked       Boolean @default(false)
@@ -215,4 +269,10 @@ model PostPurchaseUpsell {
   discountType String?
   discountCode String?
   campaign     UpsellCampaign @relation(fields: [campaignId], references: [id])
+}
+
+enum CampaignStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
 }

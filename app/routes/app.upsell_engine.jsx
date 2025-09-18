@@ -40,6 +40,7 @@ export const loader = async ({ request }) => {
 export default function UpsellEngine() {
     const navigate = useNavigate();
     const { campingall } = useLoaderData();
+    const [status , setStatus] = useState(true);
 
     const [active, setActive] = useState(false);
     const handleChange = useCallback(() => setActive(!active), [active]);
@@ -55,45 +56,52 @@ export default function UpsellEngine() {
             title: "🛍 BOGO",
             desc: "Buy One, Get One Free or Discounted",
             img: bogo,
-            url:'addtounlock'
+            url: 'addtounlock'
         },
         {
             type: "add_to_unlock",
             title: "🎁 Add to Unlock",
             desc: "Progress bar for free gifts/discounts",
             img: add_to_unlock,
-            url:'addtounlock'
-            
+            url: 'addtounlock'
+
         },
         {
             type: "buy_more_save_more",
             title: "📦 Buy More, Save More",
             desc: "Bulk pricing tiers",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/buy_more.png",
-            url:'addtounlock'
+            url: 'addtounlock'
         },
         {
             type: "checkout_upsell",
             title: "⚡ Checkout Upsell",
             desc: "Quick offers during checkout",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/checkout.png",
-            url:'addtounlock'
+            url: 'addtounlock'
         },
         {
             type: "order_bump",
             title: "📌 Order Bump",
             desc: "Add-ons like insurance, priority, etc.",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/orderbump.png",
-            url:'addtounlock'
+            url: 'addtounlock'
         },
         {
             type: "post_purchase",
             title: "🧾 Post-Purchase",
             desc: "Offer shown after order confirmation",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/postpurchase.png",
-            url:'addtounlock'
+            url: 'addtounlock'
         },
     ];
+
+    const handleSwitchChange = async (field, value, discountId) => {
+        if (!discountId) {
+            console.error("Invalid discountId:", discountId);
+            return;
+        }
+    }
 
     return (
         <Page
@@ -135,12 +143,21 @@ export default function UpsellEngine() {
                                     position={index}
                                 >
                                     <IndexTable.Cell>
-                                        <Badge status={campaign.status ? "success" : "critical"}>
-                                            <label className="switch">
-                                                <input type="checkbox" />
-                                                <span className="slider round"></span>
-                                            </label>
-                                        </Badge>
+                                        <label className="switch-container">
+                                            <input
+                                                type="checkbox"
+                                                checked={status}
+                                                onChange={(e) =>
+                                                    handleSwitchChange(
+                                                        "Offer_status",
+                                                        e.target.checked,
+                                                        row.id,
+                                                    )
+                                                }
+                                                className="switch-input"
+                                            />
+                                            <span className="switch-slider"></span>
+                                        </label>
                                     </IndexTable.Cell>
                                     <IndexTable.Cell>
                                         <Text>{campaign.name}</Text>

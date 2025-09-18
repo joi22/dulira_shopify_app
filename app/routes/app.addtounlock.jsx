@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import './_index/style.css';
 import {
     Page,
     FormLayout,
@@ -22,12 +23,381 @@ import {
     Icon,
 } from "@shopify/polaris";
 import { PlusIcon, DeleteIcon } from "@shopify/polaris-icons";
+import { useFetcher } from '@remix-run/react';
+import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
+
+const SHOPIFY_API_VERSION = "2024-10";
+
+const PRODUCT_FRAGMENT = `
+  fragment ProductFields on Product {
+    id
+    title
+    handle
+    media(first: 1) {
+      edges {
+        node {
+          preview {
+            image {
+              url
+            }
+          }
+        }
+      }
+    }
+    variants(first: 1) {
+      edges {
+        node {
+          id
+          title
+          price
+          image {
+            url
+          }
+        }
+      }
+    }
+  }
+`;
+
+const trigger_coll = async (collectionIds, shop, accessToken, campaignId) => {
+    try {
+        for (const colId of collectionIds) {
+            const gid = `gid://shopify/Collection/${colId}`;
+            const gql = `
+        ${PRODUCT_FRAGMENT}
+        query($id: ID!) {
+          collection(id: $id) {
+            products(first: 200) {
+              edges {
+                node {
+                  ...ProductFields
+                }
+              }
+            }
+          }
+        }
+      `;
+            const response = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Shopify-Access-Token': accessToken,
+                },
+                body: JSON.stringify({ query: gql, variables: { id: gid } }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (!result?.data?.collection?.products?.edges) {
+                console.warn(`No products found for collection ${colId}`);
+                continue;
+            }
+
+            const products = result.data.collection.products.edges;
+            const productData = products.map(({ node }) => ({
+                campaignId,
+                productId: node.id.split('/').pop(),
+                productTitle: node.title,
+                handle: node.handle,
+                price: node.variants?.edges?.[0]?.node?.price || '0',
+                media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
+            }));
+
+            if (productData.length > 0) {
+                await prisma.upsellTriggerProduct.createMany({
+                    data: productData,
+                });
+            }
+        }
+    } catch (error) {
+        console.error(`Error in trigger_coll for collection ${collectionIds}:`, error);
+        throw error;
+    }
+};
+
+const trigger_all = async (shop, upsell_allproducts, accessToken, campaignId) => {
+    try {
+        let hasNextPage = true;
+        let cursor = null;
+
+        while (hasNextPage) {
+            const gql = `
+        query($cursor: String) {
+          products(first: 250, after: $cursor) {
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                variants(first: 1) {
+                  edges {
+                    node {
+                      id
+                      price
+                    }
+                  }
+                }
+                media(first: 1) {
+                  edges {
+                    node {
+                      preview {
+                        image {
+                          url
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `;
+
+            const response = await fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Shopify-Access-Token": accessToken,
+                },
+                body: JSON.stringify({ query: gql, variables: { cursor } }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            const products = result?.data?.products?.edges || [];
+
+            if (!products.length) {
+                console.warn("No products returned.");
+                break;
+            }
+
+            const productData = products.map(({ node }) => ({
+                campaignId,
+                productId: node.id.split("/").pop(),
+                productTitle: node.title,
+                handle: node.handle,
+                variantId: node.variants.edges?.[0]?.node?.id.split("/").pop() || null,
+                price: node.variants?.edges?.[0]?.node?.price || "0",
+                media: node.media?.edges?.[0]?.node?.preview?.image?.url || null,
+            }));
+
+            // ⚡ Insert into DB
+            if (productData.length > 0) {
+                await prisma.upsellTriggerProduct.createMany({
+                    data: productData,
+                    skipDuplicates: true, // ✅ avoids duplicate rows if run again
+                });
+            }
+
+            // pagination info
+            hasNextPage = result?.data?.products?.pageInfo?.hasNextPage || false;
+            cursor = result?.data?.products?.pageInfo?.endCursor || null;
+        }
+    } catch (error) {
+        console.error("Error in trigger_all:", error);
+        throw error;
+    }
+};
+
+export const action = async ({ request }) => {
+    const { admin, session } = await authenticate.admin(request);
+    const formData = await request.formData();
+    const { shop, accessToken } = session;
+
+    // --- Basic Campaign Data
+    const campaignName = formData.get("campaignName");
+    const selectedCampaignType = formData.get("selectedCampaignType");
+    const selectedTriggerType = formData.get("selectedTriggerType");
+    const status = JSON.parse(formData.get("status") || "{}");
+
+    // New required fields
+    const goalText = formData.get("goalText") || "";
+    const preGoalText = formData.get("preGoalText") || "";
+
+    let selectedProducts = [];
+    let selectedCollections = [];
+    let upsell_allproducts = false;
+
+    if (selectedTriggerType === "products") {
+        selectedProducts = JSON.parse(formData.get("selectedProducts") || "[]");
+    } else if (selectedTriggerType === "collections") {
+        selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
+    } else if (selectedTriggerType === "all") {
+        upsell_allproducts = formData.get("upsell_allproducts") === "true";
+    }
+    console.log(status, "=============== <<<<<<   This Status ")
+    const offers = JSON.parse(formData.get("offers") || "[]");
+    const showConfetti = formData.get("showConfetti") === "on";
+    const showLockedGoals = formData.get("showLockedGoals") === "on";
+    const showBadgeIcons = formData.get("showBadgeIcons") === "on";
+
+    const badgeImage = formData.get("badgeImage"); // File or null
+    const progressBarStyle = JSON.parse(formData.get("progressBarStyle") || "{}");
+    const placement = JSON.parse(formData.get("placement") || "{}");
+
+    // --- Create Campaign
+    const upsellCampaign = await prisma.upsellCampaign.create({
+        data: {
+            name: campaignName,
+            type: selectedCampaignType,
+            placement: JSON.stringify(placement),
+            shop: String(shop),
+            status: String(status?.active) || "false",
+
+        },
+    });
+    const customiz = await prisma.customiz.create({
+        data: {
+            campaignId: upsellCampaign.id,
+            badgeImageUrl: badgeImage ? badgeImage.name : null,
+            barStyle: progressBarStyle.thickness || "thin",
+            barRadius: progressBarStyle.cornerRadius || "square",
+            barColors: {
+                primaryColor: progressBarStyle.primaryColor || "#4CAF50",
+                secondaryColor: progressBarStyle.secondaryColor || "#2196F3",
+                goalCompleteColor: progressBarStyle.goalCompleteColor || "#FF9800",
+                backgroundColor: progressBarStyle.backgroundColor || "#F5F5F5",
+            },
+
+        },
+
+    });
+
+    // --- Triggers
+    if (selectedTriggerType === "products" && selectedProducts.length > 0) {
+        await prisma.upsellTriggerProduct.createMany({
+            data: selectedProducts.map((p) => ({
+                campaignId: upsellCampaign.id,
+                shop,
+                productId: p.id,
+                variantId: String(p.variantId),
+                productTitle: p.title,
+                handle: p.handle,
+                price: p.price,
+                media: p.media,
+            })),
+        });
+    } else if (selectedTriggerType === "collections" && selectedCollections.length > 0) {
+        await prisma.upsellTriggerCollection.createMany({
+            data: selectedCollections.map((col) => ({
+                campaignId: upsellCampaign.id,
+                shop,
+                collectionId: col.id,
+                title: col.title,
+                handle: col.handle,
+            })),
+        });
+        const collectionIds = selectedCollections.map((col) => col.id);
+        await trigger_coll(collectionIds, shop, accessToken, upsellCampaign.id);
+    } else if (upsell_allproducts) {
+        await trigger_all(shop, upsell_allproducts, accessToken, upsellCampaign.id);
+    }
+
+    // --- Multiple Offers
+    for (const offer of offers) {
+        const createdOffer = await prisma.addToUnlockOffer.create({
+            data: {
+                campaignId: upsellCampaign.id,
+                shop,
+                goalType: offer.goalType,
+                goalAmount: offer.goalAmount ? parseInt(offer.goalAmount) : null,
+                goalQuantity: offer.goalquantity ? parseInt(offer.goalquantity) : null,
+                rewardType: offer.rewardType,
+                rewardMode: offer.rewardMode,
+                discountType: offer.discountType,
+                discountCode: parseFloat(offer.discountCode) || null,
+                goalTextBefore: offer.goalTextBefore,
+                goalTextAfter: offer.goalTextAfter
+            },
+        });
+
+        // --- Reward Products
+        if (offer.rewardProducts?.length > 0) {
+            await prisma.upsellRewardProduct.createMany({
+                data: offer.rewardProducts.map((rp) => ({
+                    campaignId: upsellCampaign.id,
+                    offerId: createdOffer.id,
+                    shop,
+                    productId: rp.id,
+                    variantId: rp.variantId,
+                    title: rp.title,
+                    price: rp.price,
+                    media: rp.media,
+                })),
+            });
+        }
+
+        // --- Reward Collections
+        if (offer.rewardCollection?.length > 0) {
+            await prisma.upsellRewardCollection.createMany({
+                data: offer.rewardCollection.map((rc) => ({
+                    offerId: createdOffer.id,
+                    shop,
+                    collectionId: rc.id,
+                    title: rc.title,
+                })),
+            });
+        }
+
+        // --- Buy X Products
+        if (offer.productPickType === "products" && offer.buyProductPicker?.length > 0) {
+            await prisma.buyXProduct.createMany({
+                data: offer.buyProductPicker.map((bp) => ({
+                    offerId: createdOffer.id,
+                    productId: bp.id,
+                    variantId: bp.variantId,
+                    title: bp.title,
+                })),
+            });
+        }
+
+        // --- Buy X Collections
+        if (offer.productPickType === "collections" && offer.buyCollectionPicker?.length > 0) {
+            await prisma.buyXCollection.createMany({
+                data: offer.buyCollectionPicker.map((bc) => ({
+                    offerId: createdOffer.id,
+                    collectionId: bc.id,
+                    title: bc.title,
+                })),
+            });
+        }
+    }
+
+    return {
+        success: true,
+        data: {
+            campaignId: upsellCampaign.id,
+            campaignName,
+            offersCount: offers.length,
+        },
+    };
+};
+
+
 
 export default function AddToUnlock() {
-    // Existing state variables from previous context
+    const fetcher = useFetcher();
     const [campaignName, setCampaignName] = useState("");
     const [selectedTriggerType, setSelectedTriggerType] = useState("all");
     const [upsell_allproduct, setUpsell_allproduct] = useState(false);
+    const [status, setStatus] = useState({
+        active: true,
+        badges: false,
+        lockedGoals: false,
+    });
     const [upsellselectedItems, setUpsellselectedItems] = useState([]);
     const [selectedCollections, setSelectedCollections] = useState([]);
     const [collectionSearch, setCollectionSearch] = useState("");
@@ -38,7 +408,7 @@ export default function AddToUnlock() {
     const [showBadgeIcons, setShowBadgeIcons] = useState(false);
     const [showLockedGoals, setShowLockedGoals] = useState(false);
     const [badgeIcon, setBadgeIcon] = useState(null);
-    const [mainBtnLoading , setMainBtnLoading] = useState(false)
+    const [mainBtnLoading, setMainBtnLoading] = useState(false);
     const [progressBarStyle, setProgressBarStyle] = useState({
         thickness: "thin",
         cornerRadius: "square",
@@ -54,12 +424,17 @@ export default function AddToUnlock() {
     const filteredProducts = upsellselectedItems.filter(
         (p) => p.title?.toLowerCase().includes(productSearch.toLowerCase()) || p.handle?.toLowerCase().includes(productSearch.toLowerCase())
     );
+
+    const removeItem = (id, setItems, items) => {
+        setItems(items.filter((item) => item.id !== id));
+    };
+
     const removeProduct = (id) => removeItem(id, setUpsellselectedItems, upsellselectedItems);
     const removeCollection = (id) => removeItem(id, setSelectedCollections, selectedCollections);
-    // New state for multiple offers
+
     const [offers, setOffers] = useState([
         {
-            id: Date.now(), // Unique ID for each offer
+            id: Date.now(),
             goalType: "amount_cart",
             goalAmount: "",
             goalquantity: "",
@@ -88,7 +463,6 @@ export default function AddToUnlock() {
         { label: "Product Quantity", value: "quantity" },
     ];
 
-    // Add a new offer
     const addOffer = () => {
         setOffers((prev) => [
             ...prev,
@@ -113,12 +487,10 @@ export default function AddToUnlock() {
         ]);
     };
 
-    // Remove an offer
     const removeOffer = (id) => {
         setOffers((prev) => prev.filter((offer) => offer.id !== id));
     };
 
-    // Update an offer's field
     const updateOffer = (id, field, value) => {
         setOffers((prev) =>
             prev.map((offer) =>
@@ -127,7 +499,6 @@ export default function AddToUnlock() {
         );
     };
 
-    // Update preview text for all offers
     useEffect(() => {
         const updatedPreGoalTexts = offers.map((offer) => {
             const rewardDescription =
@@ -174,8 +545,6 @@ export default function AddToUnlock() {
         setFormattedPreGoalText(updatedPreGoalTexts.join(" | "));
         setFormattedGoalText(updatedGoalTexts.join(" | "));
     }, [offers]);
-
-
 
     const productpicker = async () => {
         try {
@@ -235,85 +604,6 @@ export default function AddToUnlock() {
         }
     };
 
-    // Picker functions (simplified for brevity, use existing ones from previous context)
-    const Buyproductpicker = async (offerId) => {
-        try {
-            const selectedItems = await window.shopify.resourcePicker({
-                multiple: true,
-                type: "product",
-                action: "select",
-                showVariants: true,
-            });
-
-            if (selectedItems) {
-                const products = selectedItems.map((item) => ({
-                    id: item.id.split("/").pop(),
-                    title: item.title,
-                    handle: item.handle,
-                    variantId: item.variants[0]?.id.split("/").pop(),
-                    price: item.variants[0]?.price,
-                    media: item.images[0]?.originalSrc || null,
-                }));
-
-                setOffers((prev) =>
-                    prev.map((offer) =>
-                        offer.id === offerId
-                            ? {
-                                ...offer,
-                                buyProductPicker: [
-                                    ...offer.buyProductPicker,
-                                    ...products.filter(
-                                        (p) => !offer.buyProductPicker.some((existing) => existing.id === p.id)
-                                    ),
-                                ],
-                            }
-                            : offer
-                    )
-                );
-            }
-        } catch (error) {
-            console.error("Error in buy product picker:", error);
-            shopify.toast.show("Failed to select products.", { isError: true });
-        }
-    };
-
-    const BuyCollectionPicker = async (offerId) => {
-        try {
-            const selectedCollections = await window.shopify.resourcePicker({
-                type: "collection",
-                multiple: true,
-                action: "select",
-            });
-
-            if (selectedCollections) {
-                const collections = selectedCollections.map((item) => ({
-                    id: item.id.split("/").pop(),
-                    title: item.title,
-                    handle: item.handle,
-                }));
-
-                setOffers((prev) =>
-                    prev.map((offer) =>
-                        offer.id === offerId
-                            ? {
-                                ...offer,
-                                buyCollectionPicker: [
-                                    ...offer.buyCollectionPicker,
-                                    ...collections.filter(
-                                        (c) => !offer.buyCollectionPicker.some((existing) => existing.id === c.id)
-                                    ),
-                                ],
-                            }
-                            : offer
-                    )
-                );
-            }
-        } catch (error) {
-            console.error("Error in buy collection picker:", error);
-            shopify.toast.show("Failed to select collections.", { isError: true });
-        }
-    };
-
     const rewardPicker = async (offerId) => {
         setOffers((prev) =>
             prev.map((offer) => {
@@ -322,7 +612,6 @@ export default function AddToUnlock() {
                     shopify.toast.show("You can only select up to 4 reward products.", { isError: true });
                     return offer;
                 }
-
                 return offer;
             })
         );
@@ -413,32 +702,6 @@ export default function AddToUnlock() {
         }
     };
 
-    const removeBuyProduct = (offerId, id) => {
-        setOffers((prev) =>
-            prev.map((offer) =>
-                offer.id === offerId
-                    ? {
-                        ...offer,
-                        buyProductPicker: offer.buyProductPicker.filter((item) => item.id !== id),
-                    }
-                    : offer
-            )
-        );
-    };
-
-    const removeBuyCollection = (offerId, id) => {
-        setOffers((prev) =>
-            prev.map((offer) =>
-                offer.id === offerId
-                    ? {
-                        ...offer,
-                        buyCollectionPicker: offer.buyCollectionPicker.filter((item) => item.id !== id),
-                    }
-                    : offer
-            )
-        );
-    };
-
     const removeRewardProduct = (offerId, id) => {
         setOffers((prev) =>
             prev.map((offer) =>
@@ -465,7 +728,23 @@ export default function AddToUnlock() {
         );
     };
 
-    // Progress Bar Component
+    const handleswitchChange = (field, value) => {
+        setStatus((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleBadgeIconChange = (event) => {
+        console.log(
+event
+        ); const file = event.target.files[0];
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                setBadgeIcon(file);
+            } else {
+                shopify.toast.show("Please upload an image file.", { isError: true });
+            }
+        }
+    };
+
     const ProgressBar = ({ progress, style }) => {
         return (
             <Box padding="200">
@@ -495,29 +774,27 @@ export default function AddToUnlock() {
             </Box>
         );
     };
+
     const handleSubmit = () => {
-        // Validate campaign name
+        console.log(badgeIcon, "this ")
         if (!campaignName) {
             shopify.toast.show("Campaign name is required.", { isError: true });
             return;
         }
 
-        // Validate each offer
         for (const [index, offer] of offers.entries()) {
-            // Validate goal configuration
-            if (offer.goalType === "amount_cart" && !offer.goalAmount) {
-                shopify.toast.show(`Offer ${index + 1}: Goal amount is required.`, { isError: true });
+            if (offer.goalType === "amount_cart" && (!offer.goalAmount || isNaN(offer.goalAmount) || parseFloat(offer.goalAmount) <= 0)) {
+                shopify.toast.show(`Offer ${index + 1}: Valid goal amount is required.`, { isError: true });
                 return;
             }
-            if (offer.goalType === "quantity" && !offer.goalquantity) {
-                shopify.toast.show(`Offer ${index + 1}: Goal quantity is required.`, { isError: true });
+            if (offer.goalType === "quantity" && (!offer.goalquantity || isNaN(offer.goalquantity) || parseInt(offer.goalquantity) <= 0)) {
+                shopify.toast.show(`Offer ${index + 1}: Valid goal quantity is required.`, { isError: true });
                 return;
             }
 
-            // Validate reward configuration
             if (offer.rewardType === "discount") {
-                if (!offer.discountCode) {
-                    shopify.toast.show(`Offer ${index + 1}: Discount value is required.`, { isError: true });
+                if (!offer.discountCode || isNaN(offer.discountCode) || parseFloat(offer.discountCode) <= 0) {
+                    shopify.toast.show(`Offer ${index + 1}: Valid discount value is required.`, { isError: true });
                     return;
                 }
                 if (
@@ -532,7 +809,6 @@ export default function AddToUnlock() {
                 }
             }
 
-            // Validate reward products/collections for gift type
             if (offer.rewardType === "gift" && offer.rewardMode === "fixed" && offer.rewardProducts.length === 0) {
                 shopify.toast.show(`Offer ${index + 1}: At least one reward product is required for Fixed Deal.`, {
                     isError: true,
@@ -552,7 +828,6 @@ export default function AddToUnlock() {
                 return;
             }
 
-            // Validate Buy X configuration for gift type
             if (
                 offer.rewardType === "gift" &&
                 offer.productPickType === "products" &&
@@ -576,7 +851,6 @@ export default function AddToUnlock() {
             }
         }
 
-        // Validate trigger type configuration
         if (
             selectedTriggerType === "products" &&
             upsellselectedItems.length === 0 &&
@@ -594,16 +868,14 @@ export default function AddToUnlock() {
             return;
         }
 
-        // Set loading state
         setMainBtnLoading(true);
 
-        // Construct FormData
         const formData = new FormData();
         formData.append("campaignName", campaignName);
-        formData.append("selectedCampaignType", "add_to_unlock"); // Hardcoded for Add to Unlock
+        formData.append("selectedCampaignType", "add_to_unlock");
         formData.append("selectedTriggerType", selectedTriggerType);
+        formData.append("status", JSON.stringify(status));
 
-        // Append trigger configuration
         if (selectedTriggerType === "products") {
             formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
         } else if (selectedTriggerType === "collections") {
@@ -612,23 +884,23 @@ export default function AddToUnlock() {
             formData.append("upsell_allproducts", "true");
         }
 
-        // Append offers array
         formData.append("offers", JSON.stringify(offers));
-
-        // Append design customization and toggles
         formData.append("showConfetti", showConfetti ? "on" : "off");
         formData.append("showLockedGoals", showLockedGoals ? "on" : "off");
         formData.append("showBadgeIcons", showBadgeIcons ? "on" : "off");
-        formData.append("badgeImage", badgeIcon || "");
+
+        if (badgeIcon) {
+            formData.append("badgeImage", badgeIcon);
+        }
         formData.append("progressBarStyle", JSON.stringify(progressBarStyle));
         formData.append("placement", JSON.stringify(placement));
 
-        // Submit form
         fetcher.submit(formData, {
             method: "POST",
             encType: "multipart/form-data",
         });
     };
+
     return (
         <Page title="Create Upsell Campaign" fullWidth padding="400">
             <FormLayout>
@@ -648,7 +920,6 @@ export default function AddToUnlock() {
                                 </BlockStack>
                             </Card>
 
-                            {/* Trigger Products/Collections (unchanged from previous context) */}
                             <Card>
                                 <BlockStack gap="200">
                                     <Text as="h2" variant="headingMd" fontWeight="bold">
@@ -685,7 +956,7 @@ export default function AddToUnlock() {
                                                     Selected Products
                                                 </Text>
                                                 <InlineStack gap="200">
-                                                    <Button onClick={productpicker} size="medium">Browse Products</Button>
+                                                    <Button onClick={productpicker} size="medium" accessibilityLabel="Browse products for upsell">Browse Products</Button>
                                                 </InlineStack>
                                                 {filteredProducts.length > 0 ? (
                                                     <ResourceList
@@ -725,7 +996,7 @@ export default function AddToUnlock() {
                                                     Selected Collections
                                                 </Text>
                                                 <InlineStack gap="200">
-                                                    <Button onClick={collectionPicker} size="medium">Browse Collections</Button>
+                                                    <Button onClick={collectionPicker} size="medium" accessibilityLabel="Browse collections for upsell">Browse Collections</Button>
                                                 </InlineStack>
                                                 {filteredCollections.length > 0 ? (
                                                     <ResourceList
@@ -754,10 +1025,37 @@ export default function AddToUnlock() {
                                             </BlockStack>
                                         </Box>
                                     )}
+
+                                    <Box paddingBlockStart="200">
+                                        <BlockStack gap={"300"}>
+                                            <InlineStack align="space-between">
+                                                <label className="switch-container">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={status.active}
+                                                        onChange={(e) => handleswitchChange("active", e.target.checked)}
+                                                        className="switch-input"
+                                                    />
+                                                    <span className="switch-slider"></span>
+                                                </label>
+                                                <Text as="h4" variant="headingMd">Enable</Text>
+                                            </InlineStack>
+                                            <InlineStack align="space-between">
+                                                <label className="switch-container">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={status.badges}
+                                                        onChange={(e) => handleswitchChange("badges", e.target.checked)}
+                                                        className="switch-input"
+                                                    />
+                                                    <span className="switch-slider"></span>
+                                                </label>
+                                                <Text as="h4" variant="headingMd">Show badges</Text>
+                                            </InlineStack>
+                                        </BlockStack>
+                                    </Box>
                                 </BlockStack>
                             </Card>
-
-                            {/* Multiple Offers */}
 
                             <BlockStack gap="400">
                                 <InlineStack align="space-between">
@@ -775,7 +1073,7 @@ export default function AddToUnlock() {
                                 </InlineStack>
 
                                 {offers.map((offer, index) => (
-                                    <Card key={offer.id} sectioned background="" >
+                                    <Card key={offer.id} sectioned background="">
                                         <BlockStack gap="300">
                                             <InlineStack align="space-between">
                                                 <Text variant="headingMd" as="h3">
@@ -793,28 +1091,26 @@ export default function AddToUnlock() {
                                                 )}
                                             </InlineStack>
 
-                                            {/* Goal Configuration */}
                                             <Card sectioned>
                                                 <BlockStack gap="300">
                                                     <Text variant="headingMd" as="h3">
                                                         Goal Configuration
                                                     </Text>
                                                     <Box paddingBlockStart="200">
-                                                        <Text variant="bodyMd" fontWeight="semibold">
-                                                            Trigger Type
-                                                        </Text>
-                                                        <InlineStack gap="200" blockAlign="center" wrap={false}>
-                                                            {goalOptions.map((type) => (
-                                                                <Button
-                                                                    key={type.value}
-                                                                    pressed={offer.goalType === type.value}
-                                                                    onClick={() => updateOffer(offer.id, "goalType", type.value)}
-                                                                    size="medium"
-                                                                >
-                                                                    {type.label}
-                                                                </Button>
-                                                            ))}
-                                                        </InlineStack>
+                                                        <BlockStack gap={"300"}>
+                                                            <InlineStack gap="200" blockAlign="center" wrap={false}>
+                                                                {goalOptions.map((type) => (
+                                                                    <Button
+                                                                        key={type.value}
+                                                                        pressed={offer.goalType === type.value}
+                                                                        onClick={() => updateOffer(offer.id, "goalType", type.value)}
+                                                                        size="medium"
+                                                                    >
+                                                                        {type.label}
+                                                                    </Button>
+                                                                ))}
+                                                            </InlineStack>
+                                                        </BlockStack>
                                                     </Box>
                                                     {offer.goalType === "amount_cart" && (
                                                         <BlockStack gap="200">
@@ -856,10 +1152,7 @@ export default function AddToUnlock() {
                                                 </BlockStack>
                                             </Card>
 
-
-
-                                            {/* Reward Type */}
-                                            <Card sectioned >
+                                            <Card sectioned>
                                                 <BlockStack gap="300">
                                                     <Text variant="headingMd" as="h3">
                                                         Reward Type
@@ -893,9 +1186,6 @@ export default function AddToUnlock() {
                                                 </BlockStack>
                                             </Card>
 
-
-
-                                            {/* Reward Setup */}
                                             <Card sectioned>
                                                 <BlockStack gap="300">
                                                     <Text variant="headingMd" as="h3">
@@ -1000,13 +1290,6 @@ export default function AddToUnlock() {
                                                             >
                                                                 Select Reward Products
                                                             </Button>
-                                                            {/* <Button
-                                                                    onClick={() => rewardCollectionPicker(offer.id)}
-                                                                    variant="primary"
-                                                                    size="medium"
-                                                                >
-                                                                    Select Reward Collections
-                                                                </Button> */}
                                                             {offer.rewardProducts.length > 0 && (
                                                                 <Box paddingBlockStart="200">
                                                                     <Text fontWeight="semibold">Selected Reward Products:</Text>
@@ -1030,54 +1313,11 @@ export default function AddToUnlock() {
                                                                     </BlockStack>
                                                                 </Box>
                                                             )}
-                                                            {/* {offer.rewardCollection.length > 0 && (
-                                                                    <Box paddingBlockStart="200">
-                                                                        <Text fontWeight="semibold">Selected Reward Collections:</Text>
-                                                                        <BlockStack gap="100">
-                                                                            {offer.rewardCollection.map((item) => (
-                                                                                <InlineStack
-                                                                                    key={item.id}
-                                                                                    align="space-between"
-                                                                                    blockAlign="center"
-                                                                                >
-                                                                                    <Text>{item.title}</Text>
-                                                                                    <Button
-                                                                                        tone="critical"
-                                                                                        size="medium"
-                                                                                        onClick={() => removeRewardCollection(offer.id, item.id)}
-                                                                                    >
-                                                                                        Remove
-                                                                                    </Button>
-                                                                                </InlineStack>
-                                                                            ))}
-                                                                        </BlockStack>
-                                                                    </Box>
-                                                                )} */}
-                                                            {/* {offer.rewardMode === "flame" && (
-                                                                    <Box paddingBlockStart="200">
-                                                                        <Text variant="headingSm">Customer Reward Selection Preview</Text>
-                                                                        <Text as="p">Customers will choose from:</Text>
-                                                                        {offer.rewardProducts.length > 0 || offer.rewardCollection.length > 0 ? (
-                                                                            <ResourceList
-                                                                                resourceName={{ singular: "reward", plural: "rewards" }}
-                                                                                items={[...offer.rewardProducts, ...offer.rewardCollection]}
-                                                                                renderItem={(item) => (
-                                                                                    <ResourceItem id={item.id}>
-                                                                                        <Text>{item.title}</Text>
-                                                                                    </ResourceItem>
-                                                                                )}
-                                                                            />
-                                                                        ) : (
-                                                                            <Text>No rewards selected</Text>
-                                                                        )}
-                                                                    </Box>
-                                                                )} */}
                                                         </BlockStack>
                                                     )}
                                                 </BlockStack>
                                             </Card>
 
-                                            {/* Goal Text Customization */}
                                             <Card sectioned>
                                                 <BlockStack gap="300">
                                                     <Text variant="headingMd" as="h3">
@@ -1095,6 +1335,34 @@ export default function AddToUnlock() {
                                                         onChange={(value) => updateOffer(offer.id, "goalTextAfter", value)}
                                                         helpText="Use smart variables: {{goal}}, {{reward}}"
                                                     />
+                                                    <Box>
+                                                        <Text as="p">Badge Icon</Text>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleBadgeIconChange}
+                                                            style={{ marginTop: '8px' }}
+                                                        />
+                                                        {badgeIcon && (
+                                                            <Box paddingBlockStart="200">
+                                                                <Text fontWeight="semibold">Selected Badge Icon:</Text>
+                                                                <InlineStack align="space-between" blockAlign="center">
+                                                                    <Image
+                                                                        source={URL.createObjectURL(badgeIcon)}
+                                                                        alt="Badge Icon Preview"
+                                                                        width="50px"
+                                                                    />
+                                                                    <Button
+                                                                        tone="critical"
+                                                                        size="medium"
+                                                                        onClick={() => setBadgeIcon(null)}
+                                                                    >
+                                                                        Remove
+                                                                    </Button>
+                                                                </InlineStack>
+                                                            </Box>
+                                                        )}
+                                                    </Box>
                                                 </BlockStack>
                                             </Card>
                                         </BlockStack>
@@ -1110,8 +1378,6 @@ export default function AddToUnlock() {
                                 </Button>
                             </BlockStack>
 
-
-                            {/* Design Customization and Toggles (unchanged from previous context) */}
                             <Card sectioned>
                                 <BlockStack gap="300">
                                     <Text variant="headingMd" as="h3">Design Customization</Text>
@@ -1148,7 +1414,6 @@ export default function AddToUnlock() {
                                             onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, secondaryColor: value }))}
                                         />
                                         <TextField
-
                                             label="Goal Complete Color"
                                             type="color"
                                             value={progressBarStyle.goalCompleteColor}
@@ -1161,11 +1426,9 @@ export default function AddToUnlock() {
                                             onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, backgroundColor: value }))}
                                         />
                                     </InlineStack>
-
                                 </BlockStack>
                             </Card>
                         </BlockStack>
-
                     </Layout.Section>
 
                     <Layout.Section variant="oneHalf">
@@ -1215,8 +1478,7 @@ export default function AddToUnlock() {
                                                         .replace(
                                                             "{{reward}}",
                                                             offer.rewardType === "discount"
-                                                                ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"
-                                                                } Discount`
+                                                                ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`
                                                                 : offer.rewardType === "shipping"
                                                                     ? "Free Shipping"
                                                                     : "Free Gift"
@@ -1233,8 +1495,7 @@ export default function AddToUnlock() {
                                                         .replace(
                                                             "{{reward}}",
                                                             offer.rewardType === "discount"
-                                                                ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"
-                                                                } Discount`
+                                                                ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`
                                                                 : offer.rewardType === "shipping"
                                                                     ? "Free Shipping"
                                                                     : "Free Gift"
