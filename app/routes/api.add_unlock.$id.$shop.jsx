@@ -8,7 +8,8 @@ export const loader = async ({ request, params }) => {
 
   const { accessToken } = await prisma.session.findFirst({ where: { shop } });
 
-  const upsellTriggerProduct = await prisma.UpsellRewardProduct.findMany({
+
+  const upsellTriggerProduct = await prisma.upsellTriggerProduct.findMany({
     where: {
       productId: String(id)
     },
@@ -16,72 +17,73 @@ export const loader = async ({ request, params }) => {
       campaign: {
         include: {
           rewardProducts: true,
-          UpsellRewardCollection: true,
+          rewardCollections: true,   // fixed
           triggerCollections: true,
           triggerProducts: true,
-          UpsellFreeGiftProduct: true,
-          buyMoreRules: true,
-          bogoFreeItems: true,
-          bogoRules: true,
-          orderBump: true,
-          targetCountries: true,
-          excludeCountries: true
+          freeGiftProducts: true,    // fixed
+          offers: true,
+          customization:true,
+          // buyMoreRules: true,
+          // bogoFreeItems: true,
+          // bogoRules: true,
+          // orderBump: true,
+          // CampaignTargetCountry: true, // fixed
+          // CampaignExcludeCountry: true // fixed
         }
       }
-    }
+    },
+    
   });
+
 
   const enrichedCampaigns = await Promise.all(
     upsellTriggerProduct.map(async (trigger) => {
       const campaign = trigger.campaign;
 
-      if (!campaign.UpsellRewardCollection.length) return trigger;
+      if (!campaign.rewardCollections || campaign.rewardCollections.length === 0) {
+        return trigger;
+      }
 
       const enrichedCollections = await Promise.all(
-
-        campaign.UpsellRewardCollection.map(async (col) => {
+        campaign.rewardCollections.map(async (col) => {
           const gid = `gid://shopify/Collection/${col.collectionid}`;
           const gql = `
-           query {
-              collection(id:"${gid}"){
-                products(first: 200){
-                  edges{ node{
-                    id
-                    title
-                    media(first:1){
-                      edges{
-                        node{
-                          mediaContentType
-                          id
-                          preview{
-                            image{
-                              url
-                            }
+          query {
+            collection(id:"${gid}"){
+              products(first: 200){
+                edges{ node{
+                  id
+                  title
+                  media(first:1){
+                    edges{
+                      node{
+                        mediaContentType
+                        id
+                        preview{
+                          image{
+                            url
                           }
                         }
                       }
                     }
-                    priceRangeV2{maxVariantPrice{amount}}
-                    variants(first:200){
-                      edges{
-                        node{
-                          id
-                          title
-                          price
-                          image{altText
-                          url}
-
-                        }
+                  }
+                  priceRangeV2{maxVariantPrice{amount}}
+                  variants(first:200){
+                    edges{
+                      node{
+                        id
+                        title
+                        price
+                        image{altText url}
                       }
                     }
-                  }}
-                }
+                  }
+                }}
               }
             }
-          `;
+          }
+        `;
 
-
-          console.log(gid)
           const response = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
             method: "POST",
             headers: {
@@ -92,24 +94,17 @@ export const loader = async ({ request, params }) => {
           });
 
           const result = await response.json();
-          console.log(result.data.collection.products.edges,)
           const products = result?.data?.collection?.products?.edges.map((a) => a.node) || [];
-          const mediaImageUrls = products.map((product) => {
-            const mediaEdges = product.media?.edges || [];
 
-            return mediaEdges.map((edge) => edge.node.preview?.image?.url).filter(Boolean);
-          });
-
-          console.log(">>>>>>>>>>>", mediaImageUrls, "<<<<<<<")
           return {
             ...col,
             products: products.map((p) => ({
               id: p.id.split('/').pop(),
               title: p.title,
               handle: p.handle,
-              media: p.media.edges?.[0]?.node?.preview.image.url,
+              media: p.media.edges?.[0]?.node?.preview?.image?.url,
               variantId: p.variants?.edges?.[0]?.node?.id?.split('/').pop() || null,
-              price: p.variants?.edges?.[0]?.node?.price?.amount || null,
+              price: p.variants?.edges?.[0]?.node?.price || null,
             })),
           };
         })
@@ -120,10 +115,11 @@ export const loader = async ({ request, params }) => {
         campaign: {
           ...campaign,
           rewardCollectionsWithProducts: enrichedCollections,
-        }
+        },
       };
     })
   );
+
 
   return json({
     ok: true,

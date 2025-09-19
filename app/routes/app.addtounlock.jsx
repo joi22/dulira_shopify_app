@@ -23,9 +23,10 @@ import {
     Icon,
 } from "@shopify/polaris";
 import { PlusIcon, DeleteIcon } from "@shopify/polaris-icons";
-import { useFetcher } from '@remix-run/react';
+import { useFetcher, useNavigate } from '@remix-run/react';
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { add_to_unlock_ } from "./utils/add_unlock";
 
 const SHOPIFY_API_VERSION = "2024-10";
 
@@ -375,6 +376,15 @@ export const action = async ({ request }) => {
             });
         }
     }
+    await add_to_unlock_(
+        shop,
+        accessToken,
+        upsellCampaign,
+        selectedProducts,
+        offers,
+        admin,
+
+    );
 
     return {
         success: true,
@@ -390,6 +400,7 @@ export const action = async ({ request }) => {
 
 export default function AddToUnlock() {
     const fetcher = useFetcher();
+    const navigate = useNavigate();
     const [campaignName, setCampaignName] = useState("");
     const [selectedTriggerType, setSelectedTriggerType] = useState("all");
     const [upsell_allproduct, setUpsell_allproduct] = useState(false);
@@ -733,9 +744,7 @@ export default function AddToUnlock() {
     };
 
     const handleBadgeIconChange = (event) => {
-        console.log(
-event
-        ); const file = event.target.files[0];
+        const file = event.target.files[0];
         if (file) {
             if (file.type.startsWith('image/')) {
                 setBadgeIcon(file);
@@ -828,16 +837,16 @@ event
                 return;
             }
 
-            if (
-                offer.rewardType === "gift" &&
-                offer.productPickType === "products" &&
-                offer.buyProductPicker.length === 0
-            ) {
-                shopify.toast.show(`Offer ${index + 1}: At least one product is required for Buy X configuration.`, {
-                    isError: true,
-                });
-                return;
-            }
+            // if (
+            //     offer.rewardType === "gift" &&
+            //     offer.productPickType === "products" &&
+            //     offer.buyProductPicker.length === 0
+            // ) {
+            //     shopify.toast.show(`Offer ${index + 1}: At least one product is required for Buy X configuration.`, {
+            //         isError: true,
+            //     });
+            //     return;
+            // }
             if (
                 offer.rewardType === "gift" &&
                 offer.productPickType === "collections" &&
@@ -867,6 +876,14 @@ event
             });
             return;
         }
+        if (!placement || placement.length === 0) {
+            shopify.toast.show(
+                "At least one placement is required when selecting placement.",
+                { isError: true }
+            );
+            return;
+        }
+        console.log(placement, "THis placement")
 
         setMainBtnLoading(true);
 
@@ -1210,7 +1227,7 @@ event
                                                                 value={offer.discountType}
                                                                 onChange={(value) => updateOffer(offer.id, "discountType", value)}
                                                             />
-                                                            <Box paddingBlockStart="200">
+                                                            {/* <Box paddingBlockStart="200">
                                                                 <Button
                                                                     onClick={() => rewardPicker(offer.id)}
                                                                     variant="primary"
@@ -1241,15 +1258,14 @@ event
                                                                         </BlockStack>
                                                                     </Box>
                                                                 )}
-                                                            </Box>
+                                                            </Box> */}
                                                         </BlockStack>
                                                     )}
                                                     {offer.rewardType === "shipping" && (
                                                         <BlockStack gap="300">
                                                             <Banner tone="success">
-                                                                Free shipping will be automatically applied when the goal is reached
-                                                            </Banner>
-                                                            <Button
+                                                                Free shipping will be automatically applied Selected Tigger Products                                                            </Banner>
+                                                            {/* <Button
                                                                 onClick={() => rewardPicker(offer.id)}
                                                                 variant="primary"
                                                                 size="medium"
@@ -1278,7 +1294,7 @@ event
                                                                         ))}
                                                                     </BlockStack>
                                                                 </Box>
-                                                            )}
+                                                            )} */}
                                                         </BlockStack>
                                                     )}
                                                     {offer.rewardType === "gift" && (
@@ -1288,11 +1304,11 @@ event
                                                                 variant="primary"
                                                                 size="medium"
                                                             >
-                                                                Select Reward Products
+                                                                Select Free Products
                                                             </Button>
                                                             {offer.rewardProducts.length > 0 && (
                                                                 <Box paddingBlockStart="200">
-                                                                    <Text fontWeight="semibold">Selected Reward Products:</Text>
+                                                                    <Text fontWeight="semibold">Selected Free Products:</Text>
                                                                     <BlockStack gap="100">
                                                                         {offer.rewardProducts.map((item) => (
                                                                             <InlineStack
@@ -1435,7 +1451,7 @@ event
                         <div style={{ position: "sticky", top: "20px" }}>
                             <BlockStack gap="400">
                                 <Card>
-                                    <BlockStack gap="200">
+                                    <BlockStack gap="300">
                                         <ChoiceList
                                             title="Select Campaign Placement"
                                             choices={[
@@ -1447,6 +1463,26 @@ event
                                             allowMultiple
                                             onChange={setPlacement}
                                         />
+                                        <InlineStack>
+                                            <Button
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/app/preview?name=${encodeURIComponent(campaignName)}` +
+                                                        `&type=add_to_unlock` +
+                                                        `&placement=${encodeURIComponent(JSON.stringify(placement))}` +
+                                                        `&products=${encodeURIComponent(JSON.stringify(upsellselectedItems))}` +
+                                                        `&offers=${encodeURIComponent(JSON.stringify(offers))}` +
+                                                        `&progressBarStyle=${encodeURIComponent(JSON.stringify(progressBarStyle))}` +
+                                                        `&showConfetti=${showConfetti}` +
+                                                        `&showLockedGoals=${showLockedGoals}` +
+                                                        `&showBadgeIcons=${showBadgeIcons}` +
+                                                        `&status=${encodeURIComponent(JSON.stringify(status))}`
+                                                    )
+                                                }
+                                            >
+                                                Preview
+                                            </Button>
+                                        </InlineStack>
                                     </BlockStack>
                                 </Card>
                                 <Card title="Live Preview">

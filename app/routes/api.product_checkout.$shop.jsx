@@ -5,11 +5,11 @@ export const loader = async ({ params }) => {
   const { shop } = params;
 
   // Optional: fetch session if needed
-  // const { accessToken } = await prisma.session.findFirst({ where: { shop } });
+  const { accessToken } = await prisma.session.findFirst({ where: { shop } });
 
 const checkout_upsell = await prisma.upsellTriggerProduct.findMany({
   include: {
-    campaign: true, // ✅ relation field, not scalar
+    campaign: true, 
   },
 });
 

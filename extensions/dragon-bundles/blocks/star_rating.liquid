@@ -1,367 +1,337 @@
 <script>
-  document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://eddie-protected-vast-felt.trycloudflare.com';
+document.addEventListener('DOMContentLoaded', async function () {
+    const App_Domain = 'https://hundreds-plenty-broken-invision.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
     const renderedCampaigns = new Set();
 
-   async function addToCart(variantId, quantity) {
-    try {
-        const response = await fetch('/cart/add.js', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                items: [{ 
-                    id: variantId, 
-                    quantity: parseInt(quantity) 
-                }] 
-            }),
-        });
+    async function addToCart(variantId, quantity) {
+        try {
+            const response = await fetch('/cart/add.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    items: [{ 
+                        id: variantId, 
+                        quantity: parseInt(quantity) 
+                    }] 
+                }),
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.description || 'Failed to add to cart');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.description || 'Failed to add to cart');
+            }
+
+            const cart = await fetch('/cart.js').then((res) => res.json());
+            document.dispatchEvent(new CustomEvent('cart:updated', { detail: cart }));
+            return cart;
+        } catch (error) {
+            console.error('Add to cart failed:', error);
+            alert(error.message || 'Failed to add item to cart. Please try again.');
+            throw error;
         }
-
-        const cart = await fetch('/cart.js').then((res) => res.json());
-        document.dispatchEvent(new CustomEvent('cart:updated', { detail: cart }));
-        return cart;
-    } catch (error) {
-        console.error('Add to cart failed:', error);
-        alert(error.message || 'Failed to add item to cart. Please try again.');
-        throw error;
     }
-  }
 
-    // Function to create progress bar for goal-based campaigns
     async function createProgressBar(campaign, currentValue, goalValue, goalType) {
-      const cart_products_quantity = {{ cart.items | json }};
+      console.log( campaign ,"this Main PP <><<><><><> campaign")
+        const cart_products_quantity = {{ cart.items | json }};
+        const cartVariantIds = cart_products_quantity
+            .map(item => item.variant_id?.toString())
+            .filter(Boolean);
 
-      // Get cart variant IDs
-      const cartVariantIds = cart_products_quantity
-        .map(item => item.variant_id?.toString())
-        .filter(Boolean);
+        const rewardProducts = (campaign.triggerProducts || []).map(p => p.variantId?.toString());
+        const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
 
-      // Reward product variant IDs
-      const rewardProducts = (campaign.rewardProducts || []).map(p => p.variantId?.toString());
-      const hasRewardProduct = cartVariantIds.some(id => rewardProducts.includes(id));
+        const goalMet = goalValue > 0 && currentValue >= goalValue;
+        const remaining = Math.max(0, goalValue - currentValue);
+        const percentage = goalValue > 0 ? Math.min(100, (currentValue / goalValue) * 100) : 0;
+        const isProductOffer = goalType === "quantity";
 
-      // Goal tracking
-      const goalMet = goalValue > 0 && currentValue >= goalValue;
-      const remaining = Math.max(0, goalValue - currentValue);
-      const percentage = goalValue > 0 ? Math.min(100, (currentValue / goalValue) * 100) : 0;
-      const isProductOffer = campaign.goalType === "quantity"; // or however you're storing offer type
+        const progressMessage = goalMet
+            ? `<span class="text-green-600 font-medium">✅ Offer unlocked!</span>`
+            : isProductOffer
+                ? `🚀 Add <strong>${remaining}</strong> more item${remaining > 1 ? "s" : ""} to unlock your gift`
+                : `🚀 Only <strong>${remaining.toFixed(2)} ${campaign.currency || 'USD'}</strong> away`;
 
-      const progressMessage = goalMet
-        ? `<span class="text-green-600 font-medium">✅ Offer unlocked!</span>`
-        : isProductOffer
-          ? `🚀 Add <strong>${remaining}</strong> more item${remaining > 1 ? "s" : ""} to unlock your gift`
-          : `🚀 Only <strong>${remaining.toFixed(2)} ${campaign.currency}</strong> away`;
-      // Colors
-      console.log("prograss bar", isProductOffer);
-      const barColors = campaign.barColors
-        ? JSON.parse(campaign.barColors)
-        : { primary: '#6c63ff', background: '#f2f2f2', goalComplete: '#00c48c' };
+        // Use barColors directly since it's already a JSON object
+        const barColors = campaign.customization?.barColors || {
+            primary: '#6c63ff',
+            background: '#f2f2f2',
+            goalComplete: '#00c48c'
+        };
 
-      // Container
-      const container = document.createElement("div");
-      container.className = "progress-widget shadow-lg rounded-2xl bg-white p-4";
+        const container = document.createElement("div");
+        container.className = "progress-widget shadow-lg rounded-2xl bg-white p-4";
 
-      // HEADER
-      container.innerHTML = `
-        <div class="progress-header flex justify-between items-center mb-3">
-          <div>
-            <h3 class="font-semibold text-lg text-gray-800">${campaign.goalText || "Special Offer"}</h3>
-          <p class="text-sm text-gray-500">${progressMessage}</p>
-          </div>
-          <span class="badge bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-medium">
-            ${campaign.goalType === "quantity"
-              ? `Buy ${campaign.goalquantity}`
-              : campaign.goalType === "amount_cart"
-              ? `Spend ${campaign.currency}${campaign.goalAmount}`
-              : ""}
-          </span>
-        </div>
-      `;
-
-      // MIDDLE
-      let middleHTML = "";
-
-      if (campaign.rewardMode === "flame") {
-          middleHTML = `
-            <div class="gift-list space-y-3 mb-4">
-              ${(campaign.UpsellFreeGiftProduct || [])
-                .map((item) => {
-                  const itemRemaining = Math.max(0, (item.unlockAmount || goalValue) - currentValue);
-                  const itemGoalMet = currentValue >= (item.unlockAmount || goalValue);
-
-                  return `
-                  <div class="gift-card border rounded-lg p-3 flex items-center justify-between bg-white shadow-sm ${itemGoalMet ? "border-green-400" : "border-gray-200"}" data-variant-id="${item.variantId}">
-                    
-                    <!-- Left: Gift details -->
-                    <div class="free_gift_con flex items-center gap-3">
-                      <div class="gift-image w-16 h-16 rounded-md overflow-hidden border">
-                        <img src="${item.media}" alt="${item.title}" class="w-full h-full object-cover"/>
-                      </div>
-                      <div class="gift-info" >
-                        <div class="gift-title text-sm font-medium text-gray-800">${item.title}</div>
-                        <div class="gift-subtitle text-xs text-gray-500">
-                          ${itemGoalMet 
-                            ? `<span class="text-green-600 font-medium">Unlocked!</span>` 
-                            : `${campaign.currency}${itemRemaining.toFixed(2)} away to unlock!`}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Right: Action -->
-                    <div>
-                      ${itemGoalMet
-                        ? `<button class="select-btn px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded-md shadow">Claim</button>`
-                        : `<button class="px-3 py-1 bg-gray-200 text-gray-500 text-xs rounded-md cursor-not-allowed" disabled>Locked</button>`
-                      }
-                    </div>
-                  </div>
-                  `;
-                }).join("")}
+        container.innerHTML = `
+            <div class="progress-header flex justify-between items-center mb-3">
+                <div>
+                    <h3 class="font-semibold text-lg text-gray-800">${campaign.goalText || "Special Offer"}</h3>
+                    <p class="text-sm text-gray-500">${progressMessage}</p>
+                </div>
+                <span class="badge bg-indigo-100 text-indigo-600 px-3 py-1 rounded-full text-xs font-medium">
+                    ${campaign.goalType === "quantity"
+                        ? `Buy ${campaign.goalquantity}`
+                        : campaign.goalType === "amount_cart"
+                        ? `Spend ${campaign.currency || 'USD'}${campaign.goalAmount}`
+                        : ""}
+                </span>
             </div>
-          `;
+        `;
+
+        let middleHTML = "";
+        if (campaign.rewardMode === "flame") {
+            middleHTML = `
+                <div class="gift-list space-y-3 mb-4">
+                    ${(campaign.freeGiftProducts || [])
+                        .map((item) => {
+                            const itemRemaining = Math.max(0, (item.unlockAmount || goalValue) - currentValue);
+                            const itemGoalMet = currentValue >= (item.unlockAmount || goalValue);
+
+                            return `
+                            <div class="gift-card border rounded-lg p-3 flex items-center justify-between bg-white shadow-sm ${itemGoalMet ? "border-green-400" : "border-gray-200"}" data-variant-id="${item.variantId}">
+                                <div class="free_gift_con flex items-center gap-3">
+                                    <div class="gift-image w-16 h-16 rounded-md overflow-hidden border">
+                                        <img src="${item.media}" alt="${item.title}" class="w-full h-full object-cover"/>
+                                    </div>
+                                    <div class="gift-info">
+                                        <div class="gift-title text-sm font-medium text-gray-800">${item.title}</div>
+                                        <div class="gift-subtitle text-xs text-gray-500">
+                                            ${itemGoalMet 
+                                                ? `<span class="text-green-600 font-medium">Unlocked!</span>` 
+                                                : `${campaign.currency || 'USD'}${itemRemaining.toFixed(2)} away to unlock!`}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    ${itemGoalMet
+                                        ? `<button class="select-btn px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded-md shadow">Claim</button>`
+                                        : `<button class="px-3 py-1 bg-gray-200 text-gray-500 text-xs rounded-md cursor-not-allowed" disabled>Locked</button>`
+                                    }
+                                </div>
+                            </div>
+                            `;
+                        }).join("")}
+                </div>
+            `;
         }
 
-
-      // Progress bar (universal)
-      middleHTML += `
-        <div class="progress-container w-full">
-          <div class="progress-track w-full h-3 rounded-full overflow-hidden bg-[${barColors.background}]">
-            <div class="progress-bar h-full transition-all duration-500 ease-out"
-              style="width:${percentage}%; background:${goalMet ? barColors.goalComplete : barColors.primary}">
+        middleHTML += `
+            <div class="progress-container w-full">
+                <div class="progress-track w-full h-3 rounded-full overflow-hidden" style="background: ${barColors.background}">
+                    <div class="progress-bar h-full transition-all duration-500 ease-out"
+                        style="width:${percentage}%; background:${goalMet ? barColors.goalComplete : barColors.primary}">
+                    </div>
+                </div>
+                <div class="text-xs text-gray-600 mt-1 text-right">${Math.round(percentage)}% Complete</div>
             </div>
-          </div>
-          <div class="text-xs text-gray-600 mt-1 text-right">${Math.round(percentage)}% Complete</div>
-        </div>
-      `;
+        `;
 
-      container.innerHTML += `<div class="offer-middle">${middleHTML}</div>`;
+        container.innerHTML += `<div class="offer-middle">${middleHTML}</div>`;
 
-      // FOOTER
-      if (campaign.preGoalText) {
-        container.innerHTML += `
-          <div class="offer-footer mt-3 text-xs text-gray-500 italic">
-            ${campaign.preGoalText}
-          </div>`;
-      }
+        if (campaign.preGoalText) {
+            container.innerHTML += `
+                <div class="offer-footer mt-3 text-xs text-gray-500 italic">
+                    ${campaign.preGoalText}
+                </div>`;
+        }
 
-      // EVENTS
-      container.querySelectorAll(".select-btn, .add-btn").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const variantId = e.target.closest("[data-variant-id]")?.dataset.variantId;
-          if (!variantId) return;
-          btn.disabled = true;
-          btn.textContent = "Adding...";
-          try {
-            await addToCart(variantId, 1);
-            btn.textContent = "Added!";
-            document.dispatchEvent(new CustomEvent("cart:updated"));
-          } catch (err) {
-            btn.textContent = "Error";
-            btn.disabled = false;
-          }
+        container.querySelectorAll(".select-btn, .add-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const variantId = e.target.closest("[data-variant-id]")?.dataset.variantId;
+                if (!variantId) return;
+                btn.disabled = true;
+                btn.textContent = "Adding...";
+                try {
+                    await addToCart(variantId, 1);
+                    btn.textContent = "Added!";
+                    document.dispatchEvent(new CustomEvent("cart:updated"));
+                } catch (err) {
+                    btn.textContent = "Error";
+                    btn.disabled = false;
+                }
+            });
         });
-      });
 
-      return container;
+        return container;
     }
-  
 
-      
-
-        // 🔹 MAIN function simplified
-      function createBuyMoreCard(campaign, products, goalMet, cartItems, cartVariantIds) {
+    function createBuyMoreCard(campaign, products, goalMet, cartItems, cartVariantIds) {
         const card = document.createElement('div');
         card.className = 'upsell-card bmsm-card';
         card.style.cssText = `
-          padding: 20px;
-          border-radius: 12px;
-          background-color: #fff;
-          margin: 15px 0;
-          border: 1px solid #ddd;
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin-left: auto;
-          margin-right: auto;
+            padding: 20px;
+            border-radius: 12px;
+            background-color: #fff;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         `;
 
-        // Deduplicate rules
         const uniqueRuleMap = new Map();
-        (campaign.buyMoreRules || []).forEach(rule => {
-          const key = `${rule.productId}-${rule.quantity}-${rule.discount}-${rule.discountType}`;
-          if (!uniqueRuleMap.has(key)) uniqueRuleMap.set(key, rule);
+        (campaign.offers || []).forEach(rule => {
+            const key = `${rule.productId}-${rule.quantity}-${rule.discount}-${rule.discountType}`;
+            if (!uniqueRuleMap.has(key)) uniqueRuleMap.set(key, rule);
         });
         const buyMoreRules = Array.from(uniqueRuleMap.values()).sort((a, b) => a.quantity - b.quantity);
 
-        // Header
         const header = document.createElement('h2');
-        header.textContent = campaign.goalText || 'Buy More, Save More !';
+        header.textContent = campaign.goalText || 'Buy More, Save More!';
         header.style.cssText = `
-          margin: 0 0 15px 0;
-          font-size: 18px;
-          font-weight: 700;
-          color: #fff;
-          text-align: center;
-          background: #000;
-          padding: 10px;
-          border-radius: 6px;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            background: #000;
+            padding: 10px;
+            border-radius: 6px;
         `;
         card.appendChild(header);
 
         const middle = document.createElement('div');
         middle.style.cssText = `
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          margin: 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 12px 0;
         `;
         card.appendChild(middle);
 
-        // ✅ Each offer box
         buyMoreRules.forEach((rule, index) => {
-          const offerBox = document.createElement('label');
-          offerBox.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border: 2px solid #ccc;
-            border-radius: 10px;
-            cursor: pointer;
-            background: #fff;
-            position: relative;
-          `;
-
-          const left = document.createElement('div');
-          left.style.cssText = `display: flex; align-items: center; gap: 10px;`;
-
-          const radio = document.createElement('input');
-          radio.type = 'radio';
-          radio.name = 'buy-more-rule';
-          radio.value = JSON.stringify(rule);
-          if (index === 0) radio.checked = true; // ✅ preselect first option
-
-          const text = document.createElement('span');
-          text.style.cssText = `font-weight: bold; font-size: 16px;`;
-          text.textContent = `Buy ${rule.quantity} to get ${rule.discount}${rule.discountType === 'percentage' ? '%' : '$'} off`;
-
-          left.appendChild(radio);
-          left.appendChild(text);
-
-          const right = document.createElement('div');
-          right.style.cssText = `text-align: right; font-size: 14px;`;
-
-          // fake price calc example
-          const basePrice = products[0]?.price || 39.99; // fallback
-          const originalTotal = (basePrice * rule.quantity).toFixed(2);
-          let discountedTotal = originalTotal;
-
-          if (rule.discountType === 'percentage') {
-            discountedTotal = (originalTotal - (originalTotal * (rule.discount / 100))).toFixed(2);
-          } else {
-            discountedTotal = (originalTotal - rule.discount).toFixed(2);
-          }
-
-          const oldPrice = document.createElement('div');
-          oldPrice.style.cssText = `text-decoration: line-through; color: #888;`;
-          oldPrice.textContent = `$${originalTotal}`;
-
-          const newPrice = document.createElement('div');
-          newPrice.style.cssText = `font-weight: bold; font-size: 16px; color: #111;`;
-          newPrice.textContent = `$${discountedTotal}`;
-
-          right.appendChild(oldPrice);
-          right.appendChild(newPrice);
-
-          // Add Featured tag for middle offer
-          if (index === 1) {
-            const tag = document.createElement('div');
-            tag.textContent = 'Featured';
-            tag.style.cssText = `
-              position: absolute;
-              top: -10px;
-              right: 15px;
-              background: #000;
-              color: #fff;
-              font-size: 12px;
-              padding: 2px 8px;
-              border-radius: 4px;
+            const offerBox = document.createElement('label');
+            offerBox.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                border: 2px solid #ccc;
+                border-radius: 10px;
+                cursor: pointer;
+                background: #fff;
+                position: relative;
             `;
-            offerBox.appendChild(tag);
-          }
 
-          offerBox.appendChild(left);
-          offerBox.appendChild(right);
-          middle.appendChild(offerBox);
+            const left = document.createElement('div');
+            left.style.cssText = `display: flex; align-items: center; gap: 10px;`;
+
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'buy-more-rule';
+            radio.value = JSON.stringify(rule);
+            if (index === 0) radio.checked = true;
+
+            const text = document.createElement('span');
+            text.style.cssText = `font-weight: bold; font-size: 16px;`;
+            text.textContent = `Buy ${rule.quantity} to get ${rule.discount}${rule.discountType === 'percentage' ? '%' : '$'} off`;
+
+            left.appendChild(radio);
+            left.appendChild(text);
+
+            const right = document.createElement('div');
+            right.style.cssText = `text-align: right; font-size: 14px;`;
+
+            const basePrice = products[0]?.price || 39.99;
+            const originalTotal = (basePrice * rule.quantity).toFixed(2);
+            let discountedTotal = originalTotal;
+
+            if (rule.discountType === 'percentage') {
+                discountedTotal = (originalTotal - (originalTotal * (rule.discount / 100))).toFixed(2);
+            } else {
+                discountedTotal = (originalTotal - rule.discount).toFixed(2);
+            }
+
+            const oldPrice = document.createElement('div');
+            oldPrice.style.cssText = `text-decoration: line-through; color: #888;`;
+            oldPrice.textContent = `$${originalTotal}`;
+
+            const newPrice = document.createElement('div');
+            newPrice.style.cssText = `font-weight: bold; font-size: 16px; color: #111;`;
+            newPrice.textContent = `$${discountedTotal}`;
+
+            right.appendChild(oldPrice);
+            right.appendChild(newPrice);
+
+            if (index === 1) {
+                const tag = document.createElement('div');
+                tag.textContent = 'Featured';
+                tag.style.cssText = `
+                    position: absolute;
+                    top: -10px;
+                    right: 15px;
+                    background: #000;
+                    color: #fff;
+                    font-size: 12px;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                `;
+                offerBox.appendChild(tag);
+            }
+
+            offerBox.appendChild(left);
+            offerBox.appendChild(right);
+            middle.appendChild(offerBox);
         });
 
-        // ✅ Add to Cart button
         const btn = document.createElement('button');
         btn.textContent = "Add Selected Offer to Cart";
         btn.style.cssText = `
-          margin-top: 15px;
-          width: 100%;
-          padding: 12px;
-          font-size: 16px;
-          font-weight: bold;
-          background: #000;
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
         `;
         btn.addEventListener('click', () => {
-          const varientid = {{product.variants|  json}};
-          const selected = document.querySelector('input[name="buy-more-rule"]:checked');
-          if (!selected) return alert("Please select an offer");
+            const varientid = {{product.variants | json}};
+            const selected = document.querySelector('input[name="buy-more-rule"]:checked');
+            if (!selected) return alert("Please select an offer");
 
-          const rule = JSON.parse(selected.value);
-          console.log(rule ,"this All Rule =======<<<<<<")
+            const rule = JSON.parse(selected.value);
 
-          // Shopify AJAX cart add
-          fetch('/cart/add.js', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: varientid[0].id, 
-              quantity: rule.quantity
+            fetch('/cart/add.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: varientid[0].id,
+                    quantity: rule.quantity
+                })
             })
-          })
-          .then(res => res.json())
-          .then(data => {
-            console.log("Added to cart:", data);
-            alert(`Added ${rule.quantity} items to cart with discount!`);
-          })
-          .catch(err => console.error("Cart add error:", err));
+            .then(res => res.json())
+            .then(data => {
+                console.log("Added to cart:", data);
+                alert(`Added ${rule.quantity} items to cart with discount!`);
+            })
+            .catch(err => console.error("Cart add error:", err));
         });
 
         card.appendChild(btn);
-
         return card;
-      }
-
-
-
+    }
 
     function createBOGOCard(campaign, products, goalMet, cartItems, cartVariantIds) {
         const card = document.createElement('div');
         card.className = 'upsell-card bogo-card';
         card.style.cssText = `
-          padding: 20px;
-          border-radius: 12px;
-          background-color: #e6f7ff;
-          margin: 15px 0;
-          border: 2px solid #0099cc;
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin-left: auto;
-          margin-right: auto;
+            padding: 20px;
+            border-radius: 12px;
+            background-color: #e6f7ff;
+            margin: 15px 0;
+            border: 2px solid #0099cc;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         `;
 
         const heading = document.createElement('h3');
@@ -369,493 +339,468 @@
         heading.style.cssText = `margin-bottom: 10px; font-size: 20px; color: #004466;`;
         card.appendChild(heading);
 
-        // === FIXED MODE ===
-       if (campaign.rewardMode === 'fixed') {
-        const rules = campaign.bogoRules || [];
-        if (!rules.length) return;
+        if (campaign.rewardMode === 'fixed') {
+            const rules = campaign.bogoRules || [];
+            if (!rules.length) return card;
 
-        const freeProduct = campaign.bogoFreeItems?.[0];
-        const paidProduct = campaign.rewardProducts?.[0];
+            const freeProduct = campaign.freeGiftProducts?.[0];
+            const paidProduct = campaign.rewardProducts?.[0];
 
-        if (freeProduct && paidProduct) {
-          const container = document.createElement('div');
-          container.style.cssText = `
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            margin: 20px 0;
-          `;
+            if (freeProduct && paidProduct) {
+                const container = document.createElement('div');
+                container.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 15px;
+                    margin: 20px 0;
+                `;
 
-          const paidContainer = document.createElement('div');
-          paidContainer.style.cssText = 'flex: 1; text-align: center;';
+                const paidContainer = document.createElement('div');
+                paidContainer.style.cssText = 'flex: 1; text-align: center;';
 
-          const paidImg = document.createElement('img');
-          paidImg.src = paidProduct.media;
-          paidImg.alt = paidProduct.title;
-          paidImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+                const paidImg = document.createElement('img');
+                paidImg.src = paidProduct.media;
+                paidImg.alt = paidProduct.title;
+                paidImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
 
-          const paidTitle = document.createElement('p');
-          paidTitle.textContent = paidProduct.title;
-          paidTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+                const paidTitle = document.createElement('p');
+                paidTitle.textContent = paidProduct.title;
+                paidTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
 
-          paidContainer.appendChild(paidImg);
-          paidContainer.appendChild(paidTitle);
-          container.appendChild(paidContainer);
+                paidContainer.appendChild(paidImg);
+                paidContainer.appendChild(paidTitle);
+                container.appendChild(paidContainer);
 
-          const plus = document.createElement('span');
-          plus.textContent = '+';
-          plus.style.cssText = 'font-size: 24px; font-weight: bold; color: #333;';
-          container.appendChild(plus);
+                const plus = document.createElement('span');
+                plus.textContent = '+';
+                plus.style.cssText = 'font-size: 24px; font-weight: bold; color: #333;';
+                container.appendChild(plus);
 
-          const freeContainer = document.createElement('div');
-          freeContainer.style.cssText = 'flex: 1; text-align: center;';
+                const freeContainer = document.createElement('div');
+                freeContainer.style.cssText = 'flex: 1; text-align: center;';
 
-          const freeImg = document.createElement('img');
-          freeImg.src = freeProduct.media;
-          freeImg.alt = freeProduct.title;
-          freeImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
+                const freeImg = document.createElement('img');
+                freeImg.src = freeProduct.media;
+                freeImg.alt = freeProduct.title;
+                freeImg.style.cssText = 'width: 100%; max-width: 200px; border-radius: 8px;';
 
-          const freeTitle = document.createElement('p');
-          freeTitle.textContent = freeProduct.title;
-          freeTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
+                const freeTitle = document.createElement('p');
+                freeTitle.textContent = freeProduct.title;
+                freeTitle.style.cssText = 'margin: 8px 0 0 0; font-size: 14px; color: #333;';
 
-          freeContainer.appendChild(freeImg);
-          freeContainer.appendChild(freeTitle);
-          container.appendChild(freeContainer);
+                freeContainer.appendChild(freeImg);
+                freeContainer.appendChild(freeTitle);
+                container.appendChild(freeContainer);
 
-          card.appendChild(container);
+                card.appendChild(container);
+            }
+
+            let selectedRule = rules[0];
+
+            const ruleSelector = document.createElement('select');
+            ruleSelector.style.cssText = `
+                margin: 10px 0;
+                padding: 10px;
+                border-radius: 6px;
+                width: 100%;
+                font-size: 16px;
+            `;
+
+            rules.forEach((rule, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Buy ${rule.buyQty} Get ${rule.getQty} Free`;
+                ruleSelector.appendChild(option);
+            });
+
+            ruleSelector.onchange = (e) => {
+                const index = parseInt(e.target.value, 10);
+                selectedRule = rules[index];
+            };
+
+            card.appendChild(ruleSelector);
+
+            const addButton = document.createElement('button');
+            addButton.textContent = 'Add to Cart';
+            addButton.style.cssText = `
+                width: 100%;
+                margin-top: 15px;
+                padding: 12px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.3s;
+            `;
+
+            addButton.onclick = async () => {
+                if (!selectedRule) {
+                    alert('Please select a valid offer.');
+                    return;
+                }
+
+                const paidVariant = campaign.rewardProducts[0]?.variantId;
+                if (!paidVariant) {
+                    alert('No paid product available for this offer.');
+                    return;
+                }
+
+                const buyQty = parseInt(selectedRule.buyQty);
+                const getQty = parseInt(selectedRule.getQty);
+                const selectedVariantIds = [campaign.freeGiftProducts?.[0]?.variantId].filter(Boolean);
+
+                const addItems = [];
+                addItems.push({ id: paidVariant, quantity: buyQty });
+                selectedVariantIds.forEach((variantId) => {
+                    addItems.push({
+                        id: variantId,
+                        quantity: 1,
+                        properties: { _bogo_free: 'true' },
+                    });
+                });
+
+                try {
+                    await fetch('/cart/add.js', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: addItems }),
+                    });
+                    document.dispatchEvent(new CustomEvent('cart:updated'));
+                    window.location.href = '/cart';
+                } catch (error) {
+                    console.error('Error adding items to cart:', error);
+                    alert('Failed to add items to cart. Please try again.');
+                }
+            };
+
+            card.appendChild(addButton);
+            return card;
         }
 
-        // Dropdown for selecting Buy X Get Y
-        let selectedRule = rules[0];
+        const freeItems = campaign.freeGiftProducts || [];
+        const rules = campaign.bogoRules || [];
 
-        const ruleSelector = document.createElement('select');
-        ruleSelector.style.cssText = `
-          margin: 10px 0;
-          padding: 10px;
-          border-radius: 6px;
-          width: 100%;
-          font-size: 16px;
-        `;
+        if (freeItems.length === 0 || rules.length === 0) {
+            const msg = document.createElement('p');
+            msg.textContent = 'Add an eligible product to unlock free gifts!';
+            msg.style.cssText = 'color: #888;';
+            card.appendChild(msg);
+            return card;
+        }
+
+        let activeRuleIndex = null;
+
+        const radioGroupName = `bogoRules-${campaign.id}`;
+        const rulesContainer = document.createElement('div');
+        rulesContainer.style.cssText = 'margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;';
 
         rules.forEach((rule, index) => {
-          const option = document.createElement('option');
-          option.value = index;
-          option.textContent = `Buy ${rule.buyQty} Get ${rule.getQty} Free`;
-          ruleSelector.appendChild(option);
+            const container = document.createElement('div');
+            container.style.cssText = 'display: flex; align-items: center;';
+
+            const radioInput = document.createElement('input');
+            radioInput.type = 'radio';
+            radioInput.name = radioGroupName;
+            radioInput.value = index;
+            radioInput.id = `rule-${campaign.id}-${index}`;
+            radioInput.style.marginRight = '8px';
+
+            const label = document.createElement('label');
+            label.htmlFor = radioInput.id;
+            label.textContent = `Buy ${rule.buyQty} and get ${rule.getQty} free`;
+            label.style.color = '#333';
+
+            container.appendChild(radioInput);
+            container.appendChild(label);
+            rulesContainer.appendChild(container);
         });
 
-        ruleSelector.onchange = (e) => {
-          const index = parseInt(e.target.value, 10);
-          selectedRule = rules[index];
-        };
+        card.appendChild(rulesContainer);
 
-        card.appendChild(ruleSelector);
+        const selectorWrapper = document.createElement('div');
+        selectorWrapper.className = 'selector-wrapper';
+        selectorWrapper.style.cssText = 'margin-top: 15px; display: none; flex-direction: column; gap: 20px;';
 
-        // Add to Cart button
         const addButton = document.createElement('button');
         addButton.textContent = 'Add to Cart';
+        addButton.disabled = true;
         addButton.style.cssText = `
-          width: 100%;
-          margin-top: 15px;
-          padding: 12px;
-          background-color: #4CAF50;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: background-color 0.3s;
+            margin-top: 15px;
+            padding: 10px 16px;
+            background-color: #0099cc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: not-allowed;
+            opacity: 0.6;
         `;
 
-        addButton.onclick = async () => {
-          if (!selectedRule) {
-            alert('Please select a valid offer.');
-            return;
-          }
+        function updateSelectors(selectedRuleIndex) {
+            const selectedRule = rules[selectedRuleIndex];
+            if (!selectedRule) {
+                selectorWrapper.style.display = 'none';
+                addButton.disabled = true;
+                addButton.style.cursor = 'not-allowed';
+                addButton.style.opacity = '0.6';
+                return;
+            }
 
-          const paidVariant = campaign.rewardProducts[0]?.variantId;
-          if (!paidVariant) {
-            alert('No paid product available for this offer.');
-            return;
-          }
+            selectorWrapper.innerHTML = '';
+            selectorWrapper.style.display = 'flex';
 
-          const buyQty = selectedRule.buyQty;
-          const getQty = selectedRule.getQty;
-          // For now we assume freeProduct is auto-selected (since you only show one free product)
-          const selectedVariantIds = [campaign.bogoFreeItems?.[0]?.variantId].filter(Boolean);
-          console.log(getQty,"getQty==================",selectedVariantIds)
+            const ruleContainer = document.createElement('div');
+            ruleContainer.style.cssText = 'padding: 10px; border: 1px dashed #0099cc; border-radius: 8px;';
 
-          // if (selectedVariantIds.length !== getQty) {
-          //   alert(`Please select exactly ${getQty} free item${getQty > 1 ? 's' : ''}.`);
-          //   return;
-          // }
+            const ruleLabel = document.createElement('p');
+            ruleLabel.textContent = `Select ${selectedRule.getQty} Free Item${selectedRule.getQty > 1 ? 's' : ''}`;
+            ruleLabel.style.cssText = 'font-weight: bold; color: #004466; margin-bottom: 10px;';
+            ruleContainer.appendChild(ruleLabel);
 
-          // Prepare cart items
-          const addItems = [];
-          addItems.push({ id: paidVariant, quantity: buyQty });
-          selectedVariantIds.forEach((variantId) => {
-            addItems.push({
-              id: variantId,
-              quantity: 1,
-              properties: { _bogo_free: 'true' },
-            });
-          });
+            const selectsContainer = document.createElement('div');
+            selectsContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
 
-          try {
-            await fetch('/cart/add.js', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: addItems }),
-            });
-            document.dispatchEvent(new CustomEvent('cart:updated'));
-            window.location.href = '/cart';
-          } catch (error) {
-            console.error('Error adding items to cart:', error);
-            alert('Failed to add items to cart. Please try again.');
-          }
-        };
+            for (let i = 0; i < parseInt(selectedRule.getQty); i++) {
+                const select = document.createElement('select');
+                select.style.cssText = 'padding: 8px; border-radius: 6px; border: 1px solid #ccc; min-width: 150px;';
+                select.id = `free-item-${campaign.id}-${selectedRuleIndex}-${i}`;
+                select.name = `freeItem-${campaign.id}[]`;
 
-        card.appendChild(addButton);
-        return card;
-      }
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = `Select Free Item ${i + 1}`;
+                select.appendChild(defaultOption);
 
+                freeItems.forEach((item) => {
+                    const option = document.createElement('option');
+                    option.value = item.variantId;
+                    option.textContent = item.title;
+                    select.appendChild(option);
+                });
 
-        // === FLAME MODE ===
-      const freeItems = campaign.bogoFreeItems || [];
-      const rules = campaign.bogoRules || [];
+                select.addEventListener('change', checkSelections);
+                selectsContainer.appendChild(select);
+            }
 
-      if (freeItems.length === 0 || rules.length === 0) {
-        const msg = document.createElement('p');
-        msg.textContent = 'Add an eligible product to unlock free gifts!';
-        msg.style.cssText = 'color: #888;';
-        card.appendChild(msg);
-        return card;
-      }
-
-      // Track selected rule
-      let activeRuleIndex = null;
-
-      // Radio buttons for selecting a BOGO rule
-      const radioGroupName = `bogoRules-${campaign.id}`;
-      const rulesContainer = document.createElement('div');
-      rulesContainer.style.cssText = 'margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;';
-
-      rules.forEach((rule, index) => {
-        const container = document.createElement('div');
-        container.style.cssText = 'display: flex; align-items: center;';
-
-        const radioInput = document.createElement('input');
-        radioInput.type = 'radio';
-        radioInput.name = radioGroupName;
-        radioInput.value = index;
-        radioInput.id = `rule-${campaign.id}-${index}`;
-        radioInput.style.marginRight = '8px';
-
-        const label = document.createElement('label');
-        label.htmlFor = radioInput.id;
-        label.textContent = `Buy ${rule.buyQty} and get ${rule.getQty} free`;
-        label.style.color = '#333';
-
-        container.appendChild(radioInput);
-        container.appendChild(label);
-        rulesContainer.appendChild(container);
-      });
-
-      card.appendChild(rulesContainer);
-
-      const selectorWrapper = document.createElement('div');
-      selectorWrapper.className = 'selector-wrapper';
-      selectorWrapper.style.cssText = 'margin-top: 15px; display: none; flex-direction: column; gap: 20px;';
-
-      // Add to Cart button
-      const addButton = document.createElement('button');
-      addButton.textContent = 'Add to Cart';
-      addButton.disabled = true;
-      addButton.style.cssText = `
-        margin-top: 15px;
-        padding: 10px 16px;
-        background-color: #0099cc;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: not-allowed;
-        opacity: 0.6;
-      `;
-
-      function updateSelectors(selectedRuleIndex) {
-        const selectedRule = rules[selectedRuleIndex];
-        if (!selectedRule) {
-          selectorWrapper.style.display = 'none';
-          addButton.disabled = true;
-          addButton.style.cursor = 'not-allowed';
-          addButton.style.opacity = '0.6';
-          return;
+            ruleContainer.appendChild(selectsContainer);
+            selectorWrapper.appendChild(ruleContainer);
         }
 
-        selectorWrapper.innerHTML = ''; // Clear previous selectors
-        selectorWrapper.style.display = 'flex';
-
-        const ruleContainer = document.createElement('div');
-        ruleContainer.style.cssText = 'padding: 10px; border: 1px dashed #0099cc; border-radius: 8px;';
-
-        const ruleLabel = document.createElement('p');
-        ruleLabel.textContent = `Select ${selectedRule.getQty} Free Item${selectedRule.getQty > 1 ? 's' : ''}`;
-        ruleLabel.style.cssText = 'font-weight: bold; color: #004466; margin-bottom: 10px;';
-        ruleContainer.appendChild(ruleLabel);
-
-        const selectsContainer = document.createElement('div');
-        selectsContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
-
-        for (let i = 0; i < selectedRule.getQty; i++) {
-          const select = document.createElement('select');
-          select.style.cssText = 'padding: 8px; border-radius: 6px; border: 1px solid #ccc; min-width: 150px;';
-          
-          select.id = `free-item-${campaign.id}-${selectedRuleIndex}-${i}`;
-          select.name = `freeItem-${campaign.id}[]`;
-
-          const defaultOption = document.createElement('option');
-          defaultOption.value = '';
-          defaultOption.textContent = `Select Free Item ${i + 1}`;
-          select.appendChild(defaultOption);
-
-          freeItems.forEach((item) => {
-            const option = document.createElement('option');
-            option.value = item.variantId;
-            option.textContent = item.title;
-            select.appendChild(option);
-          });
-
-          select.addEventListener('change', checkSelections);
-          selectsContainer.appendChild(select);
+        function checkSelections() {
+            const selects = selectorWrapper.querySelectorAll('select');
+            const allSelected = Array.from(selects).every((sel) => sel.value !== '');
+            addButton.disabled = !allSelected;
+            addButton.style.cursor = allSelected ? 'pointer' : 'not-allowed';
+            addButton.style.opacity = allSelected ? '1' : '0.6';
         }
 
-        ruleContainer.appendChild(selectsContainer);
-        selectorWrapper.appendChild(ruleContainer);
-      }
-
-      // Function to check if all dropdowns have valid selections
-      function checkSelections() {
-        const selects = selectorWrapper.querySelectorAll('select');
-        const allSelected = Array.from(selects).every((sel) => sel.value !== '');
-        addButton.disabled = !allSelected;
-        addButton.style.cursor = allSelected ? 'pointer' : 'not-allowed';
-        addButton.style.opacity = allSelected ? '1' : '0.6';
-      }
-
-      // Single event listener for radio buttons
-      rulesContainer.addEventListener('change', (event) => {
-        if (event.target.type === 'radio') {
-          activeRuleIndex = parseInt(event.target.value, 10);
-          updateSelectors(activeRuleIndex);
-          checkSelections();
-        }
-      });
-
-      // Add to cart button logic
-      addButton.onclick = async () => {
-        if (activeRuleIndex === null) {
-          alert('Please select an offer first.');
-          return;
-        }
-
-        const selects = selectorWrapper.querySelectorAll('select');
-        const selectedVariantIds = Array.from(selects)
-          .map((sel) => sel.value)
-          .filter((val) => val && !cartVariantIds.includes(val));
-
-        const selectedRule = rules[activeRuleIndex];
-        if (!selectedRule) {
-          alert('Please select a valid offer.');
-          return;
-        }
-
-        const paidVariant = campaign.rewardProducts[0]?.variantId;
-        if (!paidVariant) {
-          alert('No paid product available for this offer.');
-          return;
-        }
-
-        // Calculate quantities
-        const buyQty = selectedRule.buyQty;
-        const getQty = selectedRule.getQty;
-
-        const paidVariantInCart = cartItems.find((item) => item.variant_id.toString() === paidVariant);
-        const currentQuantity = paidVariantInCart ? paidVariantInCart.quantity : 0;
-        const additionalBuyQty = Math.max(0, buyQty - currentQuantity);
-        console.log(additionalBuyQty,"this Own Length",parseFloat(getQty))
-        if (selectedVariantIds.length !== parseFloat(getQty)) {
-          alert(`Please select exactly ${getQty} free item${getQty > 1 ? 's' : ''}.`);
-          return;
-        }
-
-        const addItems = [];
-
-        if (additionalBuyQty > 0) {
-          addItems.push({
-            id: paidVariant,
-            quantity: additionalBuyQty,
-          });
-        }
-
-        selectedVariantIds.forEach((variantId) => {
-          addItems.push({
-            id: variantId,
-            quantity: parseFloat(getQty),
-            properties: { _bogo_free: 'true' },
-          });
+        rulesContainer.addEventListener('change', (event) => {
+            if (event.target.type === 'radio') {
+                activeRuleIndex = parseInt(event.target.value, 10);
+                updateSelectors(activeRuleIndex);
+                checkSelections();
+            }
         });
 
-        try {
-          await fetch('/cart/add.js', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: addItems }),
-          });
-          document.dispatchEvent(new CustomEvent('cart:updated'));
-          window.location.href = '/cart';
-        } catch (error) {
-          console.error('Error adding items to cart:', error);
-          alert('Failed to add items to cart. Please try again.');
-        }
-      };
-
-      card.appendChild(selectorWrapper);
-      card.appendChild(addButton);
-
-      return card;
-    }
-
-    // Function to render upsell content
-    async function renderUpsellContent() {
-      try {
-        const response = await fetch(Api);
-        if (!response.ok) throw new Error('Failed to fetch upsell data');
-
-        const data = await response.json();
-        console.log('API Response product page:', data);
-
-        const cart = await fetch('/cart.js').then((res) => res.json());
-        const cartItems = cart.items || [];
-        const cartVariantIds = cartItems.map((item) => item.variant_id?.toString());
-        const cartTotal = cart.total_price / 100;
-        const cartQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-        const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
-
-        const productInfo =
-          document.querySelector('product-info') ||
-          document.querySelector('[data-product-upsell-block]') ||
-          document.querySelector('.product__info-container');
-
-        let upsellContainer = document.querySelector('.main-upsell-container');
-        if (!upsellContainer && productInfo) {
-          upsellContainer = document.createElement('div');
-          upsellContainer.className = 'main-upsell-container';
-          upsellContainer.style.cssText = `
-          margin-top:30px;
-          padding:20px;
-          border-radius:12px;
-        `;
-          const productForm =
-            document.querySelector('form[action="/cart/add"]') || document.querySelector('.product-form');
-          if (productForm) {
-            productForm.parentNode.insertBefore(upsellContainer, productForm.nextSibling);
-          } else {
-            productInfo.appendChild(upsellContainer);
-          }
-        } else if (upsellContainer) {
-          upsellContainer.innerHTML = '';
-          renderedCampaigns.clear();
-        } else {
-          return;
-        }
-
-        let anyUpsell = false;
-        for (const trigger of upsellTriggers) {
-          const campaign = trigger?.campaign;
-          if (!campaign?.id) continue;
-
-          if (renderedCampaigns.has(campaign.id)) {
-            console.log('Skipping duplicate campaign:', campaign.id);
-            continue;
-          }
-
-          const rewardProducts = campaign.rewardProducts || [];
-          const rewardCollections = campaign.rewardCollectionsWithProducts || [];
-          const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
-          const goalType = campaign.goalType || 'amount_cart';
-          const goalValue =
-            goalType === 'quantity' ? parseInt(campaign.goalquantity || 0) : parseFloat(campaign.goalAmount || 0);
-          const currentValue = goalType === 'quantity' ? cartQuantity : cartTotal;
-          const goalMet = currentValue >= goalValue;
-
-          renderedCampaigns.add(campaign.id);
-          anyUpsell = true;
-
-          const campaignBlock = document.createElement('div');
-          campaignBlock.className = 'upsell-campaign-block';
-          campaignBlock.style.cssText = `
-          border-top:1px dashed #ddd;
-          padding-top:20px;
-          margin-bottom:30px;
-        `;
-          campaignBlock.dataset.campaignId = campaign.id;
-
-         if (campaign.type === "add_to_unlock" ) {
-            if (campaign.placement.includes("Page")) {
-              const card = await createProgressBar(campaign, currentValue, goalValue, goalType);
-              campaignBlock.appendChild(card);
+        addButton.onclick = async () => {
+            if (activeRuleIndex === null) {
+                alert('Please select an offer first.');
+                return;
             }
-          }
 
-          if (campaign.type === 'buy_more_save_more') {
-            const card = createBuyMoreCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
-            campaignBlock.appendChild(card);
-          } else if (campaign.type === 'buy_one_get_one') {
-            const card = createBOGOCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
-            campaignBlock.appendChild(card);
-          }
+            const selects = selectorWrapper.querySelectorAll('select');
+            const selectedVariantIds = Array.from(selects)
+                .map((sel) => sel.value)
+                .filter((val) => val && !cartVariantIds.includes(val));
 
-          upsellContainer.appendChild(campaignBlock);
-        }
+            const selectedRule = rules[activeRuleIndex];
+            if (!selectedRule) {
+                alert('Please select a valid offer.');
+                return;
+            }
 
-        if (!anyUpsell) {
-          upsellContainer.innerHTML = '<p style="text-align:center; color:#666;">No upsell offers available.</p>';
-        }
-      } catch (error) {
-        console.error('Error rendering upsell content:', error);
-        if (document.querySelector('.main-upsell-container')) {
-          document.querySelector('.main-upsell-container').innerHTML =
-            '<p style="text-align:center; color:#666;">Unable to load upsell offers.</p>';
-        }
-      }
+            const paidVariant = campaign.rewardProducts[0]?.variantId;
+            if (!paidVariant) {
+                alert('No paid product available for this offer.');
+                return;
+            }
+
+            const buyQty = parseInt(selectedRule.buyQty);
+            const getQty = parseInt(selectedRule.getQty);
+
+            const paidVariantInCart = cartItems.find((item) => item.variant_id.toString() === paidVariant);
+            const currentQuantity = paidVariantInCart ? paidVariantInCart.quantity : 0;
+            const additionalBuyQty = Math.max(0, buyQty - currentQuantity);
+
+            if (selectedVariantIds.length !== getQty) {
+                alert(`Please select exactly ${getQty} free item${getQty > 1 ? 's' : ''}.`);
+                return;
+            }
+
+            const addItems = [];
+
+            if (additionalBuyQty > 0) {
+                addItems.push({
+                    id: paidVariant,
+                    quantity: additionalBuyQty,
+                });
+            }
+
+            selectedVariantIds.forEach((variantId) => {
+                addItems.push({
+                    id: variantId,
+                    quantity: 1,
+                    properties: { _bogo_free: 'true' },
+                });
+            });
+
+            try {
+                await fetch('/cart/add.js', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: addItems }),
+                });
+                document.dispatchEvent(new CustomEvent('cart:updated'));
+                window.location.href = '/cart';
+            } catch (error) {
+                console.error('Error adding items to cart:', error);
+                alert('Failed to add items to cart. Please try again.');
+            }
+        };
+
+        card.appendChild(selectorWrapper);
+        card.appendChild(addButton);
+        return card;
     }
 
-    // Initial render
-    await renderUpsellContent();
+    async function renderUpsellContent() {
+        try {
+            const response = await fetch(Api);
+            if (!response.ok) throw new Error('Failed to fetch upsell data');
 
-// Listen for cart updates
-document.addEventListener('cart:updated', async () => {
-    await renderUpsellContent();
-});
+            const data = await response.json();
+            console.log('API Response product page:', data);
 
-    // Polling fallback for cart changes
-    let lastCartState = await fetch('/cart.js').then((res) => res.json());
-     setInterval(async () => {
-      try {
-        const currentCart = await fetch('/cart.js').then((res) => res.json());
-        if (JSON.stringify(currentCart) !== JSON.stringify(lastCartState)) {
-          lastCartState = currentCart;
-          await renderUpsellContent();
+            const cart = await fetch('/cart.js').then((res) => res.json());
+            const cartItems = cart.items || [];
+            const cartVariantIds = cartItems.map((item) => item.variant_id?.toString());
+            const cartTotal = cart.total_price / 100;
+            const cartQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+            const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
+
+            const productInfo =
+                document.querySelector('product-info') ||
+                document.querySelector('[data-product-upsell-block]') ||
+                document.querySelector('.product__info-container');
+
+            let upsellContainer = document.querySelector('.main-upsell-container');
+            if (!upsellContainer && productInfo) {
+                upsellContainer = document.createElement('div');
+                upsellContainer.className = 'main-upsell-container';
+                upsellContainer.style.cssText = `
+                    margin-top:30px;
+                    padding:20px;
+                    border-radius:12px;
+                `;
+                const productForm =
+                    document.querySelector('form[action="/cart/add"]') || document.querySelector('.product-form');
+                if (productForm) {
+                    productForm.parentNode.insertBefore(upsellContainer, productForm.nextSibling);
+                } else {
+                    productInfo.appendChild(upsellContainer);
+                }
+            } else if (upsellContainer) {
+                upsellContainer.innerHTML = '';
+                renderedCampaigns.clear();
+            } else {
+                return;
+            }
+
+            let anyUpsell = false;
+            for (const trigger of upsellTriggers) {
+                const campaign = trigger?.campaign;
+                if (!campaign?.id) continue;
+
+                if (renderedCampaigns.has(campaign.id)) {
+                    console.log('Skipping duplicate campaign:', campaign.id);
+                    continue;
+                }
+
+                const rewardProducts = campaign.rewardProducts || [];
+                const rewardCollections = campaign.rewardCollectionsWithProducts || [];
+                const allProducts = [...rewardProducts, ...rewardCollections.flatMap((col) => col.products || [])];
+                const goalType = campaign.goalType || 'amount_cart';
+                const goalValue =
+                    goalType === 'quantity' ? parseInt(campaign.goalquantity || 0) : parseFloat(campaign.goalAmount || 0);
+                const currentValue = goalType === 'quantity' ? cartQuantity : cartTotal;
+                const goalMet = currentValue >= goalValue;
+
+                renderedCampaigns.add(campaign.id);
+                anyUpsell = true;
+
+                const campaignBlock = document.createElement('div');
+                campaignBlock.className = 'upsell-campaign-block';
+                campaignBlock.style.cssText = `
+                    border-top:1px dashed #ddd;
+                    padding-top:20px;
+                    margin-bottom:30px;
+                `;
+                campaignBlock.dataset.campaignId = campaign.id;
+
+                if (campaign.type === "add_to_unlock") {
+                  if (campaign.placement.includes("Page")) {
+                      console.log(campaign,"thsi main Camping ")
+                        const card = await createProgressBar(campaign, currentValue, goalValue, goalType);
+                        campaignBlock.appendChild(card);
+                    }
+                }
+
+                if (campaign.type === 'buy_more_save_more') {
+                    const card = createBuyMoreCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
+                    campaignBlock.appendChild(card);
+                } else if (campaign.type === 'buy_one_get_one') {
+                    const card = createBOGOCard(campaign, allProducts, goalMet, cartItems, cartVariantIds);
+                    campaignBlock.appendChild(card);
+                }
+
+                upsellContainer.appendChild(campaignBlock);
+            }
+
+            if (!anyUpsell) {
+                upsellContainer.innerHTML = '<p style="text-align:center; color:#666;">No upsell offers available.</p>';
+            }
+        } catch (error) {
+            console.error('Error rendering upsell content:', error);
+            if (document.querySelector('.main-upsell-container')) {
+                document.querySelector('.main-upsell-container').innerHTML =
+                    '<p style="text-align:center; color:#666;">Unable to load upsell offers.</p>';
+            }
         }
-      } catch (error) {
-        console.error('Cart polling error:', error);
-      }
-    }, 2000); 
-  });
+    }
+
+    await renderUpsellContent();
+
+    document.addEventListener('cart:updated', async () => {
+        await renderUpsellContent();
+    });
+
+    let lastCartState = await fetch('/cart.js').then((res) => res.json());
+    setInterval(async () => {
+        try {
+            const currentCart = await fetch('/cart.js').then((res) => res.json());
+            if (JSON.stringify(currentCart) !== JSON.stringify(lastCartState)) {
+                lastCartState = currentCart;
+                await renderUpsellContent();
+            }
+        } catch (error) {
+            console.error('Cart polling error:', error);
+        }
+    }, 2000);
+});
 </script>
 
 {% comment %} new Style tag {% endcomment %}

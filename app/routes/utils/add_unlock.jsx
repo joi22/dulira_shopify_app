@@ -79,220 +79,85 @@ const Reward_collection = async (reward_collection, shop, accessToken, campaignI
 export const add_to_unlock_ = async (
   shop,
   accessToken,
-  rewardType,
-  campaignName,
-  goalType,
-  goalQuantity,
-  goalAmounts,
-  discountCode,
-  rewardProducts,
   upsellCampaign,
-  reward_collection,
-  rewardMode,
-  discountType,
+  selectedProducts,
+  offers,
   admin,
-  Buy_products,
-  selectedCollections
 ) => {
 
-  console.log("this is the reward collection", Buy_products)
-  let discountId = null;
+  console.log(
+    shop,
+    accessToken,
+    upsellCampaign,
+    selectedProducts,
+    offers,
+    admin,
+  )
   try {
-    if (rewardType === "gift") {
+    let discountIds = [];
 
-      const campaignId = upsellCampaign.id;
-      const rewads_product = await Reward_collection(reward_collection, shop, accessToken, campaignId)
-      await prisma.UpsellRewardProduct.createMany({
-        data: Buy_products.map((p) => ({
-          campaignId: upsellCampaign.id,
-          productId: p.id,
-          variantId: String(p.variantId),
-          title: p.title,
-          price: p.price,
-          media: p.media,
-        })),
-      });
+    for (const offer of offers) {
+      const {
+        id: offerId,
+        goalType,
+        goalAmount,
+        goalquantity,
+        rewardMode,
+        rewardType,
+        discountCode,
+        discountType,
+        productPickType,
+        buyProductPicker,
+        buyCollectionPicker,
+        rewardProducts,
+        rewardCollection,
+        goalTextBefore,
+        goalTextAfter,
+      } = offer;
 
-      const discount = await admin.graphql(
-        `#graphql
-    mutation CreateBxgyDiscount($automaticBxgyDiscount: DiscountAutomaticBxgyInput!) {
-      discountAutomaticBxgyCreate(automaticBxgyDiscount: $automaticBxgyDiscount) {
-        automaticDiscountNode {
-          id
-          automaticDiscount {
-            ... on DiscountAutomaticBxgy {
-              title
-              startsAt
-              endsAt
-              customerBuys {
-                isOneTimePurchase
-                isSubscription
-                items {
-                  ... on AllDiscountItems {
-                    allItems
-                  }
-                }
-                value {
-                  ... on DiscountQuantity {
-                    quantity
-                  }
-                   ... on DiscountPurchaseAmount{
-                amount
-              }
-                }
-              }
-              customerGets {
-                items {
-                  ... on DiscountCollections {
-                    collections(first: 100) {
-                      edges {
-                        node {
-                         id
-                        }
-                      }
-                    }
-                  }
-                }
-                value {
-                  ... on DiscountPercentage {
-                    percentage
-                  }
-                }
-              }
+      let discountId = null;
+
+      if (rewardType === "gift") {
+        // ✅ Handle gift BXGY
+        const discount = await admin.graphql(`
+        mutation CreateBxgyDiscount($automaticBxgyDiscount: DiscountAutomaticBxgyInput!) {
+          discountAutomaticBxgyCreate(automaticBxgyDiscount: $automaticBxgyDiscount) {
+            automaticDiscountNode {
+              id
+              automaticDiscount { ... on DiscountAutomaticBxgy { title } }
             }
+            userErrors { field message }
           }
         }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-  `,
-        {
+      `, {
           variables: {
             automaticBxgyDiscount: {
-              title: `${campaignName}-${Date.now()}`,
+              title: `Offer-${offerId}-${Date.now()}`,
               startsAt: new Date().toISOString(),
               customerBuys: {
-                value: goalQuantity
-                  ? { quantity: String(goalQuantity) }
-                  : { amount: String(goalAmounts) },
-
-                items: Buy_products?.length
+                value: goalquantity
+                  ? { quantity: String(goalquantity) }
+                  : { amount: String(goalAmount) },
+                items: selectedProducts?.length
                   ? {
                     products: {
-                      productsToAdd: Buy_products.map(
+                      productsToAdd: selectedProducts.map(
                         (item) => `gid://shopify/Product/${item.id}`
                       ),
                     },
                   }
                   : {
                     collections: {
-                      add: selectedCollections.map(
-                        (p) => `gid://shopify/Collection/${p.id}`
+                      add: buyCollectionPicker.map(
+                        (c) => `gid://shopify/Collection/${c.id}`
                       ),
                     },
                   },
-
                 isOneTimePurchase: true,
                 isSubscription: false,
               },
-
-
               customerGets: {
-                value: {
-                  discountOnQuantity: {
-                    quantity: "1",
-                    effect: {
-                      percentage: 1.0,
-                    },
-                  },
-                },
-                items: {
-                  collections: {
-                    add: reward_collection.map(
-                      (p) => `gid://shopify/Collection/${p.id}`
-                    ),
-                  },
-                },
-              },
-            }
-
-          },
-        }
-      );
-
-      const response = await discount.json();
-      const userErrors =
-        response?.data?.discountAutomaticBxgyCreate?.userErrors;
-
-      if (userErrors?.length > 0) {
-        console.error("Shopify BXGY Discount Creation Errors:", userErrors);
-        throw new Error(JSON.stringify(userErrors));
-      }
-
-      const discountId =
-        response?.data?.discountAutomaticBxgyCreate?.automaticDiscountNode?.id;
-      console.log("✅ BXGY Discount Created:", discountId);
-
-
-    } else if (rewardType === "discount") {
-      const discount = await admin.graphql(
-        `#graphql
-        mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
-          discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
-            automaticDiscountNode {
-              id
-              automaticDiscount {
-                ... on DiscountAutomaticBasic {
-                  title
-                }
-              }
-            }
-            userErrors {
-              field
-              code
-              message
-            }
-          }
-        }`,
-        {
-          variables: {
-            automaticBasicDiscount: {
-              title: `${campaignName}-${Date.now()}` || "Discount",
-              startsAt: new Date().toISOString(),
-              combinesWith: {
-                productDiscounts: rewardType === "discount",
-                shippingDiscounts: rewardType === "shipping",
-                orderDiscounts: false,
-              },
-              minimumRequirement:
-                goalType === "quantity"
-                  ? {
-                    quantity: {
-                      greaterThanOrEqualToQuantity: String(goalQuantity),
-                    },
-                  }
-                  : {
-                    subtotal: {
-                      greaterThanOrEqualToSubtotal: parseFloat(goalAmounts).toFixed(2),
-                    },
-                  },
-              customerGets: {
-                value:
-                  rewardMode === "fixed"
-                    ? rewardType === "shipping"
-                      ? { percentage: 1.0 }
-                      : discountType === "percentage"
-                        ? { percentage: parseFloat(discountCode) / 100 }
-                        : {
-                          discountAmount: {
-                            amount: parseFloat(discountCode),
-                            appliesOnEachItem: false,
-                          },
-                        }
-                    : { percentage: 1.0 },
+                value: { discountOnQuantity: { quantity: "1", effect: { percentage: 1.0 } } },
                 items: {
                   products: {
                     productsToAdd: rewardProducts.map(
@@ -303,116 +168,109 @@ export const add_to_unlock_ = async (
               },
             },
           },
-        }
-      );
-
-      const response = await discount.json();
-      const userErrors = response?.data?.discountAutomaticBasicCreate?.userErrors;
-
-      if (userErrors?.length > 0) {
-        console.error("Shopify Discount Creation Errors:", userErrors);
-        throw new Error(JSON.stringify(userErrors));
-      }
-
-      discountId = response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode?.id;
-      console.log("✅ Discount Created:", discountId);
-
-      if (rewardProducts.length > 0) {
-        await prisma.UpsellRewardProduct.createMany({
-          data: rewardProducts.map((p) => ({
-            campaignId: upsellCampaign.id,
-            productId: p.id,
-            title: p.title,
-            price: p.price,
-            variantId: String(p.variantId),
-            handle: p.handle,
-            media: p.media,
-          })),
         });
-      }
-    } else if (rewardType === "shipping") {
-      const minimumRequirementBlock =
-        goalType === "quantity"
-          ? `
-        minimumRequirement: {
-          quantity: { greaterThanOrEqualToQuantity: "${String(goalQuantity)}" }
-        },`
-          : `
-        minimumRequirement: {
-          subtotal: { greaterThanOrEqualToSubtotal: ${parseFloat(goalAmounts).toFixed(2)} }
-        },`;
 
-      const shippingDiscountTitle = `${campaignName}-FreeShipping-${Date.now()}`;
-      const startsAt = new Date().toISOString();
+        const response = await discount.json();
+        discountId =
+          response?.data?.discountAutomaticBxgyCreate?.automaticDiscountNode?.id;
 
-      const shippingDiscount = await admin.graphql(`
+        console.log(response?.data?.discountAutomaticBxgyCreate, " ,✅ Gift BXGY created for offer", offerId, discountId);
+      } else if (rewardType === "discount") {
+        // ✅ Handle discount offer
+        const discount = await admin.graphql(`
+        mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
+          discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
+            automaticDiscountNode { id }
+            userErrors { field message }
+          }
+        }`,
+          {
+            variables: {
+              automaticBasicDiscount: {
+                title: `Offer-${offerId}-${Date.now()}`,
+                startsAt: new Date().toISOString(),
+                minimumRequirement:
+                  goalType === "quantity"
+                    ? { quantity: { greaterThanOrEqualToQuantity: String(goalquantity) } }
+                    : { subtotal: { greaterThanOrEqualToSubtotal: parseFloat(goalAmount).toFixed(2) } },
+                customerGets: {
+                  value:
+                    rewardMode === "fixed"
+                      ? discountType === "percentage"
+                        ? { percentage: parseFloat(discountCode) / 100 }
+                        : {
+                          discountAmount: {
+                            amount: parseFloat(discountCode),
+                            appliesOnEachItem: false,
+                          },
+                        }
+                      : { percentage: 1.0 },
+                  items: {
+                    products: {
+                      productsToAdd: selectedProducts.map(
+                        (p) => `gid://shopify/Product/${p.id}`
+                      ),
+                    },
+                  },
+                },
+              },
+            },
+          }
+        );
+
+        const response = await discount.json();
+        discountId =
+          response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode?.id;
+
+        console.log(response?.data?.discountAutomaticBasicCreate, "✅ Discount created for offer", offerId, discountId);
+      } else if (rewardType === "shipping") {
+        // ✅ Handle free shipping
+        const shippingDiscount = await admin.graphql(`
         mutation CreateFreeShippingDiscount {
           discountAutomaticFreeShippingCreate(
             freeShippingAutomaticDiscount: {
-              title: "${shippingDiscountTitle}",
-              startsAt: "${startsAt}",
-              appliesOnOneTimePurchase: true,
-              appliesOnSubscription: true,
-              ${minimumRequirementBlock}
+              title: "Offer-${offerId}-FreeShipping-${Date.now()}",
+              startsAt: "${new Date().toISOString()}",
+              minimumRequirement: ${goalType === "quantity"
+            ? `{ quantity: { greaterThanOrEqualToQuantity: "${goalquantity}" } }`
+            : `{ subtotal: { greaterThanOrEqualToSubtotal: ${parseFloat(goalAmount).toFixed(2)} } }`
+          },
               destination: { all: true }
             }
           ) {
-            automaticDiscountNode {
-              id
-              automaticDiscount {
-                ... on DiscountAutomaticFreeShipping {
-                  title
-                  startsAt
-                  endsAt
-                }
-              }
-            }
-            userErrors {
-              field
-              message
-            }
+            automaticDiscountNode { id }
+            userErrors { field message }
           }
         }
       `);
 
-      const shippingResponse = await shippingDiscount.json();
-      const shippingErrors = shippingResponse?.data?.discountAutomaticFreeShippingCreate?.userErrors;
+        const response = await shippingDiscount.json();
+        discountId =
+          response?.data?.discountAutomaticFreeShippingCreate?.automaticDiscountNode?.id;
 
-      if (shippingErrors?.length > 0) {
-        console.error("Free Shipping Creation Errors:", shippingErrors);
-        throw new Error(JSON.stringify(shippingErrors));
+        console.log(response?.data?.discountAutomaticFreeShippingCreate, "✅ Free Shipping created for offer", offerId, discountId);
       }
 
-      discountId = shippingResponse?.data?.discountAutomaticFreeShippingCreate?.automaticDiscountNode?.id;
-      console.log("✅ Free Shipping Discount Created:", discountId);
-
-      if (rewardProducts.length > 0) {
-        await prisma.UpsellRewardProduct.createMany({
-          data: rewardProducts.map((p) => ({
-            campaignId: upsellCampaign.id,
-            productId: p.id,
-            title: p.title,
-            price: p.price,
-            variantId: String(p.variantId),
-            handle: p.handle,
-            media: p.media,
-          })),
-        });
+      // Store each discountId
+      if (discountId) {
+        discountIds.push({ offerId, discountId });
       }
     }
+
     return {
       status: "success",
-      message: "Reward setup completed.",
-      discountId,
+      message: "All offers processed.",
+      discounts: discountIds,
     };
   } catch (error) {
-    console.error("❌ Error in add_to_unlock:", error);
+    console.error("❌ Error processing offers:", error);
     return {
       status: "error",
       message: error.message || "Something went wrong",
-      discountId: null,
+      discounts: [],
     };
   }
+
 };
 
 

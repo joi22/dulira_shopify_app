@@ -1,4 +1,10 @@
-import { PlusIcon } from '@shopify/polaris-icons';
+import {
+    GiftCardIcon,
+    OrderRepeatIcon,
+    HeartIcon,
+    ClockIcon,
+    ChatIcon, PlusIcon
+} from '@shopify/polaris-icons';
 import bogo from './_index/media/bogo.jpg'
 import add_to_unlock from './_index/media/addtounlock.png'
 import './_index/style.css'
@@ -40,59 +46,115 @@ export const loader = async ({ request }) => {
 export default function UpsellEngine() {
     const navigate = useNavigate();
     const { campingall } = useLoaderData();
-    const [status , setStatus] = useState(true);
+    const [status, setStatus] = useState(true);
 
     const [active, setActive] = useState(false);
     const handleChange = useCallback(() => setActive(!active), [active]);
+    const [selectedCategory, setSelectedCategory] = useState(null);
 
     const resourceName = {
         singular: "campaign",
         plural: "campaigns",
     };
 
+    // ✅ Categories
+    const Category = [
+        {
+            type: "upsell",
+            title: "Upsell",
+            description:
+                "Encourage customers to upgrade or add higher-value products.",
+            icon: GiftCardIcon,
+        },
+        {
+            type: "cross_sell",
+            title: "Cross-sell",
+            description:
+                "Suggest complementary products to increase order value.",
+            icon: OrderRepeatIcon,
+        },
+        {
+            type: "loyalty",
+            title: "Loyalty",
+            description:
+                "Reward customers for purchases to build long-term relationships.",
+            icon: HeartIcon,
+        },
+        {
+            type: "urgency",
+            title: "Urgency",
+            description:
+                "Motivate quick purchases with time-sensitive offers.",
+            icon: ClockIcon,
+        },
+        {
+            type: "engagement",
+            title: "Engagement",
+            description:
+                "Boost customer interaction with personalized experiences.",
+            icon: ChatIcon,
+        },
+    ];
+
+    // ✅ Campaign Types (with category)
     const campaignTypes = [
         {
             type: "buy_one_get_one",
             title: "🛍 BOGO",
             desc: "Buy One, Get One Free or Discounted",
             img: bogo,
-            url: 'addtounlock'
+            url: "addtounlock",
+            category: "upsell",
         },
         {
             type: "add_to_unlock",
             title: "🎁 Add to Unlock",
             desc: "Progress bar for free gifts/discounts",
             img: add_to_unlock,
-            url: 'addtounlock'
-
+            url: "addtounlock",
+            category: "upsell",
         },
         {
             type: "buy_more_save_more",
             title: "📦 Buy More, Save More",
             desc: "Bulk pricing tiers",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/buy_more.png",
-            url: 'addtounlock'
+            url: "addtounlock",
+            category: "upsell",
         },
         {
             type: "checkout_upsell",
             title: "⚡ Checkout Upsell",
             desc: "Quick offers during checkout",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/checkout.png",
-            url: 'addtounlock'
+            url: "addtounlock",
+            category: "upsell",
         },
         {
             type: "order_bump",
             title: "📌 Order Bump",
             desc: "Add-ons like insurance, priority, etc.",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/orderbump.png",
-            url: 'addtounlock'
+            url: "addtounlock",
+            category: "upsell",
         },
         {
             type: "post_purchase",
             title: "🧾 Post-Purchase",
             desc: "Offer shown after order confirmation",
             img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/postpurchase.png",
-            url: 'addtounlock'
+            url: "addtounlock",
+            category: "upsell",
+        },
+
+        // 💡 Example for future: Loyalty campaigns
+        {
+            type: "points_reward",
+            title: "⭐ Points Reward",
+            desc: "Reward customers with points for purchases",
+            img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/loyalty.png",
+            url: "addtounlock",
+            category: "loyalty",
         },
     ];
 
@@ -101,20 +163,20 @@ export default function UpsellEngine() {
             console.error("Invalid discountId:", discountId);
             return;
         }
-    }
+    };
 
     return (
         <Page
             title="Upsell Engine"
             primaryAction={{
-                content: 'New Campaign',
+                content: "New Campaign",
                 icon: PlusIcon,
                 onAction: handleChange,
             }}
         >
             <Layout sectioned>
                 <Card>
-                    {(!campingall || campingall.length === 0) ? (
+                    {!campingall || campingall.length === 0 ? (
                         <EmptyState
                             heading="No campaigns yet"
                             action={{ content: "Create campaign", onAction: handleChange }}
@@ -151,7 +213,7 @@ export default function UpsellEngine() {
                                                     handleSwitchChange(
                                                         "Offer_status",
                                                         e.target.checked,
-                                                        row.id,
+                                                        campaign.id
                                                     )
                                                 }
                                                 className="switch-input"
@@ -171,7 +233,11 @@ export default function UpsellEngine() {
                                                 actions={[
                                                     { content: "Preview", onAction: () => console.log("Preview") },
                                                     { content: "Edit", onAction: () => console.log("Edit") },
-                                                    { content: "Delete", onAction: () => console.log("Delete"), destructive: true },
+                                                    {
+                                                        content: "Delete",
+                                                        onAction: () => console.log("Delete"),
+                                                        destructive: true,
+                                                    },
                                                 ]}
                                             />
                                         </ButtonGroup>
@@ -183,68 +249,80 @@ export default function UpsellEngine() {
                 </Card>
             </Layout>
 
-            {/* ✅ Modal without Stack */}
-            <Modal
-                open={active}
-                onClose={handleChange}
-                title="Choose a Campaign Type"
-                large
-            >
+            {/* ✅ Modal */}
+            <Modal open={active} onClose={handleChange} title="Choose a Campaign" large>
                 <Modal.Section>
-                    <div className="campaign-grid">
-                        <InlineStack wrap align='space-around' gap={'300'}>
-                            {campaignTypes.map((c) => (
-                                <div className="campaign-card" key={c.type}>
-                                    <Box width='250px' >
-                                        <Card roundedAbove='md'>
-                                            <BlockStack gap={"200"}>
-                                                <Thumbnail
-                                                    size=''
-                                                    source={c.img}
-                                                    alt={c.title}
-                                                />
+                    {!selectedCategory ? (
+                        <BlockStack gap={"300"}>
+                            <Text variant="headingMd">Step 1: Choose Category</Text>
+                            <InlineStack wrap align="center" gap="300">
+                                {Category.map((cat) => (
+                                    <Box
+                                        width='150px'
+                                        minHeight='150px'
+                                        key={cat.type}
+                                        sectioned
+                                        onClick={() => setSelectedCategory(cat)}
+                                    ><Card >
 
-                                                <Text variant="headingMd">{c.title}</Text>
-
-                                                <p>{c.desc}</p>
-                                                <Button
-                                                    onClick={() => navigate(`/app/${c.url}?type=${c.type}`)}
-                                                    primary
-                                                >
-                                                    Select
-                                                </Button>
-
-                                            </BlockStack>
-
+                                            <cat.icon width="50px" />
+                                            <InlineStack align="center" gap="200">
+                                                <BlockStack align='center'>
+                                                    <Text variant="headingSm">{cat.title}</Text>
+                                                    <Text as="p" variant='bodyXs'>{cat.description}</Text>
+                                                </BlockStack>
+                                                {/* <Button onClick={() => setSelectedCategory(cat.type)}>Selected</Button> */}
+                                            </InlineStack>
                                         </Card>
                                     </Box>
-                                </div>
-                            ))}
-                        </InlineStack>
-                    </div>
+                                ))}
+                            </InlineStack>
+                        </BlockStack>
+                    ) : (
+                        <BlockStack gap={"200"}>
+                            <Text variant="headingMd">
+                                Step 2: Choose Campaign Type ({selectedCategory.title})
+                            </Text>
+                            <InlineStack gap={"100"} align='start'>
+                                <Button onClick={() => setSelectedCategory(null)} plain>
+                                    ←  Back
+                                </Button>
+                            </InlineStack>
+                            <div className="campaign-grid">
+                                <InlineStack wrap align='space-around' gap={'300'}>
+                                    {campaignTypes.map((c) => (
+                                        <div className="campaign-card" key={c.type}>
+                                            <Box width='250px' >
+                                                <Card roundedAbove='md'>
+                                                    <BlockStack gap={"200"}>
+                                                        <Thumbnail
+                                                            size=''
+                                                            source={c.img}
+                                                            alt={c.title}
+                                                        />
 
+                                                        <Text variant="headingMd">{c.title}</Text>
+
+                                                        <p>{c.desc}</p>
+                                                        <Button
+                                                            onClick={() => navigate(`/app/${c.url}?type=${c.type}`)}
+                                                            primary
+                                                        >
+                                                            Select
+                                                        </Button>
+
+                                                    </BlockStack>
+
+                                                </Card>
+                                            </Box>
+                                        </div>
+                                    ))}
+                                </InlineStack>
+                            </div>
+                        </BlockStack>
+                    )}
                 </Modal.Section>
             </Modal>
-
-            {/* ✅ CSS in ./_index/style.css */}
-            {/* 
-      .campaign-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 16px;
-      }
-      .campaign-card {
-        border: 1px solid #e1e3e5;
-        border-radius: 8px;
-        padding: 16px;
-        background: #fff;
-        text-align: center;
-      }
-      .campaign-card img {
-        margin-bottom: 12px;
-        border-radius: 6px;
-      }
-      */}
         </Page>
     );
-};
+}
