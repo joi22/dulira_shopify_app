@@ -4,7 +4,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
+  const varient = {{product.variants.first.id |  json}};
   const cartdata = {{cart | json}};
+  
   
   // MAIN CONTAINER (only once)
   const main_container = document.createElement('div');
@@ -16,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const cartResponse = await fetch(`/cart.js`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
     const cart = await cartResponse.json();
     const cartTotal = cart.total_price / 100;
-    console.log(quantity_product,"this cartTotal <<< ")
+   
 
     let progressPercent = 0;
     let remaining = 0;
@@ -140,13 +142,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     card.className = 'card';
     card.innerHTML = cardContent;
     main_container.appendChild(card);
-    const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
     
     // Add button handler
       card.querySelectorAll(`#action-btn-${offer.id}`).forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
-
+const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
+    console.log(quantity_product,"========= ,<<< this cartTotal ")
         
         const offerId = btn.id;
 
@@ -162,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         const data = {
-          id: variantId,
+          id: varient,
           quantity: qtyToAdd
         };
 
@@ -176,7 +178,9 @@ document.addEventListener('DOMContentLoaded', async function () {
           },
           body: JSON.stringify(data),
         }).then(res => res.json())
-          .then(result => console.log('Item added to cart:', result));
+          .then(result => {
+            window.location.href = '/checkout';  
+          console.log('Item added to cart:', result)});
 
         // If it's a free gift, redirect to checkout immediately
         if (offer.rewardType === 'gift') {
