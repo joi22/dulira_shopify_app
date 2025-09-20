@@ -885,7 +885,7 @@ export default function AddToUnlock() {
         }
         console.log(placement, "THis placement")
 
-        setMainBtnLoading(true);
+//        setMainBtnLoading(true);
 
         const formData = new FormData();
         formData.append("campaignName", campaignName);
@@ -916,6 +916,7 @@ export default function AddToUnlock() {
             method: "POST",
             encType: "multipart/form-data",
         });
+        setMainBtnLoading(false)
     };
 
     return (
