@@ -28,16 +28,13 @@ document.addEventListener('DOMContentLoaded', async function () {
       progressPercent = Math.min((cartTotal / offer.goalAmount) * 100, 100);
       remaining = Math.max(offer.goalAmount - cartTotal, 0);
     }
-let id = offer.id;
-      const progressBar = document.querySelector(`progress-bar-${id}`);
+
+    const progressBar = document.querySelector(`#progress-bar-${offer.id}`);
     const unlockText = document.querySelector(`#unlock-text-${offer.id}`);
     const freeShippingBanner = document.querySelector(`#free-shipping-banner-${offer.id}`);
     const actionButton = document.querySelector(`#action-btn-${offer.id}`);
-    console.log(progressBar)
-    if (!progressBar) {
-      console.warn("❌ Progress bar element not found for offer:", offer.id, offer);
-      return;
-    }
+console.log(unlockText,"is Not GEt <<< +=  ",offer.id,offer)
+    if (!progressBar) return;
 
    progressBar.style.width = `${progressPercent}%`;
 
@@ -126,7 +123,7 @@ if (progressPercent < 40) {
     const cardContent = `
       <div class="offer-card">
         <div class="progress-container">
-          <div class="progress-bar"><div class="progress " id="progress-bar-${offer.id}"></div></div>
+          <div class="progress-bar"><div class="progress" id="progress-bar-${offer.id}"></div></div>
         </div>
         <div class="unlock-text" id="unlock-text-${offer.id}"></div>
         <div class="product-grids">${productCardsHTML}</div>
@@ -178,7 +175,7 @@ if (progressPercent < 40) {
     // 🔥 Listen for qty changes
     const qtyInput = document.querySelector('[name="quantity"]');
     if (qtyInput) {
-
+      console.log(qtyInput , "=========== >>>>>  Update THis qtyInput")
       qtyInput.addEventListener('change', async () => {
         await progressBardynamic(campaign, offer);
       });
@@ -216,9 +213,6 @@ if (progressPercent < 40) {
             if (!document.querySelector('.main_container')) {
               addToCartBtn.appendChild(main_container);
             }
-         
-
-           
           }
         }
       }
@@ -318,7 +312,9 @@ if (progressPercent < 40) {
     justify-content: center;
     margin-bottom: 10px;
   }
-
+a:empty, ul:empty, dl:empty, div:empty, section:empty, article:empty, p:empty, h1:empty, h2:empty, h3:empty, h4:empty, h5:empty, h6:empty{
+  display: block;
+}
   .product-image {
     width: 100%;
     height: 100%;
@@ -431,21 +427,7 @@ if (progressPercent < 40) {
   .progress.high {
     background: linear-gradient(90deg, #4caf50, #2e7d32); /* green shades */
   }
-  a:empty,
-  ul:empty,
-  dl:empty,
-  div:empty,
-  section:empty,
-  article:empty,
-  p:empty,
-  h1:empty,
-  h2:empty,
-  h3:empty,
-  h4:empty,
-  h5:empty,
-  h6:empty {
-    display: block;
-  }
+
   /* Responsive Design */
   @media (max-width: 768px) {
     .main_container {
