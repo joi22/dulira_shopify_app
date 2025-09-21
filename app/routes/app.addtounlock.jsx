@@ -938,7 +938,6 @@ const [currentProgress, setCurrentProgress] = useState(1);
                                     <Divider />
                                 </BlockStack>
                             </Card>
-
                             <Card>
                                 <BlockStack gap="200">
                                     <Text as="h2" variant="headingMd" fontWeight="bold">
