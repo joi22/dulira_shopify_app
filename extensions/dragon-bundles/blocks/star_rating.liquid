@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://herself-burns-thirty-condition.trycloudflare.com';
+  const App_Domain = 'https://angela-depot-allan-meditation.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
 const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
-    console.log(quantity_product,"========= ,<<< this cartTotal ")
+    // console.log(quantity_product,"========= ,<<< this cartTotal ")
         
         const offerId = btn.id;
 
@@ -168,7 +168,7 @@ const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.v
           quantity: qtyToAdd
         };
 
-        console.log('Payload to cart/add.js:', data);
+        // console.log('Payload to cart/add.js:', data);
 
         await fetch('/cart/add.js', {
           method: 'POST',
@@ -195,10 +195,10 @@ const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.v
    // Checkout button handler
     const actionButton = card.querySelector(`#action-btn-${offer.id}`);
     actionButton.addEventListener('click', async () => {
-      console.log(actionButton,"========== ...>>> ")
+      // console.log(actionButton,"========== ...>>> ")
       // Use a different variable name to avoid shadowing
       const currentOffer = campaign.offers.find(o => o.id == offer.id);
-      console.log(currentOffer , '====== <currentOffer >> ')
+      // console.log(currentOffer , '====== <currentOffer >> ')
       if (!currentOffer) return;
 
       if (currentOffer.rewardType === 'gift') {
@@ -224,7 +224,7 @@ const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.v
     // 🔥 Listen for qty changes
     const qtyInput = document.querySelector('[name="quantity"]');
     if (qtyInput) {
-      console.log(qtyInput , "=========== >>>>>  Update THis qtyInput")
+      // console.log(qtyInput , "=========== >>>>>  Update THis qtyInput")
       qtyInput.addEventListener('change', async () => {
         await progressBardynamic(campaign, offer);
       });
