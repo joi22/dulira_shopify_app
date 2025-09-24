@@ -99,15 +99,7 @@ model AddToUnlockOffer {
   BuyXProduct BuyXProduct[]
 }
 
-model BuyXProduct {
-  id        Int     @id @default(autoincrement())
-  offerId   Int
-  productId String
-  variantId String?
-  title     String?
 
-  offer AddToUnlockOffer @relation(fields: [offerId], references: [id])
-}
 
 model UpsellTriggerProduct {
   id           Int     @id @default(autoincrement())
@@ -181,6 +173,16 @@ model UpsellRewardCollection {
   campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
 
   AddToUnlockOffer AddToUnlockOffer[]
+}
+
+model BuyXProduct {
+  id        Int     @id @default(autoincrement())
+  offerId   Int
+  productId String
+  variantId String?
+  title     String?
+
+  offer AddToUnlockOffer @relation(fields: [offerId], references: [id])
 }
 
 model BuyMoreRule {

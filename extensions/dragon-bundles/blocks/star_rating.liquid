@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://angela-depot-allan-meditation.trycloudflare.com';
+  const App_Domain = 'https://further-hip-been-nurses.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       card.querySelectorAll(`#action-btn-${offer.id}`).forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
-const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
+        const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
     // console.log(quantity_product,"========= ,<<< this cartTotal ")
         
         const offerId = btn.id;
