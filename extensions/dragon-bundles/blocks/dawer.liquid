@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://further-hip-been-nurses.trycloudflare.com';
+    const App_Domain = 'https://literacy-manual-bat-equivalent.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -56,14 +56,14 @@
       return Math.min(progress, 100);
     }
 
-        function renderRewardProducts(container, Gifts) {
-          console.log(Gifts, "======== +>>> Gifts MAin ")
-          if (!Gifts || !Gifts.length) return;
+    function renderRewardProducts(container, Gifts) {
+      console.log(Gifts, '======== +>>> Gifts MAin ');
+      if (!Gifts || !Gifts.length) return;
 
-          let gridHtml = `<div class="free_products">`;
+      let gridHtml = `<div class="free_products">`;
 
-          Gifts.forEach((prod) => {
-            gridHtml += `
+      Gifts.forEach((prod) => {
+        gridHtml += `
           <div class="product_card_dwer">
             <div class="product_upsell">
               <img src="${prod.image}" alt="${prod.title}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">
@@ -73,96 +73,98 @@
               </button>
             </div>
           </div>
-        `;
-          });
+         `;
+      });
 
-          gridHtml += `</div>`;
-          container.insertAdjacentHTML('beforeend', gridHtml);
+      gridHtml += `</div>`;
+      container.insertAdjacentHTML('beforeend', gridHtml);
 
-          // Attach add-to-cart handler
-          container.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
-            btn.addEventListener('click', async function () {
-              const variantId = this.getAttribute('data-variant');
-              this.disabled = true;
-              this.innerText = 'Adding...';
-              try {
-                await fetch('/cart/add.js', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ id: variantId, quantity: 1 }),
-                });
-                this.innerText = 'Added!';
-                document.dispatchEvent(new CustomEvent('cart:updated')); // refresh cart drawer
-              } catch (err) {
-                console.error('Error adding reward product:', err);
-                this.disabled = false;
-                this.innerText = 'Select';
-              }
+      // Attach add-to-cart handler
+      container.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
+        btn.addEventListener('click', async function () {
+          const variantId = this.getAttribute('data-variant');
+          this.disabled = true;
+          this.innerText = 'Adding...';
+          try {
+            await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: variantId, quantity: 1 }),
             });
-          });
+            this.innerText = 'Added!';
+            document.dispatchEvent(new CustomEvent('cart:updated')); // refresh cart drawer
+          } catch (err) {
+            console.error('Error adding reward product:', err);
+            this.disabled = false;
+            this.innerText = 'Select';
+          }
+        });
+      });
+    }
+
+    function renderSegmentProgressBar(container, offers, cartData, customization) {
+      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+      const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+
+      const borderRadius = barRadius === 'square' ? '0px' : '2px';
+      const barHeight = barStyle === 'thin' ? '7px' : '12px';
+      const topPosition = barStyle === 'thin' ? '42px' : '40px';
+
+      const progress = calculateProgress(offers, cartData);
+
+      let html = `<div class="multi_step_progress">`;
+
+      html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+      html += `<div class="progress_line_fill" style="width:${progress}%; background:${primaryColor}; border-radius:${borderRadius}px; height:${barHeight}; top:${topPosition};"></div>`;
+
+      const goals = offers.map((o) =>
+        o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
+      );
+      const minGoal = Math.min(...goals);
+      const maxGoal = Math.max(...goals);
+      // Steps render separately
+      offers.forEach((offer, index) => {
+        const isQuantity = offer.goalType === 'quantity';
+        const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
+        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+        const unlocked = current >= goal;
+
+        if (unlocked) {
+          const rewardText = document.createElement('div');
+          rewardText.innerText = `${offer.goalTextAfter || 'Unlock this Offers!'}`;
+          container.appendChild(rewardText);
+        } else {
+          const rewardText = document.createElement('div');
+          rewardText.innerText = `${offer.goalTextBefore || 'Unlock this Offers!'}`;
+          container.appendChild(rewardText);
         }
+        const circleStyle = `
+      background:${unlocked ? goalCompleteColor : '#ddd'}; 
+      color:${unlocked ? '#fff' : '#000'};`;
 
-        function renderSegmentProgressBar(container, offers, cartData, customization) {
-          const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
-          const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+        const stepWrapper = document.createElement('div');
+        stepWrapper.className = 'progress_step_wrapper';
 
-          const borderRadius = barRadius === 'square' ? '0' : '2px';
-          const barHeight = barStyle === 'thin' ? '4px' : '8px';
-          const topPosition = barStyle === 'thin' ? '42px' : '40px';
+        let leftPercent = ((goal - minGoal) / (maxGoal - minGoal)) * 100;
+        if (index === 0) leftPercent = 8;
+        if (index === offers.length - 1) leftPercent = 100;
 
-          const progress = calculateProgress(offers, cartData);
+        html += `
+            <div class="progress_step" data-goal="${goal}" style="left: ${(goal / maxGoal) * 100}%;">
+              <div class="circle">${getOfferIcon(offer)}</div>
+              <div class="step_goal">${goal}</div>
+            </div>`;
 
-          let html = `<div class="multi_step_progress">`;
-
-          html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}px; height:${barHeight}; top:${topPosition};"></div>`;
-          html += `<div class="progress_line_fill" style="width:${progress}%; background:${primaryColor}; border-radius:${borderRadius}px; height:${barHeight}; top:${topPosition};"></div>`;
-
-          const goals = offers.map((o) =>
-            o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-          );
-          const minGoal = Math.min(...goals);
-          const maxGoal = Math.max(...goals);
-
-          html += `</div>`; // close progress bar
-
-          container.innerHTML = html;
-
-          // Steps render separately
-          offers.forEach((offer, index) => {
-            const isQuantity = offer.goalType === 'quantity';
-            const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
-            const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-            const unlocked = current >= goal;
-
-            const stepWrapper = document.createElement('div');
-            stepWrapper.className = 'progress_step_wrapper';
-
-            let leftPercent = ((goal - minGoal) / (maxGoal - minGoal)) * 100;
-            if (index === 0) leftPercent = 8;
-            if (index === offers.length - 1) leftPercent = 100;
-
-            stepWrapper.innerHTML = `
-          <div class="progress_step ${unlocked ? 'unlocked' : ''}" style="left:${leftPercent}%">
-            <div class="circle" style="background:${unlocked ? goalCompleteColor : '#ddd'}; color:${
-              unlocked ? '#fff' : '#000'
-            };">
-              ${getOfferIcon(offer)}
-            </div>
-            <div class="step_label">${
-              unlocked ? offer.goalTextAfter || offer.rewardLabel : offer.goalTextBefore || offer.rewardLabel
-            }</div>
-            <div class="step_goal">${goal}</div>
-          </div>
-        `;
-
-            container.appendChild(stepWrapper);
-
-            // If unlocked & reward is gift → show product card grid
-            if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
-              renderRewardProducts(container, offer);
-            }
-          });
+        // If unlocked & reward is gift → show product card grid
+        if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
+          renderRewardProducts(container, offer);
         }
+      });
+
+      html += `</div>`; // close progress bar
+
+      container.innerHTML = html;
+    }
 
     async function updateProgressBar() {
       try {
@@ -190,7 +192,7 @@
 
         const Offers = currentCampaignData.offers || [];
         const customization = currentCustomization;
-        const Gifts = currentCampaignData.rewardProducts || []; 
+        const Gifts = currentCampaignData.rewardProducts || [];
         const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
         if (!drawer) return;
 
@@ -209,7 +211,10 @@
         header.appendChild(upsellContainer);
 
         if (currentCampaignData.type === 'add_to_unlock') {
-          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization , Gifts);
+          setTimeout(() => {
+            upsellContainer.scrollIntoView({ behavior: 'smooth' });
+            renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
+          }, 3000);
         }
       } catch (err) {
         console.error('Error updating progress bar:', err);
@@ -285,82 +290,6 @@
 </script>
 
 <style>
-  /* Core styles for upsell container and progress bar (defaults overridden by inline styles) */
-  .upsell-container {
-    width: 100%;
-    position: relative;
-    z-index: 10;
-    margin-bottom: 15px;
-    padding: 10px 0;
-    background: white;
-    border-bottom: 1px solid #e0e0e0;
-  }
-
-  .multi_step_progress {
-    position: relative;
-    width: 100%;
-    height: 90px;
-    margin: 0 auto;
-    padding: 10px 0;
-    box-sizing: border-box;
-  }
-
-  .progress_line_bg {
-    position: absolute;
-    left: 20px;
-    right: 20px;
-    z-index: 1;
-    max-width: calc(100% - 40px);
-  }
-
-  .progress_line_fill {
-    position: absolute;
-    left: 20px;
-    z-index: 2;
-    transition: width 0.4s ease-in-out; /* ease-in-out for smoother reverse animation */
-    max-width: calc(100% - 40px);
-  }
-
-  .progress_step {
-    position: absolute;
-    top: 0;
-    transform: translateX(-50%);
-    text-align: center;
-    z-index: 3;
-    width: 60px;
-  }
-
-  .progress_step .circle {
-    width: 40px;
-    height: 40px;
-    margin: 0 auto;
-    border-radius: 50%;
-    line-height: 40px;
-    font-size: 18px;
-    text-align: center;
-    transition: all 0.4s ease-in-out; /* Smooth transition for background/color changes on unlock/unlock reverse */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .progress_step .step_label {
-    margin-top: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.2;
-    height: 26px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    transition: color 0.3s ease; /* Optional: smooth text color change if needed */
-  }
-
-  .progress_step .step_goal {
-    font-size: 10px;
-    color: #666;
-    margin-top: 2px;
-  }
-
   .drawer__header {
     position: relative;
     z-index: 5;
@@ -533,6 +462,70 @@
       width: 100%;
       margin: 5px 0;
     }
+  }
+</style>
+
+<style>
+  .upsell-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+  }
+
+  .multi_step_progress {
+    position: relative;
+    width: 100%;
+    height: 90px;
+  }
+
+  .progress_line_bg {
+    background: #2dbfea;
+    border-radius: 4px;
+    height: 8px;
+    position: relative;
+    width: 100%;
+    top: 40px;
+  }
+
+  .progress_line_fill {
+    background: #4caf50;
+    border-radius: 4px;
+    height: 8px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+    transition: width 0.4s ease-in-out;
+  }
+
+  .progress_step {
+    position: absolute;
+    top: 21px;
+    transform: translateX(-70%);
+    text-align: center;
+    z-index: 3;
+  }
+
+  .progress_step .circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    line-height: 40px;
+    text-align: center;
+    font-size: 18px;
+    background: #ddd;
+    color: #000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .progress_step .step_goal {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
   }
 </style>
 
