@@ -22,6 +22,7 @@ import {
     Banner,
     Checkbox,
     Icon,
+    Modal,
 } from "@shopify/polaris";
 import { PlusIcon, DeleteIcon, ButtonIcon, HomeIcon, CartIcon, ProductIcon } from "@shopify/polaris-icons";
 import { useFetcher, useNavigate } from '@remix-run/react';
@@ -430,6 +431,10 @@ export default function AddToUnlock() {
         backgroundColor: "#F5F5F5",
     });
     const [productSearch, setProductSearch] = useState("");
+    const [currentProgress, setCurrentProgress] = useState(1);
+    const [activePreview, setActivePreview] = useState("home"); // New state for tracking preview placement
+    const [isHomepageModalOpen, setIsHomepageModalOpen] = useState(false); // State for Homepage modal
+
     const filteredCollections = selectedCollections.filter(
         (c) => c.title?.toLowerCase().includes(collectionSearch.toLowerCase()) || c.handle?.toLowerCase().includes(collectionSearch.toLowerCase())
     );
@@ -775,8 +780,7 @@ export default function AddToUnlock() {
                         style={{
                             width: `${Math.min(progress, 100)}%`,
                             height: "100%",
-                            backgroundColor:
-                                progress >= 100 ? style.goalCompleteColor : style.primaryColor,
+                            backgroundColor: progress >= 100 ? style.goalCompleteColor : style.primaryColor,
                             transition: "width 0.3s ease-in-out",
                         }}
                     />
@@ -919,7 +923,209 @@ export default function AddToUnlock() {
         });
         setMainBtnLoading(false)
     };
-const [currentProgress, setCurrentProgress] = useState(1);
+
+    const renderPreview = () => {
+        const sortedOffers = offers.sort((a, b) =>
+            a.goalType === "quantity" ? parseInt(a.goalquantity) - parseInt(b.goalquantity) : parseFloat(a.goalAmount) - parseFloat(b.goalAmount)
+        );
+        const maxGoal = sortedOffers[sortedOffers.length - 1];
+        const progressPercentage =
+            maxGoal?.goalType === "quantity"
+                ? (currentProgress / (parseInt(maxGoal?.goalquantity) || 1)) * 100
+                : (currentProgress / (parseFloat(maxGoal?.goalAmount) || 1)) * 100;
+
+        const renderGoalText = (offer) => {
+            const isGoalReached = offer.goalType === "quantity" ? currentProgress >= parseInt(offer.goalquantity) : currentProgress >= parseFloat(offer.goalAmount);
+            const rewardDescription =
+                offer.rewardType === "discount"
+                    ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`
+                    : offer.rewardType === "shipping"
+                        ? "Free Shipping"
+                        : "Free Gift";
+            const amountLeft =
+                offer.goalType === "quantity"
+                    ? `${parseInt(offer.goalquantity) - currentProgress || 0} items`
+                    : `${offer.currency}${parseFloat(offer.goalAmount) - currentProgress || 0}`;
+            const goal =
+                offer.goalType === "quantity" ? `${offer.goalquantity || 0} items` : `${offer.currency}${offer.goalAmount || 0}`;
+
+            return isGoalReached
+                ? offer.goalTextAfter.replace("{{reward}}", rewardDescription).replace("{{goal}}", goal)
+                : offer.goalTextBefore.replace("{{amount_left}}", amountLeft).replace("{{reward}}", rewardDescription).replace("{{goal}}", goal);
+        };
+
+        const renderRewardContent = (offer) => {
+            if (offer.rewardType === "gift" && offer.rewardMode === "fixed" && offer.rewardProducts.length > 0) {
+                return (
+                    <BlockStack gap="200">
+                        <Text fontWeight="semibold">Reward Product:</Text>
+                        {offer.rewardProducts.map((product) => (
+                            <InlineStack key={product.id} align="space-between">
+                                <Text>{product.title}</Text>
+                                {product.media && <Image source={product.media} alt={product.title} width="50px" />}
+                            </InlineStack>
+                        ))}
+                    </BlockStack>
+                );
+            } else if (offer.rewardType === "gift" && offer.rewardMode === "flame") {
+                return (
+                    <BlockStack gap="200">
+                        <Text fontWeight="semibold">Choose a Free Gift:</Text>
+                        {offer.rewardProducts.length > 0 && (
+                            <BlockStack gap="100">
+                                {offer.rewardProducts.map((product) => (
+                                    <InlineStack key={product.id} align="space-between">
+                                        <Text>{product.title}</Text>
+                                        {product.media && <Image source={product.media} alt={product.title} width="50px" />}
+                                    </InlineStack>
+                                ))}
+                            </BlockStack>
+                        )}
+                        {offer.rewardCollection.length > 0 && (
+                            <BlockStack gap="100">
+                                {offer.rewardCollection.map((collection) => (
+                                    <Text key={collection.id}>{collection.title}</Text>
+                                ))}
+                            </BlockStack>
+                        )}
+                    </BlockStack>
+                );
+            } else if (offer.rewardType === "discount") {
+                return <Text>{`${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`}</Text>;
+            } else if (offer.rewardType === "shipping") {
+                return <Text>Free Shipping</Text>;
+            }
+            return null;
+        };
+
+        const renderTriggerContent = () => {
+            if (selectedTriggerType === "all") {
+                return <Text>All Products</Text>;
+            } else if (selectedTriggerType === "products" && filteredProducts.length > 0) {
+                return (
+                    <BlockStack gap="100">
+                        {filteredProducts.map((product) => (
+                            <InlineStack key={product.id} align="space-between">
+                                <Text>{product.title}</Text>
+                                {product.media && <Image source={product.media} alt={product.title} width="50px" />}
+                            </InlineStack>
+                        ))}
+                    </BlockStack>
+                );
+            } else if (selectedTriggerType === "collections" && filteredCollections.length > 0) {
+                return (
+                    <BlockStack gap="100">
+                        {filteredCollections.map((collection) => (
+                            <Text key={collection.id}>{collection.title}</Text>
+                        ))}
+                    </BlockStack>
+                );
+            }
+            return <Text>No trigger products/collections selected</Text>;
+        };
+
+        if (activePreview === "home") {
+            return (
+                <Modal
+                    open={isHomepageModalOpen}
+                    onClose={() => setIsHomepageModalOpen(false)}
+                    title="Homepage Upsell Preview"
+                    primaryAction={{
+                        content: "Close",
+                        onAction: () => setIsHomepageModalOpen(false),
+                    }}
+                >
+                    <Modal.Section>
+                        <BlockStack gap="400">
+                            <Text variant="headingMd">Upsell Banner</Text>
+                            <Banner tone="info">
+                                <BlockStack gap="200">
+                                    <Text>{formattedPreGoalText}</Text>
+                                    <ProgressBar progress={progressPercentage} style={progressBarStyle} />
+                                    {sortedOffers.map((offer) => (
+                                        <BlockStack key={offer.id} gap="100">
+                                            <Text>{renderGoalText(offer)}</Text>
+                                            {renderRewardContent(offer)}
+                                        </BlockStack>
+                                    ))}
+                                    {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
+                                        <Text>🎉 Confetti Animation Triggered!</Text>
+                                    )}
+                                    {showLockedGoals && sortedOffers.length > 1 && (
+                                        <Text>Locked Goals: Additional rewards to unlock...</Text>
+                                    )}
+                                    {showBadgeIcons && badgeIcon && (
+                                        <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
+                                    )}
+                                </BlockStack>
+                            </Banner>
+                        </BlockStack>
+                    </Modal.Section>
+                </Modal>
+            );
+        } else if (activePreview === "Page") {
+            return (
+                <Card title="Product Page Preview">
+                    <BlockStack gap="200">
+                        <Text variant="headingSm">Upsell Block Next to Product</Text>
+                        <Banner tone="info">
+                            <BlockStack gap="200">
+                                <Text>{formattedPreGoalText}</Text>
+                                <ProgressBar progress={progressPercentage} style={progressBarStyle} />
+                                {sortedOffers.map((offer) => (
+                                    <BlockStack key={offer.id} gap="100">
+                                        <Text>{renderGoalText(offer)}</Text>
+                                        {renderRewardContent(offer)}
+                                    </BlockStack>
+                                ))}
+                              
+                                {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
+                                    <Text>🎉 Confetti Animation Triggered!</Text>
+                                )}
+                                {showLockedGoals && sortedOffers.length > 1 && (
+                                    <Text>Locked Goals: Additional rewards to unlock...</Text>
+                                )}
+                                {showBadgeIcons && badgeIcon && (
+                                    <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
+                                )}
+                            </BlockStack>
+                        </Banner>
+                    </BlockStack>
+                </Card>
+            );
+        } else if (activePreview === "cart") {
+            return (
+                <Card title="Cart Page Preview">
+                    <BlockStack gap="200">
+                        <Text variant="headingSm">Cart Drawer Upsell</Text>
+                        <Banner tone="info">
+                            <BlockStack gap="200">
+                                <Text>{formattedPreGoalText}</Text>
+                                <ProgressBar progress={progressPercentage} style={progressBarStyle} />
+                                {sortedOffers.map((offer) => (
+                                    <BlockStack key={offer.id} gap="100">
+                                        <Text>{renderGoalText(offer)}</Text>
+                                        {renderRewardContent(offer)}
+                                    </BlockStack>
+                                ))}
+                              
+                                {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
+                                    <Text>🎉 Confetti Animation Triggered!</Text>
+                                )}
+                                {showLockedGoals && sortedOffers.length > 1 && (
+                                    <Text>Locked Goals: Additional rewards to unlock...</Text>
+                                )}
+                                {showBadgeIcons && badgeIcon && (
+                                    <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
+                                )}
+                            </BlockStack>
+                        </Banner>
+                    </BlockStack>
+                </Card>
+            );
+        }
+        return null;
+    };
     return (
         <Page title="Create Upsell Campaign" fullWidth padding="400">
             <FormLayout>
@@ -1144,7 +1350,7 @@ const [currentProgress, setCurrentProgress] = useState(1);
                                                                 value={offer.goalAmount}
                                                                 onChange={(value) => {
                                                                     updateOffer(offer.id, "goalAmount", value);
-                                                                    updateOffer(offer.id, "goalquantity", "");
+
                                                                 }}
                                                                 prefix={offer.currency}
                                                                 requiredIndicator
@@ -1159,7 +1365,7 @@ const [currentProgress, setCurrentProgress] = useState(1);
                                                             type="number"
                                                             value={offer.goalquantity}
                                                             onChange={(value) => {
-                                                                updateOffer(offer.id, "goalAmount", "");
+
                                                                 updateOffer(offer.id, "goalquantity", value);
                                                             }}
                                                             requiredIndicator
@@ -1465,113 +1671,32 @@ const [currentProgress, setCurrentProgress] = useState(1);
                                             onChange={setPlacement}
                                         />
                                         <Divider borderColor="border" />
-                                        <BlockStack gap={"300"}>
-                                            <Text>
-                                                Preview Placment
-                                            </Text>
-                                            <InlineStack >
-
-
-                                                <Button icon={HomeIcon}></Button>
-                                                <Button icon={CartIcon}></Button>
-                                                <Button icon={ProductIcon}></Button>
-
+                                        <BlockStack gap="300">
+                                            <Text>Preview Placement</Text>
+                                            <InlineStack>
+                                                <Button
+                                                    icon={HomeIcon}
+                                                    pressed={activePreview === "home"}
+                                                    onClick={() => {
+                                                        setActivePreview("home");
+                                                        setIsHomepageModalOpen(true);
+                                                    }}
+                                                />
+                                                <Button
+                                                    icon={ProductIcon}
+                                                    pressed={activePreview === "Page"}
+                                                    onClick={() => setActivePreview("Page")}
+                                                />
+                                                <Button
+                                                    icon={CartIcon}
+                                                    pressed={activePreview === "cart"}
+                                                    onClick={() => setActivePreview("cart")}
+                                                />
                                             </InlineStack>
-
                                         </BlockStack>
-                                        <InlineStack>
-
-                                        </InlineStack>
                                     </BlockStack>
                                 </Card>
-                                <Card title="Live Preview">
-                                    <BlockStack gap="200">
-                                        <Text variant="headingSm">Preview</Text>
-                                        <div className="mu-atu-banner mu-px-5 mu-pb-2 mu-mb-px mu-border-b mu-border-gray-400" style={{ background: "#fff", paddingBottom: "30px" }}>
-                                            <div className="mu-goal-text mu-w-full" style={{ marginBottom: "20px" }}>
-                                                <div className="mu-emoji-image mu-mb-0 mu-text-center">
-                                                    <p className="ql-align-center">
-                                                        <img src="https://monster-upsells-images-prod.s3.us-east-2.amazonaws.com/wp4cb45f10.gif" alt="Emoji" />
-                                                        {offers
-                                                            .sort((a, b) => (a.goalType === "quantity" ? parseInt(a.goalquantity) - parseInt(b.goalquantity) : 0))
-                                                            .map((offer, index) => {
-                                                                if (currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : 0)) {
-                                                                    return offer.rewardType === "gift"
-                                                                        ? "Choose Free product on cart page"
-                                                                        : `🎉 You’ve unlocked ${offer.rewardType === "discount" ? `${offer.discountCode}% off` : offer.rewardType === "shipping" ? "Free Shipping" : "Free Gift"}!`;
-                                                                }
-                                                                return `Add <strong>${offer.goalType === "quantity" ? parseInt(offer.goalquantity) - currentProgress : 0}</strong> to get <strong>${offer.rewardType === "discount" ? `${offer.discountCode}% off` : offer.rewardType === "shipping" ? "Free Shipping" : "Free Gift"}</strong>`;
-                                                            })
-                                                            .join(" | ")}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="mu-progress-bar-container mu-flex mu-w-full mu-relative mu-mix-blend-darken mu-h-2 mu-rounded-2" style={{ background: "#D7DEFF" }}>
-                                                {offers.length > 0 && (
-                                                    <div
-                                                        className="mu-progress-bar mu-block mu-transition-width mu-absolute mu-inset-0 mu-duration-500 mu-ease-out mu-z-10 mu-h-2 mu-rounded-2"
-                                                        style={{
-                                                            background: progressBarStyle.primaryColor,
-                                                            width: `${Math.min((currentProgress / (offers[offers.length - 1].goalType === "quantity" ? parseInt(offers[offers.length - 1].goalquantity) : 1)) * 100, 100)}%`,
-                                                        }}
-                                                    />
-                                                )}
-                                                {offers
-                                                    .sort((a, b) => parseInt(a.goalquantity) - parseInt(b.goalquantity))
-                                                    .map((offer, index) => (
-                                                        <div
-                                                            key={offer.id}
-                                                            className={`mu-badge-goal mu-relative mu-flex-1 mu-bg-transparent mu-z-20 mu-mix-blend-overlay mu-h-2 ${index === 0 ? "mu-rounded-l-2" : index === offers.length - 1 ? "mu-rounded-r-2" : ""}`}
-                                                            style={{ borderColor: "#718096", display: "block" }}
-                                                        >
-                                                            <div
-                                                                className="mu-z-20 mu-w-55px mu-h-55px mu-rounded-full mu-border-3 mu-absolute mu-top-1/2 mu-transform mu-text-12px mu-font-bold mu-leading-tight"
-                                                                style={{
-                                                                    left: `${(index / (offers.length - 1)) * 100}%`,
-                                                                    background: "#fff",
-                                                                    color: progressBarStyle.primaryColor,
-                                                                    transform: "translate(-50%, -50%)",
-                                                                    borderColor: "#D7DEFF",
-                                                                }}
-                                                            >
-                                                                <div className="mu-relative mu-bg-cover mu-bg-center mu-flex mu-items-center mu-justify-center mu-flex-col mu-w-full mu-h-full mu-rounded-full">
-                                                                    {offer.rewardType === "shipping" && (
-                                                                        <svg width="22" height="14.67" viewBox="0 0 33 22" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                                                            <path d="M3.82105 13.0625L2.77895 11H10.0737L9.24 8.9375H2.43158L1.38947 6.875H12.2274L11.3937 4.8125H1.19495L0 2.75H5.21053C5.21053 2.02065 5.50331 1.32118 6.02446 0.805456C6.54561 0.289731 7.25245 0 7.98947 0H24.6632V5.5H28.8316L33 11V17.875H30.2211C30.2211 18.969 29.7819 20.0182 29.0002 20.7918C28.2184 21.5654 27.1582 22 26.0526 22C24.9471 22 23.8868 21.5654 23.1051 20.7918C22.3234 20.0182 21.8842 18.969 21.8842 17.875H16.3263C16.3263 18.969 15.8871 20.0182 15.1054 20.7918C14.3237 21.5654 13.2634 22 12.1579 22C11.0524 22 9.99211 21.5654 9.21038 20.7918C8.42865 20.0182 7.98947 18.969 7.98947 17.875H5.21053V13.0625H3.82105ZM26.0526 19.9375C26.6054 19.9375 27.1355 19.7202 27.5264 19.3334C27.9173 18.9466 28.1368 18.422 28.1368 17.875C28.1368 17.328 27.9173 16.8034 27.5264 16.4166C27.1355 16.0298 26.6054 15.8125 26.0526 15.8125C25.4999 15.8125 24.9697 16.0298 24.5789 16.4166C24.188 16.8034 23.9684 17.328 23.9684 17.875C23.9684 18.422 24.188 18.9466 24.5789 19.3334C24.9697 19.7202 25.4999 19.9375 26.0526 19.9375ZM28.1368 7.5625H24.6632V11H30.8602L28.1368 7.5625ZM12.1579 19.9375C12.7107 19.9375 13.2408 19.7202 13.6317 19.3334C14.0225 18.9466 14.2421 18.422 14.2421 17.875C14.2421 17.328 14.0225 16.8034 13.6317 16.4166C13.2408 16.0298 12.7107 15.8125 12.1579 15.8125C11.6051 15.8125 11.075 16.0298 10.6841 16.4166C10.2933 16.8034 10.0737 17.328 10.0737 17.875C10.0737 18.422 10.2933 18.9466 10.6841 19.3334C11.075 19.7202 11.6051 19.9375 12.1579 19.9375Z" />
-                                                                        </svg>
-                                                                    )}
-                                                                    {offer.rewardType === "gift" && (
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="mu-w-6 mu-h-6">
-                                                                            <path d="M9.375 3a1.875 1.875 0 000 3.75h1.875v4.5H3.375A1.875 1.875 0 011.5 9.375v-.75c0-1.036.84-1.875 1.875-1.875h3.193A3.375 3.375 0 0112 2.753a3.375 3.375 0 015.432 3.997h3.943c1.035 0 1.875.84 1.875 1.875v.75c0 1.036-.84 1.875-1.875 1.875H12.75v-4.5h1.875a1.875 1.875 0 10-1.875-1.875V6.75h-1.5V4.875C11.25 3.839 10.41 3 9.375 3zM11.25 12.75H3v6.75a2.25 2.25 0 002.25 2.25h6v-9zM12.75 12.75v9h6.75a2.25 2.25 0 002.25-2.25v-6.75h-9z" />
-                                                                        </svg>
-                                                                    )}
-                                                                    {offer.rewardType === "discount" && (
-                                                                        <div>
-                                                                            <span>{offer.discountCode}%</span>
-                                                                            <span>Off</span>
-                                                                        </div>
-                                                                    )}
-                                                                    <span className="mu-absolute mu-w-full mu-text-center" style={{ top: "53px", fontSize: "1em", color: progressBarStyle.primaryColor }}>
-                                                                        {offer.goalType === "quantity" ? offer.goalquantity : offer.goalAmount}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                            </div>
-                                            <div className="mu-goals mu-flex mu-justify-between mu-text-gray-600 mu-relative mu-h-3"></div>
-                                        </div>
-                                        {showBadgeIcons && badgeIcon && (
-                                            <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
-                                        )}
-                                        {showConfetti && offers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : 0)) && (
-                                            <Text>🎉 Confetti Animation Triggered!</Text>
-                                        )}
-                                        {showLockedGoals && offers.length > 1 && (
-                                            <Text>Locked Goals: Additional rewards to unlock...</Text>
-                                        )}
-                                    </BlockStack>
-                                </Card>
+                                {renderPreview()}
                             </BlockStack>
                         </div>
                     </Layout.Section>

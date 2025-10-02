@@ -29,7 +29,7 @@ import {
 import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { useLoaderData, useNavigate } from "@remix-run/react";
+import { useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
 
 // ✅ Loader
 export const loader = async ({ request }) => {
@@ -43,8 +43,42 @@ export const loader = async ({ request }) => {
     return { campingall };
 };
 
+export const action = async ({ request }) => {
+    const { admin, session } = await authenticate.admin(request);
+    const { shop, accessToken } = session;
+    const formdata = await request.formData();
+
+    const delete_id = formdata.get("del_Id");
+    console.log("thsn DELETE ID ,", delete_id);
+
+    await prisma.addToUnlockOffer.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.upsellTriggerProduct.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.upsellTriggerCollection.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.upsellRewardProduct.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.upsellRewardCollection.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.upsellFreeGiftProduct.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.customiz.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.buyMoreRule.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.bogoRule.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.bogoFreeItem.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.orderBump.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.campaignTargetCountry.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.campaignExcludeCountry.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.checkout_upsell.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+    await prisma.postPurchaseUpsell.deleteMany({ where: { campaignId: parseInt(delete_id) } });
+
+    // finally delete the campaign
+    await prisma.upsellCampaign.delete({ where: { id: parseInt(delete_id) } });
+
+
+
+
+    return null
+}
+
 export default function UpsellEngine() {
     const navigate = useNavigate();
+    const fetcher = useFetcher();
     const { campingall } = useLoaderData();
     const [status, setStatus] = useState(true);
 
@@ -165,6 +199,22 @@ export default function UpsellEngine() {
         }
     };
 
+    const handeldelete = async (id) => {
+        if (!id) return;
+
+        if (!window.confirm(`Are you sure you want to delete this offer?`)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("del_Id", id); // ✅ key = del_Id, value = id
+
+        await fetcher.submit(formData, {
+            method: "DELETE",
+            encType: "multipart/form-data",
+        });
+    };
+
     return (
         <Page
             title="Upsell Engine"
@@ -235,7 +285,7 @@ export default function UpsellEngine() {
                                                     { content: "Edit", onAction: () => console.log("Edit") },
                                                     {
                                                         content: "Delete",
-                                                        onAction: () => console.log("Delete"),
+                                                        onAction: () => handeldelete(campaign.id),
                                                         destructive: true,
                                                     },
                                                 ]}

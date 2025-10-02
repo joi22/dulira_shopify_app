@@ -99,8 +99,6 @@ model AddToUnlockOffer {
   BuyXProduct BuyXProduct[]
 }
 
-
-
 model UpsellTriggerProduct {
   id           Int     @id @default(autoincrement())
   campaignId   Int

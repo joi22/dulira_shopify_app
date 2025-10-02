@@ -1,0 +1,47 @@
+<script>
+  document.addEventListener('DOMContentLoaded', async function () {
+    const domain = 'https://nato-nomination-sage-interior.trycloudflare.com';
+
+    // Safer way: inject shop domain from Liquid
+    const shop = {{ shop.permanent_domain | json }};
+    const product_id = {{ product.id | json }};
+    const apiUrl = `${domain}/api/home/${shop}`;
+
+    async function add_to_unlock() {
+      try {
+        const response = await fetch(apiUrl, { method: "GET" });
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        
+        const data = await response.json();
+        console.log("Upsell response:", data);
+
+        const upsellTriggers = Array.isArray(data.upsellTriggerProduct) 
+          ? data.upsellTriggerProduct 
+          : [];
+
+        if (!upsellTriggers.length) {
+          console.log("No upsell triggers found");
+          return;
+        }
+
+        // 👉 Example: render progress bar or trigger UI
+        upsellTriggers.forEach(trigger => {
+          console.log(`Unlock offer: ${trigger.title} at $${trigger.goalAmount}`);
+        });
+
+      } catch (err) {
+        console.error("Upsell fetch error:", err);
+      }
+    }
+
+    add_to_unlock();
+  });
+</script>
+
+{% schema %}
+{
+  "name": "DragOn Bundles bar",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}

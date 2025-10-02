@@ -10,9 +10,7 @@ export const loader = async ({ request, params }) => {
 
 
   const upsellTriggerProduct = await prisma.upsellTriggerProduct.findMany({
-    where: {
-      productId: String(id)
-    },
+
     include: {
       campaign: {
         include: {
