@@ -1,0 +1,104 @@
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+  const domain = 'https://tender-enough-knitting-examined.trycloudflare.com';
+  const shop = {{ shop.permanent_domain | json }};
+  const apiUrl = `${domain}/api/home/${shop}`;
+
+  try {
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error("API fetch failed");
+    const data = await res.json();
+    console.log("Announcement API:", data);
+
+    // Example: use campaign info for announcement
+    const campaign = data.upsellTriggerProduct?.campaign;
+    if (!campaign) return;
+
+    // set texts dynamically
+    document.getElementById("announcement-left-text").innerText = "🚚 Free shipping on 3+ items";
+    document.getElementById("announcement-right-text").innerHTML =
+      `Extra <span class="highlight">${campaign.offers?.[0]?.discountCode || "20"}% off</span> & Buy more save more`;
+
+    // If campaign has an end date → countdown
+    if (campaign.endDate) {
+      const countdownEl = document.getElementById("announcement-countdown");
+      function updateCountdown() {
+        const now = new Date().getTime();
+        const end = new Date(campaign.endDate).getTime();
+        const diff = end - now;
+        if (diff <= 0) {
+          countdownEl.innerText = "Expired";
+          return;
+        }
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000*60*60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000*60));
+        countdownEl.innerText = `Ends in ${hours}h ${mins}m`;
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 60000);
+    }
+
+    // show bar
+    document.getElementById("announcement-bar").style.display = "flex";
+
+  } catch (err) {
+    console.error("Announcement error:", err);
+  }
+});
+</script>
+
+<style>
+.announcement-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFD43B; /* yellow */
+  padding: 10px 20px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #111;
+  position: relative;
+}
+.announcement-bar .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.announcement-bar .left .icon {
+  font-size: 16px;
+}
+.announcement-bar .right {
+  text-align: right;
+}
+.announcement-bar .highlight {
+  color: red;
+  font-weight: bold;
+}
+.announcement-bar .countdown {
+  font-size: 12px;
+  margin-top: 2px;
+  color: #333;
+}
+</style>
+
+<div id="announcement-bar" class="announcement-bar" style="display:none;">
+  <div class="left">
+    <span class="icon">🚚</span>
+    <span id="announcement-left-text">Free shipping on 3+ items</span>
+  </div>
+  <div class="right">
+    <div id="announcement-right-text">Extra <span class="highlight">20% off</span> & Buy more save more</div>
+    <div id="announcement-countdown" class="countdown"></div>
+  </div>
+</div>
+
+
+{% schema %}
+{
+  "name": "Announcement Bar Bundles",
+  "target": "section",
+  "settings": [
+
+  ]
+}
+{% endschema %}

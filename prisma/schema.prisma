@@ -100,7 +100,7 @@ model AddToUnlockOffer {
 }
 
 model UpsellTriggerProduct {
-  id           Int     @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   campaignId   Int
   shop         String?
   productId    String
@@ -109,8 +109,8 @@ model UpsellTriggerProduct {
   handle       String
   price        String?
   media        String?
-
-  campaign UpsellCampaign @relation(fields: [campaignId], references: [id])
+  createdAt    DateTime       @default(now())
+  campaign     UpsellCampaign @relation(fields: [campaignId], references: [id])
 
   AddToUnlockOffer AddToUnlockOffer[]
 }

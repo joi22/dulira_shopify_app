@@ -1,47 +1,326 @@
 <script>
-  document.addEventListener('DOMContentLoaded', async function () {
-    const domain = 'https://nato-nomination-sage-interior.trycloudflare.com';
+document.addEventListener('DOMContentLoaded', async function () {
+  const domain = 'https://yourself-messenger-soa-gorgeous.trycloudflare.com';
+  const shop = {{ shop.permanent_domain | json }};
+  const apiUrl = `${domain}/api/home/${shop}`;
+console.log()
+  async function add_to_unlock() {
+    try {
+      const response = await fetch(apiUrl, { method: "GET" });
+      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
 
-    // Safer way: inject shop domain from Liquid
-    const shop = {{ shop.permanent_domain | json }};
-    const product_id = {{ product.id | json }};
-    const apiUrl = `${domain}/api/home/${shop}`;
+      const data = await response.json();
+      console.log("Upsell response:", data);
 
-    async function add_to_unlock() {
-      try {
-        const response = await fetch(apiUrl, { method: "GET" });
-        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-        
-        const data = await response.json();
-        console.log("Upsell response:", data);
+      const upsellTriggers = data.upsellTriggerProduct || {};
+      if (!upsellTriggers.campaign) {
+        console.log("No upsell triggers found");
+        return;
+      }
 
-        const upsellTriggers = Array.isArray(data.upsellTriggerProduct) 
-          ? data.upsellTriggerProduct 
-          : [];
+      const campaign = upsellTriggers.campaign;
+      const placements = JSON.parse(campaign?.placement || "[]");
 
-        if (!upsellTriggers.length) {
-          console.log("No upsell triggers found");
-          return;
-        }
+      if (!placements.includes("home")) return;
 
-        // 👉 Example: render progress bar or trigger UI
-        upsellTriggers.forEach(trigger => {
-          console.log(`Unlock offer: ${trigger.title} at $${trigger.goalAmount}`);
+      // ensure container elements exist
+      const model_render = document.getElementById('offers-list');
+      if (!model_render) {
+        console.warn('No #offers-list element found in DOM.');
+        return;
+      }
+      let discounts = document.getElementById('offers_di');
+      if (!discounts) {
+        // create and prepend to modal content if not present
+        discounts = document.createElement('div');
+        discounts.id = 'offers_di';
+        const modalContent = document.querySelector('.offers-modal-content') || model_render.parentElement;
+        if (modalContent) modalContent.insertBefore(discounts, model_render);
+      }
+
+      model_render.innerHTML = ""; // clear old products
+      discounts.innerHTML = "";    // clear old offer details
+
+      const num_offers = Array.isArray(campaign.offers) ? campaign.offers.length : 0;
+
+      if (campaign.type === "add_to_unlock" && Array.isArray(campaign.triggerProducts)) {
+        campaign.triggerProducts.slice(0, 2).forEach((pro, index) => {
+          const title = pro.productTitle || '';
+          // media may be an array or string
+          const media = (Array.isArray(pro.media) && pro.media[0]?.src) ? pro.media[0].src : (pro.media || '');
+          const price = parseFloat(pro.price) || 0;
+
+          // Compute best price among all discount offers (lowest final price)
+          let bestPrice = price;
+          let bestOfferLabel = ''; // e.g. "20% OFF" or "Save PKR 200"
+          if (Array.isArray(campaign.offers)) {
+            campaign.offers.forEach((offer) => {
+              if (offer.rewardType === "discount") {
+                let candidate = price;
+                if (offer.discountType === "percentage") {
+                  const pct = parseFloat(offer.discountCode || 0);
+                  candidate = price - (price * (pct / 100));
+                } else {
+                  const amt = parseFloat(offer.discountCode || 0);
+                  candidate = price - amt;
+                }
+                if (candidate < bestPrice) {
+                  bestPrice = candidate;
+                  bestOfferLabel = offer.discountType === "percentage"
+                    ? `${offer.discountCode}% OFF`
+                    : `Save PKR ${offer.discountCode}`;
+                }
+              }
+            });
+          }
+
+          // Build a lines block for all offers (text summary)
+          let offersHtml = '';
+          if (Array.isArray(campaign.offers)) {
+            campaign.offers.forEach((offer) => {
+              const max_goal = offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
+              let discout_limit = '';
+              if (offer.rewardType !== "gift" && offer.rewardType !== "shipping") {
+                discout_limit = offer.rewardType === "discount"
+                  ? (offer.discountType === "percentage" ? `${offer.discountCode}%` : `PKR ${offer.discountCode}`)
+                  : '';
+              } else if (offer.rewardType === "gift") {
+                discout_limit = "Get a free product";
+              } else if (offer.rewardType === "shipping") {
+                discout_limit = "Free Shipping";
+              }
+              offersHtml += `
+                <div class="offer-line">
+                  <small>${max_goal || ''} → ${discout_limit}</small>
+                </div>
+              `;
+            });
+          }
+
+          // Action (first product → product page, others → add to cart)
+          const productAction = index === 0
+            ? `<a href="/products/${pro.handle}" class="btn-link">View Product</a>`
+            : `<button onclick="addToCart('${pro.variantId || pro.productId}')">Add to Cart</button>`;
+
+          // Price HTML: show discounted price only if bestPrice < price
+          const priceHtml = bestPrice < price
+            ? `<p><span class="old-price">PKR ${price.toFixed(2)}</span>
+                 <strong class="discounted">PKR ${bestPrice.toFixed(2)}</strong>
+                 <div class="best-offer-label">${bestOfferLabel}</div>
+               </p>`
+            : `<p><strong>PKR ${price.toFixed(2)}</strong></p>`;
+
+          // Build product card
+          const offerCard = `
+            <div class="offer-card">
+              <img src="${media}" alt="${escapeHtml(title)}">
+              <div class="offer-info">
+                <h4>${escapeHtml(title)}</h4>
+                ${priceHtml}
+                ${offersHtml}
+
+              </div>
+            </div>
+          `;
+          model_render.insertAdjacentHTML("beforeend", offerCard);
         });
 
-      } catch (err) {
-        console.error("Upsell fetch error:", err);
-      }
-    }
+        // top badge showing number of offers
+        const offre_show = `
+          <div class="offer-deatils">
+            <img class="gif" src="https://ae01.alicdn.com/kf/Sda7bc0f59e35491ea205477ad280916eq/48x48.png" alt="">
+            <span>Get More ${num_offers} Offers</span>
+          </div>
+        `;
+        discounts.insertAdjacentHTML("beforeend", offre_show);
 
-    add_to_unlock();
+        // Show modal
+        document.getElementById("offers-modal").style.display = "flex";
+
+
+      }
+
+    } catch (err) {
+      console.error("Upsell fetch error:", err);
+    }
+  }
+
+  // small helper to avoid XSS if title contains special chars
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // close button
+  const closeBtn = document.getElementById("close-offers");
+  if (closeBtn) closeBtn.addEventListener("click", () => {
+    const modal = document.getElementById("offers-modal");
+    if (modal) modal.style.display = "none";
   });
+
+  // Add to cart function — use variantId if available
+  window.addToCart = function(variantIdOrProductId) {
+    fetch("/cart/add.js", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ id: variantIdOrProductId, quantity: 1 }] })
+    })
+    .then(r => r.json())
+    .then(() => alert("Added to cart!"))
+    .catch(err => console.error(err));
+  };
+
+  add_to_unlock();
+});
 </script>
+
+
+<style>
+  #offers-list {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 0;
+  }
+  .offer-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    flex: 0 0 auto;
+    max-width: 300px;
+  }
+  .offer-card img {
+    width: 100%;
+    border-radius: 8px;
+  }
+  .offer-info {
+    margin-top: 10px;
+  }
+  .offer-line {
+    background: #f8f8f8;
+    margin: 5px 0;
+    padding: 5px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .highlight {
+    color: #e60023;
+    font-weight: bold;
+  }
+  .btn-link,
+  .offer-card button {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #0070f3;
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+
+<div id="offers-modal" style="display:none;">
+  <div class="offers-modal-content">
+    <button id="close-offers" style="float:right;">✖</button>
+    <h2>{{ block.settings.title_bundel | default: 'Bundle Deals' }}</h2>
+    <div id="offers_di"></div>
+    <div id="offers-list"></div>
+  </div>
+</div>
+
+<style>
+  #offers_di {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .gif {
+    width: 25px;
+    margin: 0px 5px;
+  }
+  .offer-deatils {
+    display: flex;
+    justify-content: center;
+    background-color: #fff6dd;
+    align-items: center;
+    width: 40%;
+    border-radius: 20px;
+  }
+  #offers-list {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 0;
+    justify-content: center;
+  }
+  #offers-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+  .offers-modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+  }
+  .offer-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    flex: 0 0 auto;
+  }
+  .offer-card img {
+    width: 250px;
+    height: auto;
+    border-radius: 8px;
+  }
+  .old-price {
+    text-decoration: line-through;
+    color: #888;
+    margin-right: 8px;
+  }
+  .discounted {
+    color: #e60023;
+    font-weight: bold;
+  }
+  .btn-link {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #0070f3;
+    color: #fff;
+    border-radius: 6px;
+    text-decoration: none;
+  }
+</style>
 
 {% schema %}
 {
   "name": "DragOn Bundles bar",
   "target": "body",
-  "settings": []
+  "settings": [
+    {
+      "type": "text",
+      "id": "title_bundel",
+      "label": "Model heading",
+      "default": "Bundle Deals"
+    }
+  ]
 }
 {% endschema %}

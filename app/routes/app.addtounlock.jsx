@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import './_index/style.css';
+import './_index/preview-styles.css';
 import './components/RewardsCard';
 import {
     Page,
@@ -518,6 +519,7 @@ export default function AddToUnlock() {
 
     useEffect(() => {
         const updatedPreGoalTexts = offers.map((offer) => {
+            console.log(offer)
             const rewardDescription =
                 offer.rewardType === "discount"
                     ? `${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`
@@ -671,54 +673,6 @@ export default function AddToUnlock() {
         }
     };
 
-    const rewardCollectionPicker = async (offerId) => {
-        setOffers((prev) =>
-            prev.map((offer) => {
-                if (offer.id !== offerId) return offer;
-                if (offer.rewardCollection.length >= 4) {
-                    shopify.toast.show("You can only select up to 4 reward collections.", { isError: true });
-                    return offer;
-                }
-                return offer;
-            })
-        );
-
-        try {
-            const selectedCollections = await window.shopify.resourcePicker({
-                type: "collection",
-                multiple: true,
-                action: "select",
-            });
-
-            if (selectedCollections) {
-                const collections = selectedCollections.map((item) => ({
-                    id: item.id.split("/").pop(),
-                    title: item.title,
-                    handle: item.handle,
-                }));
-
-                setOffers((prev) =>
-                    prev.map((offer) =>
-                        offer.id === offerId
-                            ? {
-                                ...offer,
-                                rewardCollection: [
-                                    ...offer.rewardCollection,
-                                    ...collections.filter(
-                                        (c) => !offer.rewardCollection.some((cr) => cr.id === c.id)
-                                    ),
-                                ].slice(0, 4),
-                            }
-                            : offer
-                    )
-                );
-            }
-        } catch (error) {
-            console.error("Error in reward collection picker:", error);
-            shopify.toast.show("Failed to select reward collections.", { isError: true });
-        }
-    };
-
     const removeRewardProduct = (offerId, id) => {
         setOffers((prev) =>
             prev.map((offer) =>
@@ -732,28 +686,15 @@ export default function AddToUnlock() {
         );
     };
 
-    const removeRewardCollection = (offerId, id) => {
-        setOffers((prev) =>
-            prev.map((offer) =>
-                offer.id === offerId
-                    ? {
-                        ...offer,
-                        rewardCollection: offer.rewardCollection.filter((item) => item.id !== id),
-                    }
-                    : offer
-            )
-        );
-    };
-
     const handleswitchChange = (field, value) => {
         setStatus((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleBadgeIconChange = (event) => {
+    const handleBadgeIconChange = (offerId, event) => {
         const file = event.target.files[0];
         if (file) {
             if (file.type.startsWith('image/')) {
-                setBadgeIcon(file);
+                updateOffer(offerId, "badgeIcon", file);
             } else {
                 shopify.toast.show("Please upload an image file.", { isError: true });
             }
@@ -784,8 +725,14 @@ export default function AddToUnlock() {
                             transition: "width 0.3s ease-in-out",
                         }}
                     />
+                    <div className="offer-icons">
+                        <img src="" alt="icon " />
+                        <span>20</span>
+                    </div>
+
+
                 </div>
-            </Box>
+            </Box >
         );
     };
 
@@ -1078,7 +1025,7 @@ export default function AddToUnlock() {
                                         {renderRewardContent(offer)}
                                     </BlockStack>
                                 ))}
-                              
+
                                 {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
                                     <Text>🎉 Confetti Animation Triggered!</Text>
                                 )}
@@ -1094,36 +1041,246 @@ export default function AddToUnlock() {
                 </Card>
             );
         } else if (activePreview === "cart") {
+
+
             return (
                 <Card title="Cart Page Preview">
                     <BlockStack gap="200">
                         <Text variant="headingSm">Cart Drawer Upsell</Text>
-                        <Banner tone="info">
-                            <BlockStack gap="200">
-                                <Text>{formattedPreGoalText}</Text>
-                                <ProgressBar progress={progressPercentage} style={progressBarStyle} />
-                                {sortedOffers.map((offer) => (
-                                    <BlockStack key={offer.id} gap="100">
-                                        <Text>{renderGoalText(offer)}</Text>
-                                        {renderRewardContent(offer)}
-                                    </BlockStack>
-                                ))}
-                              
-                                {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
-                                    <Text>🎉 Confetti Animation Triggered!</Text>
-                                )}
-                                {showLockedGoals && sortedOffers.length > 1 && (
-                                    <Text>Locked Goals: Additional rewards to unlock...</Text>
-                                )}
-                                {showBadgeIcons && badgeIcon && (
-                                    <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
-                                )}
-                            </BlockStack>
-                        </Banner>
+
+                        {/* Cart Drawer Preview */}
+                        <div
+                            style={{
+                                border: "1px solid #ddd",
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                height: "600px",
+                            }}
+                        >
+                            <iframe
+                                style={{ width: "100%", height: "100%", border: "none" }}
+                                srcDoc={`<!DOCTYPE html>
+                                                    <html lang="en">
+                                                    <head>
+                                                    <meta charset="UTF-8" />
+                                                    <style>
+                                                        /* CART DRAWER CSS */
+                                                        .cart-drawer-overlay {
+                                                        position: fixed;
+                                                        top: 0; left: 0;
+                                                        width: 100%; height: 100%;
+                                                        background-color: rgba(0, 0, 0, 0.5);
+                                                        z-index: 1000;
+                                                        }
+
+                                                        .cart-drawer {
+                                                        position: fixed;
+                                                        top: 0; right: 0;
+                                                        width: 100%; max-width: 400px;
+                                                        height: 100%;
+                                                        background: #fff;
+                                                        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                                                        z-index: 1001;
+                                                        display: flex;
+                                                        flex-direction: column;
+                                                        transition: right 0.3s ease;
+                                                        }
+
+                                                        .cart-header {
+                                                        display: flex;
+                                                        justify-content: space-around;
+
+                                                        flex-direction:column;
+                                                        padding: 16px;
+                                                        border-bottom: 1px solid #eee;
+                                                        }
+
+                                                        .cart-title { font-size: 1.2rem; font-weight: 600; }
+                                                        .close-cart { border: none; background: none; font-size: 1.5rem; cursor: pointer; }
+
+                                                        .cart-content {
+                                                        flex: 1;
+                                                        overflow-y: auto;
+                                                        padding: 16px;
+                                                        }
+
+                                                        .dsicount-title {
+                                                        font-size: 0.95rem;
+                                                        font-weight: 500;
+                                                        margin-bottom: 8px;
+                                                        }
+
+                                                        .un-fill {
+                                                        background: #eee;
+                                                        width: 100%;
+                                                        height: 8px;
+                                                        border-radius: 4px;
+                                                        margin-bottom: 20px;
+                                                        overflow: hidden;
+                                                        }
+
+                                                        .fill {
+                                                        background: #0070f3;
+                                                        height: 8px;
+                                                        }
+
+                                                        .cart-item {
+                                                        display: flex;
+                                                        padding: 12px 0;
+                                                        border-bottom: 1px solid #eee;
+                                                        }
+
+                                                        .cart-item-image {
+                                                        width: 80px; height: 80px;
+                                                        margin-right: 12px;
+                                                        }
+
+                                                        .cart-item-image img {
+                                                        width: 100%; height: 100%;
+                                                        object-fit: contain;
+                                                        }
+
+                                                        .cart-item-title { font-weight: 600; margin-bottom: 4px; }
+                                                        .cart-item-variant { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+                                                        .cart-item-price { font-weight: 600; color: #5c6ac4; }
+
+                                                        .cart-footer {
+                                                        padding: 16px;
+                                                        border-top: 1px solid #eee;
+                                                        }
+
+                                                        .cart-subtotal {
+                                                        display: flex;
+                                                        justify-content: space-between;
+                                                        margin-bottom: 12px;
+                                                        font-weight: 600;
+                                                        }
+
+                                                        .cart-buttons button {
+                                                        width: 100%;
+                                                        padding: 10px;
+                                                        border-radius: 4px;
+                                                        font-weight: 600;
+                                                        margin-bottom: 8px;
+                                                        cursor: pointer;
+                                                        }
+
+                                                        .view-cart {
+                                                        background: #fff;
+                                                        border: 1px solid #5c6ac4;
+                                                        color: #5c6ac4;
+                                                        }
+
+                                                        .checkout {
+                                                        background: #5c6ac4;
+                                                        border: none;
+                                                        color: #fff;
+                                                        }
+
+                                                        .multi_step_progress {
+  position: relative;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.progress_line_bg,
+.progress_line_fill {
+  position: absolute;
+  left: 0;
+}
+
+.progress_step {
+  position: absolute;
+  top: 85px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.progress_step .circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color:#fff;
+}
+.progress_step .step_goal {
+  font-size: 12px;
+  margin-top: 4px;
+}
+                                                    </style>
+                                                    </head>
+                                                    <body>
+                                                    <div class="cart-drawer-overlay"></div>
+                                                    <div class="cart-drawer">
+                                                        <div class="cart-header">
+                                                        <div class=''>
+                                                        <span class="cart-title">Your Cart</span>
+                                                        <button class="close-cart">&times;</button>
+                                                        
+                                                        </div>
+                                                            <div>
+                                                        <div class="dsicount-title">${formattedPreGoalText}</div>
+                                                      <div class="un-fill" 
+                                                                style="
+                                                                    background:${progressBarStyle.backgroundColor};
+                                                                    border-radius:${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};height:${progressBarStyle.thickness === "thin" ? "10px" : "15px"};">
+                                                                <div class="fill" 
+                                                                    style="
+                                                                        width:${progressPercentage}%;
+                                                                        background:${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.primaryColor};
+                                                                        border-radius:${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
+                                                                        height:100%;
+                                                                        transition:width 0.3s ease-in-out;
+                                                                    "
+                                                                ></div>
+                                                                  
+                                                            </div>
+                                                            <div class="progress_step" style="left:${progressPercentage}%;">
+    <div class="circle" style="background:${progressPercentage >= 20 ? progressBarStyle.goalCompleteColor : '#ddd'};">🚚</div>
+    <div class="step_goal">50</div>
+  </div>
+
+                                                        </div>
+                                                        </div>
+
+                                                        <div class="cart-content">
+                                                        
+
+                                                        <div class="cart-item">
+                                                            <div class="cart-item-image">
+                                                            <img src="https://via.placeholder.com/80" alt="Product" />
+                                                            </div>
+                                                            <div class="cart-item-details">
+                                                            <div class="cart-item-title">Sample Product</div>
+                                                            <div class="cart-item-variant">Blue / M</div>
+                                                            <div class="cart-item-price">$29.99</div>
+                                                            </div>
+                                                        </div>
+                                                        </div>
+
+                                                        <div class="cart-footer">
+                                                        <div class="cart-subtotal">
+                                                            <span>Subtotal</span>
+                                                            <span>$29.99</span>
+                                                        </div>
+                                                        <div class="cart-buttons">
+                                                            <button class="view-cart">View Cart</button>
+                                                            <button class="checkout">Checkout</button>
+                                                        </div>
+                                                        </div>
+                                                    </div>
+                                                    </body>
+                                                    </html>`}
+                            />
+                        </div>
                     </BlockStack>
                 </Card>
             );
         }
+
         return null;
     };
     return (
@@ -1562,23 +1719,22 @@ export default function AddToUnlock() {
                                                         <Text as="p">Badge Icon</Text>
                                                         <input
                                                             type="file"
-                                                            accept="image/*"
-                                                            onChange={handleBadgeIconChange}
+                                                            onChange={(event) => handleBadgeIconChange(offer.id, event)}
                                                             style={{ marginTop: '8px' }}
                                                         />
-                                                        {badgeIcon && (
+                                                        {offer.badgeIcon && (
                                                             <Box paddingBlockStart="200">
                                                                 <Text fontWeight="semibold">Selected Badge Icon:</Text>
                                                                 <InlineStack align="space-between" blockAlign="center">
                                                                     <Image
-                                                                        source={URL.createObjectURL(badgeIcon)}
+                                                                        source={URL.createObjectURL(offer.badgeIcon)}
                                                                         alt="Badge Icon Preview"
                                                                         width="50px"
                                                                     />
                                                                     <Button
                                                                         tone="critical"
                                                                         size="medium"
-                                                                        onClick={() => setBadgeIcon(null)}
+                                                                        onClick={() => updateOffer(offer.id, "badgeIcon", null)}
                                                                     >
                                                                         Remove
                                                                     </Button>
