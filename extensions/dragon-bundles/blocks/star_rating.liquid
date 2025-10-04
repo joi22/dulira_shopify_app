@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://further-hip-been-nurses.trycloudflare.com';
+  const App_Domain = 'https://snake-along-mem-quantity.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -18,10 +18,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     const cartResponse = await fetch(`/cart.js`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
     const cart = await cartResponse.json();
     const cartTotal = cart.total_price / 100;
-   
 
     let progressPercent = 0;
     let remaining = 0;
+
+    // ✅ Customization from DB
+    const customization = campaign.customization || {};
+    const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization;
+    const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800', secondaryColor = '#2196F3' } = barColors;
+
+    const borderRadius = barRadius === 'square' ? '0px' : '6px';
+    const barHeight = barStyle === 'thin' ? '7px' : '12px';
 
     if (offer.goalType === 'quantity') {
       progressPercent = Math.min((quantity_product / offer.goalQuantity) * 100, 100);
@@ -35,29 +42,36 @@ document.addEventListener('DOMContentLoaded', async function () {
     const unlockText = document.querySelector(`#unlock-text-${offer.id}`);
     const freeShippingBanner = document.querySelector(`#free-shipping-banner-${offer.id}`);
     const actionButton = document.querySelector(`#action-btn-${offer.id}`);
-    console.log(unlockText,"is Not GEt <<< +=  ",offer.id,offer)
+
     if (!progressBar) return;
 
-   progressBar.style.width = `${progressPercent}%`;
+    // ✅ Progress bar fill
+    progressBar.style.width = `${progressPercent}%`;
+    progressBar.style.height = barHeight;
+    progressBar.style.borderRadius = borderRadius;
 
-      // reset color classes
-      progressBar.classList.remove("low", "mid", "high");
+    // ✅ Set color dynamically
+    if (progressPercent >= 100) {
+      progressBar.style.background = goalCompleteColor;
+    } else if (progressPercent >= 40) {
+      progressBar.style.background = secondaryColor;
+    } else {
+      progressBar.style.background = primaryColor;
+    }
 
-      // apply color based on percentage
-      if (progressPercent < 40) {
-        progressBar.classList.add("low");
-      } else if (progressPercent < 100) {
-        progressBar.classList.add("mid");
-      } else {
-        progressBar.classList.add("high");
-      }
+    // ✅ Progress container background
+    if (progressBar.parentElement) {
+      progressBar.parentElement.style.background = backgroundColor;
+      progressBar.parentElement.style.height = barHeight;
+      progressBar.parentElement.style.borderRadius = borderRadius;
+    }
 
+    // ✅ Goal Achieved
     if (progressPercent >= 100) {
       unlockText.innerText = offer.goalTextAfter || '🎉 Goal achieved!';
       freeShippingBanner.style.display = 'block';
       actionButton.disabled = false;
 
-      // unlock free gift buttons
       if (offer.rewardType === 'gift') {
         document.querySelectorAll(`.add-btn[data-offer-id="${offer.id}"]`).forEach(btn => btn.disabled = false);
       }
@@ -69,9 +83,8 @@ document.addEventListener('DOMContentLoaded', async function () {
           ? 'discount'
           : 'gift';
 
-      // Default goal text if none provided
       const defaultGoalText = 'Add more to your cart to unlock a special offer!';
-      
+
       unlockText.innerText = `${offer.goalTextBefore || defaultGoalText} Add ${
         offer.goalType === 'quantity' ? remaining + ' more items' : '€' + remaining.toFixed(2)
       } to unlock ${rewardLabel}!`;
@@ -85,34 +98,38 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 
+
   // --- RENDER OFFER ---
   async function renderOffer(campaign, offer, freeGiftProducts, triggerProducts) {
     let productsToShow = [];
     let productCardsHTML = '';
 
-    if (offer.rewardType === "gift") {
-      productsToShow = freeGiftProducts;
-    } else {
-      productsToShow = triggerProducts;
-    }
+      if (offer.rewardType === "gift") {
+        productsToShow = freeGiftProducts;
+      } else {
+        productsToShow = triggerProducts;
+      }
 
-    if (productsToShow.length) {
-      productCardsHTML = productsToShow
-        .map(
-          (pro) => `
-        <div class="product-card">
-          <div class="product-image-container">
-            <img src="${pro.media || 'https://via.placeholder.com/150'}" 
-                alt="${pro.productTitle || 'Product'}" class="product-image">
-          </div>
-          <div class="product-title">${pro.productTitle || 'No Title'}</div>
-          <div class="product-price">€${pro.price || '0.00'}</div>
-          <button class="add-btn" data-offer-id="${offer.id}" data-variant-id="${pro.variantId}" ${offer.rewardType === 'gift' ? 'disabled' : ''}>
-            ${offer.rewardType === 'gift' ? 'ADD FREE GIFT' : 'ADD'}
-          </button>
-        </div>`
-        )
-        .join('');
+      if (productsToShow.length) {
+        productCardsHTML = productsToShow
+          .map(
+        (pro) => `
+      <div class="product-card">
+        <div class="product-image-container">
+          <img src="${pro.media || 'https://via.placeholder.com/150'}" 
+              alt="${pro.productTitle || 'Product'}" class="product-image">
+        </div>
+        <div class="product-title">${pro.productTitle || 'No Title'}</div>
+        <div class="product-price">€${pro.price || '0.00'}</div>
+        <button class="add-btn" 
+                data-offer-id="${offer.id}" 
+                data-variant-id="${pro.variantId}" 
+                ${offer.rewardType === 'gift' ? 'disabled' : ''}>
+          ${offer.rewardType === 'gift' ? 'ADD FREE GIFT' : 'ADD'}
+        </button>
+      </div>`
+      )
+      .join('');
     }
 
     const buttonLabel =
@@ -123,11 +140,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         : 'REDEEM FREE GIFT';
 
     const cardContent = `
-      <div class="offer-card">
+      <div class="offer-cards">
+      <div class="unlock-text" id="unlock-text-${offer.id}"></div>
         <div class="progress-container">
-          <div class="progress-bar"><div class="progress" id="progress-bar-${offer.id}"></div></div>
+          <div class="progress-bar">
+            <div class="progress" id="progress-bar-${offer.id}"></div>
+          </div>
         </div>
-        <div class="unlock-text" id="unlock-text-${offer.id}"></div>
         <div class="product-grids">${productCardsHTML}</div>
         <div class="free-shipping-banner" id="free-shipping-banner-${offer.id}" style="display:none;">
           🎉 You've unlocked ${offer.rewardType}!
@@ -142,67 +161,44 @@ document.addEventListener('DOMContentLoaded', async function () {
     card.className = 'card';
     card.innerHTML = cardContent;
     main_container.appendChild(card);
-    
-    // Add button handler
-      card.querySelectorAll(`#action-btn-${offer.id}`).forEach((btn) => {
+
+    // ✅ Attach handlers for each product add button
+    card.querySelectorAll('.add-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
-        const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
-    // console.log(quantity_product,"========= ,<<< this cartTotal ")
-        
-        const offerId = btn.id;
+        const variantId = btn.dataset.variantId;
 
-        // Fetch current offer from latestCampaign
-        // const offer = campaign.offers.find(o => `#action-btn-${o.id}` === offerId);
-        // console.log(offer,"==++=== offer",offerId, "<<<<<<<<<<<<  +======== " , campaign.offers)
-        // if (!offer) return;
+        btn.innerText = 'Adding...';
+        btn.disabled = true;
 
-        // Determine how many to add based on goal
-        let qtyToAdd = 1;
-        if (offer.goalType === 'quantity') {
-          qtyToAdd = quantity_product || 1;
-        }
+        try {
+          await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ id: variantId, quantity: 1 }),
+          });
 
-        const data = {
-          id: varient,
-          quantity: qtyToAdd
-        };
-
-        // console.log('Payload to cart/add.js:', data);
-
-        await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify(data),
-        }).then(res => res.json())
-          .then(result => {
-            window.location.href = '/checkout';  
-          console.log('Item added to cart:', result)});
-
-        // If it's a free gift, redirect to checkout immediately
-        if (offer.rewardType === 'gift') {
-          // window.location.href = '/checkout';
-        } else {
+          btn.innerText = 'Added!';
+          document.dispatchEvent(new CustomEvent('cart:updated'));
           await progressBardynamic(campaign, offer);
+        } catch (e) {
+          console.error('❌ Failed to add product:', e);
+          btn.innerText = 'ADD';
+          btn.disabled = false;
         }
       });
     });
 
-    // Checkout button handler
-   // Checkout button handler
+    // ✅ Main action button
     const actionButton = card.querySelector(`#action-btn-${offer.id}`);
     actionButton.addEventListener('click', async () => {
-      // console.log(actionButton,"========== ...>>> ")
-      // Use a different variable name to avoid shadowing
+      if (actionButton.disabled) return;
+
       const currentOffer = campaign.offers.find(o => o.id == offer.id);
-      // console.log(currentOffer , '====== <currentOffer >> ')
       if (!currentOffer) return;
 
       if (currentOffer.rewardType === 'gift') {
-        // Add all free gifts automatically before checkout
+        // Add all free gifts automatically
         const giftsToAdd = campaign.rewardProducts || [];
         for (const gift of giftsToAdd) {
           await fetch('/cart/add.js', {
@@ -211,25 +207,34 @@ document.addEventListener('DOMContentLoaded', async function () {
             body: JSON.stringify({ id: gift.variantId, quantity: gift.quantity || 1 }),
           });
         }
+      } else {
+        // Example: add the current product variant
+        const qty = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
+        const data = { id: varient, quantity: qty };
+
+        await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(data),
+        });
       }
 
-      // Redirect to checkout
+      // Redirect to checkout if needed
       // window.location.href = '/checkout';
     });
 
+  // ✅ Initial progress
+  await progressBardynamic(campaign, offer);
 
-    // Initial progress
-    await progressBardynamic(campaign, offer);
-
-    // 🔥 Listen for qty changes
-    const qtyInput = document.querySelector('[name="quantity"]');
-    if (qtyInput) {
-      // console.log(qtyInput , "=========== >>>>>  Update THis qtyInput")
-      qtyInput.addEventListener('change', async () => {
-        await progressBardynamic(campaign, offer);
-      });
-    }
+  // ✅ Recalculate progress when qty input changes
+  const qtyInput = document.querySelector('[name="quantity"]');
+  if (qtyInput) {
+    qtyInput.addEventListener('change', async () => {
+      await progressBardynamic(campaign, offer);
+    });
   }
+  }
+
 
   // --- MAIN LOADER ---
   async function renderUpsellcount() {
@@ -255,6 +260,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
           if (latestCampaign.type === 'add_to_unlock' && placement.includes('Page')) {
             // Render only first offer (or loop if needed)
+            console.log(latestCampaign, Offers,"thsi To All Gat ")
             for (const offer of Offers) {
               await renderOffer(latestCampaign, offer, gift_products, triggerProducts);
             }

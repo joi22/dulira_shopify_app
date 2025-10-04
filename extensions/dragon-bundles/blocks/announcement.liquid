@@ -1,6 +1,6 @@
 <script>
 document.addEventListener("DOMContentLoaded", async function () {
-  const domain = 'https://tender-enough-knitting-examined.trycloudflare.com';
+  const domain = 'https://snake-along-mem-quantity.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
 
@@ -19,27 +19,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     document.getElementById("announcement-right-text").innerHTML =
       `Extra <span class="highlight">${campaign.offers?.[0]?.discountCode || "20"}% off</span> & Buy more save more`;
 
-    // If campaign has an end date → countdown
-    if (campaign.endDate) {
-      const countdownEl = document.getElementById("announcement-countdown");
-      function updateCountdown() {
-        const now = new Date().getTime();
-        const end = new Date(campaign.endDate).getTime();
-        const diff = end - now;
-        if (diff <= 0) {
-          countdownEl.innerText = "Expired";
-          return;
-        }
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000*60*60));
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000*60));
-        countdownEl.innerText = `Ends in ${hours}h ${mins}m`;
-      }
-      updateCountdown();
-      setInterval(updateCountdown, 60000);
-    }
+  
 
     // show bar
     document.getElementById("announcement-bar").style.display = "flex";
+    document.querySelector(".utility-bar__grid").style.padding = "0px";
 
   } catch (err) {
     console.error("Announcement error:", err);
@@ -48,57 +32,69 @@ document.addEventListener("DOMContentLoaded", async function () {
 </script>
 
 <style>
-.announcement-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #FFD43B; /* yellow */
-  padding: 10px 20px;
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  color: #111;
-  position: relative;
-}
-.announcement-bar .left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.announcement-bar .left .icon {
-  font-size: 16px;
-}
-.announcement-bar .right {
-  text-align: right;
-}
-.announcement-bar .highlight {
-  color: red;
-  font-weight: bold;
-}
-.announcement-bar .countdown {
-  font-size: 12px;
-  margin-top: 2px;
-  color: #333;
-}
+  /* .announcement-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: {{block.settings.backgroundcolor}};
+    color:{{block.settings.color}}
+    padding: 10px 20px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: #111;
+    position: relative;
+  } */
+  .announcement-bar .left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .announcement-bar .left .icon {
+    font-size: 16px;
+  }
+  .announcement-bar .right {
+    text-align: right;
+  }
+  .announcement-bar .highlight {
+    color: red;
+    font-weight: bold;
+  }
+  .announcement-bar .countdown {
+    font-size: 12px;
+    margin-top: 2px;
+    color: #333;
+  }
 </style>
-
-<div id="announcement-bar" class="announcement-bar" style="display:none;">
-  <div class="left">
-    <span class="icon">🚚</span>
-    <span id="announcement-left-text">Free shipping on 3+ items</span>
-  </div>
-  <div class="right">
-    <div id="announcement-right-text">Extra <span class="highlight">20% off</span> & Buy more save more</div>
-    <div id="announcement-countdown" class="countdown"></div>
+<div>
+  <div id="announcement-bars" class="announcement-bar-s" >
+    <div class="left">
+      <span class="icon">🚚</span>
+      <span id="announcement-left-text"></span>
+    </div>
+    <div class="right">
+      <div id="announcement-right-text"></div>
+      {% comment %} <div id="announcement-countdown" class="countdown"></div> {% endcomment %}
+    </div>
   </div>
 </div>
-
 
 {% schema %}
 {
   "name": "Announcement Bar Bundles",
   "target": "section",
   "settings": [
-
+    {
+      "type": "color",
+      "id": "color",
+      "label": "Block color",
+      "default": "#fff"
+    },
+    {
+      "type": "color",
+      "id": "backgroundcolor",
+      "label": "background color",
+      "default": "#000000"
+    }
   ]
 }
 {% endschema %}
