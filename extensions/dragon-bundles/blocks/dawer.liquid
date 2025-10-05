@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://snake-along-mem-quantity.trycloudflare.com';
+    const App_Domain = 'https://settings-sean-pays-portland.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -23,10 +23,11 @@
     }
 
     function getOfferIcon(offer) {
-      const icon = offer.icon;
+      const icon = offer.badgeImageUrl;
+      console.log(offer, 'this Progress bar == >><<');
       // Check if icon is a URL (image)
       if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
-        return `<img src="${icon}" alt="Offer Icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; display: block; margin: 8px auto;">`;
+        return `<img src="${icon}" alt="Offer Icon" style="width: 25px; position: relative; top: 5px;">`;
       }
       // Fallback to emojis based on rewardType
       if (offer.rewardType === 'discount') return '💰';
@@ -72,13 +73,13 @@
 
       // ✅ If gift already in cart → hide immediately
       if (cartHasGift) {
-        gift_price.style.display = "none";
-        gift_price.innerHTML = ""; 
+        gift_price.style.display = 'none';
+        gift_price.innerHTML = '';
         return;
       }
 
       // ✅ Otherwise show available gifts
-      gift_price.style.display = "block";
+      gift_price.style.display = 'block';
 
       let gridHtml = `<div class="free_products">`;
       Gifts.forEach((prod) => {
@@ -112,7 +113,7 @@
             });
             this.innerText = 'Added!';
             // ✅ Refresh cart immediately
-            document.dispatchEvent(new CustomEvent('cart:updated')); 
+            document.dispatchEvent(new CustomEvent('cart:updated'));
           } catch (err) {
             console.error('Error adding reward product:', err);
             this.disabled = false;
@@ -122,72 +123,116 @@
       });
     }
 
-
-
     function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
-      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
-      const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+    const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+    const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
 
-      const borderRadius = barRadius === 'square' ? '0px' : '2px';
-      const barHeight = barStyle === 'thin' ? '7px' : '12px';
-      const topPosition = barStyle === 'thin' ? '42px' : '40px';
+    const borderRadius = barRadius === 'square' ? '0px' : '6px';
+    const barHeight = barStyle === 'thin' ? '7px' : '12px';
+    const topPosition = barStyle === 'thin' ? '42px' : '40px';
 
-      const progress = calculateProgress(offers, cartData);
+    // Calculate overall progress
+    const progress = calculateProgress(offers, cartData);
 
-      let html = `<div class="multi_step_progress">`;
+    // Sort offers by goal value
+    const sortedOffers = offers.sort((a, b) =>
+        a.goalType === 'quantity'
+            ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
+            : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
+    );
 
-      html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
-      html += `<div class="progress_line_fill" style="width:${progress}%; background:${primaryColor}; border-radius:${borderRadius}px; height:${barHeight}; top:${topPosition};"></div>`;
+    // Determine the active offer for the goal text
+    let goalText = 'No offers available';
+    if (sortedOffers.length > 0) {
+        let activeOffer = null;
+        for (const offer of sortedOffers) {
+            const goalValue =
+                offer.goalType === 'quantity'
+                    ? parseFloat(offer.goalQuantity || 0)
+                    : parseFloat(offer.goalAmount || 0);
+            const currentValue =
+                offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+            if (currentValue < goalValue) {
+                activeOffer = offer; // First uncompleted offer
+                break;
+            }
+            activeOffer = offer; // Last completed offer
+        }
+        if (activeOffer) {
+            const isGoalReached =
+                activeOffer.goalType === 'quantity'
+                    ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
+                    : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
+            const rewardDescription =
+                activeOffer.rewardType === 'discount'
+                    ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
+                    : activeOffer.rewardType === 'shipping'
+                    ? 'Free Shipping'
+                    : 'Free Gift';
+            const amountLeft =
+                activeOffer.goalType === 'quantity'
+                    ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
+                    : `$${Math.max(parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0), 0).toFixed(2)}`;
+            const goal =
+                activeOffer.goalType === 'quantity'
+                    ? `${activeOffer.goalQuantity || 0} items`
+                    : `$${activeOffer.goalAmount || 0}`;
+            goalText = isGoalReached
+                ? (activeOffer.goalTextAfter || 'Unlocked {{reward}} at {{goal}}').replace('{{reward}}', rewardDescription).replace('{{goal}}', goal)
+                : (activeOffer.goalTextBefore || 'Add {{amount_left}} to unlock {{reward}}').replace('{{amount_left}}', amountLeft).replace('{{reward}}', rewardDescription).replace('{{goal}}', goal);
+        }
+    }
 
-      const goals = offers.map((o) =>
+    // Clear previous content to avoid duplicates
+    container.innerHTML = '';
+
+    // Create or update the goal text element
+    const goalTextElement = document.createElement('div');
+    goalTextElement.className = 'goal-text';
+    goalTextElement.innerText = goalText;
+    container.appendChild(goalTextElement);
+
+    // Build progress bar HTML
+    let html = `<div class="multi_step_progress">`;
+    html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+    html += `<div class="progress_line_fill" style="width:${progress}%; background:${progress >= 100 ? goalCompleteColor : primaryColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+
+    const goals = sortedOffers.map((o) =>
         o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-      );
-      const minGoal = Math.min(...goals);
-      const maxGoal = Math.max(...goals);
-      // Steps render separately
-      offers.forEach((offer, index) => {
+    );
+    const minGoal = Math.min(...goals);
+    const maxGoal = Math.max(...goals);
+
+    sortedOffers.forEach((offer, index) => {
         const isQuantity = offer.goalType === 'quantity';
         const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
         const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
         const unlocked = current >= goal;
 
-        if (unlocked) {
-          const rewardText = document.createElement('div');
-          rewardText.innerText = `${offer.goalTextAfter || 'Unlock this Offers!'}`;
-          container.appendChild(rewardText);
-        } else {
-          const rewardText = document.createElement('div');
-          rewardText.innerText = `${offer.goalTextBefore || 'Unlock this Offers!'}`;
-          container.appendChild(rewardText);
-        }
         const circleStyle = `
-      background:${unlocked ? goalCompleteColor : '#ddd'}; 
-      color:${unlocked ? '#fff' : '#000'};`;
-
-        const stepWrapper = document.createElement('div');
-        stepWrapper.className = 'progress_step_wrapper';
+            background:${unlocked ? goalCompleteColor : '#ddd'}; 
+            color:${unlocked ? '#fff' : '#000'};`;
 
         let leftPercent = ((goal - minGoal) / (maxGoal - minGoal)) * 100;
         if (index === 0) leftPercent = 8;
-        if (index === offers.length - 1) leftPercent = 100;
+        if (index === sortedOffers.length - 1) leftPercent = 100;
 
         html += `
             <div class="progress_step" data-goal="${goal}" style="left: ${(goal / maxGoal) * 100}%;">
-              <div class="circle">${getOfferIcon(offer)}</div>
+              <div class="circle" style="${circleStyle}">${getOfferIcon(offer)}</div>
               <div class="step_goal">${goal}</div>
             </div>`;
 
         if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
-          if (Gifts && Gifts.length) {
-            renderRewardProducts(container, Gifts , cartData);
-          }
+            if (Gifts && Gifts.length) {
+                renderRewardProducts(container, Gifts, cartData);
+            }
         }
-      });
+    });
 
-      html += `</div>`; // close progress bar
-
-      container.innerHTML = html;
-    }
+    html += `</div>`; // Close progress bar
+    container.innerHTML += html;
+}
 
     async function updateProgressBar() {
       try {
@@ -237,8 +282,8 @@
 
         if (currentCampaignData.type === 'add_to_unlock') {
           setTimeout(() => {
-            upsellContainer.scrollIntoView({ behavior: 'smooth' });
-            renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
+          upsellContainer.scrollIntoView({ behavior: 'smooth' });
+          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
           }, 3000);
         }
       } catch (err) {
@@ -264,7 +309,6 @@
     // Setup quantity change listener for real-time updates (increase/decrease)
     // Listen to Shopify cart updates + quantity changes
     function setupQuantityListener() {
-
       const debouncedUpdate = debounce(updateProgressBar, 300);
 
       // Listen to manual typing in input
@@ -318,8 +362,7 @@
 </script>
 
 <style>
-  .gift_price{
-
+  .gift_price {
   }
   .drawer__header {
     position: relative;
@@ -535,7 +578,7 @@
 
   .progress_step {
     position: absolute;
-    top: 21px;
+    top: 25px;
     transform: translateX(-70%);
     text-align: center;
     z-index: 3;

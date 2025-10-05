@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
+import home_icon from './_index/media/icon-home.png';
+import save from './_index/media/save-1.jpg'
+import save2 from './_index/media/save-2.png'
+import gift from './_index/media/gift.png'
+import free from './_index/media/shipping.png'
+import discou from './_index/media/disc.png'
 import './_index/style.css';
+import './_index/home.css'
 import './_index/preview-styles.css';
 import './components/RewardsCard';
 import {
@@ -24,14 +31,15 @@ import {
     Checkbox,
     Icon,
     Modal,
+    Thumbnail,
 } from "@shopify/polaris";
 import { PlusIcon, DeleteIcon, ButtonIcon, HomeIcon, CartIcon, ProductIcon } from "@shopify/polaris-icons";
-import { useFetcher, useNavigate } from '@remix-run/react';
+import { useFetcher, useLocation, useNavigate } from '@remix-run/react';
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { add_to_unlock_ } from "./utils/add_unlock";
 
-const SHOPIFY_API_VERSION = "2024-10";
+const SHOPIFY_API_VERSION = "2025-07";
 
 const PRODUCT_FRAGMENT = `
   fragment ProductFields on Product {
@@ -266,7 +274,6 @@ export const action = async ({ request }) => {
     const customiz = await prisma.customiz.create({
         data: {
             campaignId: upsellCampaign.id,
-            badgeImageUrl: badgeImage ? badgeImage.name : null,
             barStyle: progressBarStyle.thickness || "thin",
             barRadius: progressBarStyle.cornerRadius || "square",
             barColors: {
@@ -736,9 +743,14 @@ export default function AddToUnlock() {
         );
     };
 
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const campaignNames = searchParams.get("name") || "";
+
     const handleSubmit = () => {
+        console.log(campaignNames, "this propes >><<<<", location)
         console.log(badgeIcon, "this ")
-        if (!campaignName) {
+        if (!campaignNames) {
             shopify.toast.show("Campaign name is required.", { isError: true });
             return;
         }
@@ -840,7 +852,7 @@ export default function AddToUnlock() {
         //        setMainBtnLoading(true);
 
         const formData = new FormData();
-        formData.append("campaignName", campaignName);
+        formData.append("campaignName", campaignNames);
         formData.append("selectedCampaignType", "add_to_unlock");
         formData.append("selectedTriggerType", selectedTriggerType);
         formData.append("status", JSON.stringify(status));
@@ -871,6 +883,21 @@ export default function AddToUnlock() {
         setMainBtnLoading(false)
     };
 
+    const preview_products = [
+        {
+            id: 1,
+            title: "The Collection Snowboard: Liquid",
+            price: "749.95",
+            image: save, // ✅ corrected typo: "imag" → "image"
+        },
+        {
+            id: 2,
+            title: "Summer T-Shirt Bundle",
+            price: "49.99",
+            image: save2, // You can replace with another image variable
+        },
+    ];
+
     const renderPreview = () => {
         const sortedOffers = offers.sort((a, b) =>
             a.goalType === "quantity" ? parseInt(a.goalquantity) - parseInt(b.goalquantity) : parseFloat(a.goalAmount) - parseFloat(b.goalAmount)
@@ -880,6 +907,38 @@ export default function AddToUnlock() {
             maxGoal?.goalType === "quantity"
                 ? (currentProgress / (parseInt(maxGoal?.goalquantity) || 1)) * 100
                 : (currentProgress / (parseFloat(maxGoal?.goalAmount) || 1)) * 100;
+
+        const maxGoalValue =
+            maxGoal?.goalType === "quantity"
+                ? parseInt(maxGoal?.goalquantity) || 1
+                : parseFloat(maxGoal?.goalAmount) || 1;
+        let icons = {
+            gift: gift,
+            shipping: free,
+            discount: discou
+        };
+
+        let selectedIcon = "";  // Default value
+        offers.forEach((type) => {
+            if (icons[type.rewardType]) {
+                selectedIcon = icons[type.rewardType];
+            }
+        });
+        const offerProgress = sortedOffers.map((offer) => {
+            const goalValue =
+                offer.goalType === "quantity"
+                    ? parseInt(offer.goalquantity) || 1
+                    : parseFloat(offer.goalAmount) || 1;
+            const offerPercentage = (goalValue / maxGoalValue) * 100;
+            const isGoalReached = currentProgress >= goalValue;
+            return {
+                ...offer,
+                percentage: offerPercentage,
+                isGoalReached,
+                icon: icons[offer.rewardType] || "",
+            };
+        });
+
 
         const renderGoalText = (offer) => {
             const isGoalReached = offer.goalType === "quantity" ? currentProgress >= parseInt(offer.goalquantity) : currentProgress >= parseFloat(offer.goalAmount);
@@ -900,7 +959,24 @@ export default function AddToUnlock() {
                 ? offer.goalTextAfter.replace("{{reward}}", rewardDescription).replace("{{goal}}", goal)
                 : offer.goalTextBefore.replace("{{amount_left}}", amountLeft).replace("{{reward}}", rewardDescription).replace("{{goal}}", goal);
         };
-
+        let formattedPreGoalText = "No offers available";
+        if (sortedOffers.length > 0) {
+            let activeOffer = null;
+            for (const offer of sortedOffers) {
+                const goalValue =
+                    offer.goalType === "quantity"
+                        ? parseInt(offer.goalquantity) || 1
+                        : parseFloat(offer.goalAmount) || 1;
+                if (currentProgress < goalValue) {
+                    activeOffer = offer; // First uncompleted offer
+                    break;
+                }
+                activeOffer = offer; // Keep track of the last completed offer
+            }
+            if (activeOffer) {
+                formattedPreGoalText = renderGoalText(activeOffer);
+            }
+        }
         const renderRewardContent = (offer) => {
             if (offer.rewardType === "gift" && offer.rewardMode === "fixed" && offer.rewardProducts.length > 0) {
                 return (
@@ -973,82 +1049,387 @@ export default function AddToUnlock() {
 
         if (activePreview === "home") {
             return (
-                <Modal
-                    open={isHomepageModalOpen}
-                    onClose={() => setIsHomepageModalOpen(false)}
-                    title="Homepage Upsell Preview"
-                    primaryAction={{
-                        content: "Close",
-                        onAction: () => setIsHomepageModalOpen(false),
-                    }}
-                >
-                    <Modal.Section>
-                        <BlockStack gap="400">
-                            <Text variant="headingMd">Upsell Banner</Text>
-                            <Banner tone="info">
-                                <BlockStack gap="200">
-                                    <Text>{formattedPreGoalText}</Text>
-                                    <ProgressBar progress={progressPercentage} style={progressBarStyle} />
-                                    {sortedOffers.map((offer) => (
-                                        <BlockStack key={offer.id} gap="100">
-                                            <Text>{renderGoalText(offer)}</Text>
-                                            {renderRewardContent(offer)}
-                                        </BlockStack>
+                <div className="home-preview">
+                    <h2>Homepage Upsell Preview</h2>
+                    <div className="home-preview-container">
+                        {/* Header Section */}
+                        <div className="features">
+                            <Text as="h1" variant="headingLg" className="h1-had">
+                                Bundle Deals
+                            </Text>
+                            <button style={{ float: "right" }}>✖</button>
+                        </div>
+
+                        {/* Offers Count */}
+                        <div className="offers-length">
+                            <div className="under-offer">
+                                <Thumbnail size="extraSmall" source={home_icon} alt="icon" />
+                                <p>Get More {offers.length} Offers</p>
+                            </div>
+                        </div>
+
+                        {/* Product List */}
+                        <div className="product-details">
+                            {preview_products.map((product) => (
+                                <div key={product.id} className="product-card">
+                                    <Image source={product.image} alt={product.title} width="150px" />
+                                    <Text as="p" variant="bodyMd" fontWeight="medium">
+                                        {product.title}
+                                    </Text>
+                                    <Text as="p" variant="bodySm" tone="subdued">
+                                        ${product.price}
+                                    </Text>
+
+                                    {/* ✅ Offer Line */}
+                                    {offers.map((offer) => (
+                                        <div key={offer.id} className="offer-line">
+                                            <span>{renderGoalText(offer)}</span>
+                                        </div>
                                     ))}
-                                    {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
-                                        <Text>🎉 Confetti Animation Triggered!</Text>
-                                    )}
-                                    {showLockedGoals && sortedOffers.length > 1 && (
-                                        <Text>Locked Goals: Additional rewards to unlock...</Text>
-                                    )}
-                                    {showBadgeIcons && badgeIcon && (
-                                        <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
-                                    )}
-                                </BlockStack>
-                            </Banner>
-                        </BlockStack>
-                    </Modal.Section>
-                </Modal>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             );
         } else if (activePreview === "Page") {
             return (
                 <Card title="Product Page Preview">
-                    <BlockStack gap="200">
-                        <Text variant="headingSm">Upsell Block Next to Product</Text>
-                        <Banner tone="info">
-                            <BlockStack gap="200">
-                                <Text>{formattedPreGoalText}</Text>
-                                <ProgressBar progress={progressPercentage} style={progressBarStyle} />
-                                {sortedOffers.map((offer) => (
-                                    <BlockStack key={offer.id} gap="100">
-                                        <Text>{renderGoalText(offer)}</Text>
-                                        {renderRewardContent(offer)}
-                                    </BlockStack>
-                                ))}
+                    <div style={{
+                        maxWidth: "900px",
+                        margin: "20px auto",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif",
+                    }}>
+                        <style>{`
+                .preview-container {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin: 15px 0;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    border: 1px solid #eaeaea;
+                }
+                .preview-title {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    margin-bottom: 15px;
+                }
+                .banner {
+                    background: #e3f2fd;
+                    padding: 15px;
+                    border-radius: 6px;
+                }
+                .main-title {
+                    text-align: center;
+                    font-size: 16px;
+                    margin: 15px 0;
+                    color: #333;
+                    font-weight: 500;
+                    line-height: 1.4;
+                }
+                .offer-card {
+                    margin-bottom: 20px;
+                }
+                .progress-container {
+                    margin: 15px 0;
+                }
+                .progress-bar {
+                    width: 100%;
+                    background: #f3f3f3;
+                    border-radius: 10px;
+                    overflow: hidden;
+                }
+                .progress {
+                    height: 100%;
+                    width: 0%;
+                    transition: width 0.5s ease, background 0.5s ease;
+                    border-radius: 10px;
+                }
+                .product-grid {
+                    display: flex;
+                    justify-content: start;
+                    gap: 15px;
+                    margin: 20px 0;
+                    overflow-x: auto;
+                }
+                .product-card {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 15px;
+                    border-radius: 8px;
+                    background: #f9f9f9;
+                    transition: transform 0.2s ease;
+                    flex: 0 0 auto;
+                    width: 150px;
+                }
+                .product-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                .product-image-container {
+                    width: 100px;
+                    height: 100px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 10px;
+                }
+                .product-image {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    border-radius: 8px;
+                }
+                .product-title {
+                    font-size: 14px;
+                    text-align: center;
+                    margin-bottom: 8px;
+                    color: #333;
+                    font-weight: 500;
+                    line-height: 1.3;
+                    height: 36px;
+                    overflow: hidden;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                }
+                .product-price {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #2c5aa0;
+                    margin-bottom: 12px;
+                }
+                .add-btn {
+                    padding: 10px 15px;
+                    background: #000;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    width: 100%;
+                }
+                .add-btn:hover:not(:disabled) {
+                    background: #333;
+                    transform: translateY(-2px);
+                }
+                .add-btn:disabled {
+                    background: #ccc;
+                    cursor: not-allowed;
+                }
+                .free-shipping-banner {
+                    text-align: center;
+                    padding: 12px;
+                    background: #e8f5e9;
+                    border-radius: 6px;
+                    margin: 15px 0;
+                    color: #2e7d32;
+                    font-weight: 500;
+                }
+                .action-button-container {
+                    display: flex;
+                    justify-content: center;
+                    margin-top: 15px;
+                }
+                .action-btn {
+                    padding: 12px 30px;
+                    background: #2c5aa0;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .action-btn:hover:not(:disabled) {
+                    background: #1e3f73;
+                    transform: translateY(-2px);
+                }
+                .action-btn:disabled {
+                    background: #ccc;
+                    cursor: not-allowed;
+                }
+                .confetti-text, .locked-goals {
+                    text-align: center;
+                    margin: 10px 0;
+                    color: #333;
+                }
+                .badge-icon {
+                    display: block;
+                    margin: 0 auto;
+                }
+                @media (max-width: 768px) {
+                    .preview-container {
+                        padding: 15px;
+                    }
+                    .product-grid {
+                        gap: 10px;
+                    }
+                    .product-card {
+                        width: 140px;
+                        padding: 12px;
+                    }
+                    .product-image-container {
+                        width: 80px;
+                        height: 80px;
+                    }
+                    .product-title {
+                        font-size: 13px;
+                    }
+                    .main-title {
+                        font-size: 14px;
+                    }
+                    .action-btn {
+                        padding: 10px 20px;
+                        font-size: 14px;
+                    }
+                }
+                @media (max-width: 480px) {
+                    .product-grid {
+                        gap: 8px;
+                    }
+                    .product-card {
+                        width: calc(50% - 16px);
+                        padding: 10px;
+                    }
+                    .product-image-container {
+                        width: 70px;
+                        height: 70px;
+                    }
+                    .add-btn {
+                        padding: 8px 12px;
+                        font-size: 11px;
+                    }
+                }
+            `}</style>
+                        <div className="preview-container">
+                            <div className="preview-title">Product Page Preview</div>
+                            <div className="banner">
 
-                                {showConfetti && sortedOffers.some((offer) => currentProgress >= (offer.goalType === "quantity" ? parseInt(offer.goalquantity) : parseFloat(offer.goalAmount))) && (
-                                    <Text>🎉 Confetti Animation Triggered!</Text>
+                                {offerProgress.map((offer) => {
+                                    const productsToShow =
+                                        offer.rewardType === "gift"
+                                            ? offer.rewardProducts || []
+                                            : upsellselectedItems || [];
+                                    const buttonLabel =
+                                        offer.rewardType === "shipping"
+                                            ? "FREE SHIPPING"
+                                            : offer.rewardType === "discount"
+                                                ? `APPLY DISCOUNT`
+                                                : "REDEEM FREE GIFT";
+
+                                    return (
+                                        <div key={offer.id} className="offer-card">
+                                            <div className="main-title">{
+                                                
+                                                    <div className="offer-line">
+                                                        <span>{renderGoalText(offer)}</span>
+                                                    </div>
+                                                
+                                            }</div>
+                                            <div
+                                                className="progress-container"
+                                               
+                                            >
+                                    
+                                                <div
+                                                    className="progress-bar"
+                                                    style={{
+                                                         height:
+                                                        progressBarStyle.thickness === "thin" ? "10px" : "15px",
+                                                        background: progressBarStyle.backgroundColor,
+                                                        borderRadius:
+                                                            progressBarStyle.cornerRadius === "square"
+                                                                ? "0px"
+                                                                : progressBarStyle.cornerRadius === "slightly"
+                                                                    ? "6px"
+                                                                    : "10px",
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="progress"
+                                                        style={{
+                                                            width: `${progressPercentage}%`,
+                                                            background:
+                                                                progressPercentage >= 100
+                                                                    ? progressBarStyle.goalCompleteColor
+                                                                    : offer.percentage >= 40
+                                                                        ? progressBarStyle.secondaryColor || progressBarStyle.primaryColor
+                                                                        : progressBarStyle.primaryColor,
+                                                            borderRadius:
+                                                                progressBarStyle.cornerRadius === "square"
+                                                                    ? "0px"
+                                                                    : progressBarStyle.cornerRadius === "slightly"
+                                                                        ? "6px"
+                                                                        : "10px",
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {productsToShow.length > 0 && (
+                                                <div className="product-grid">
+                                                    {productsToShow.map((product) => (
+                                                        <div key={product.id} className="product-card">
+                                                            <div className="product-image-container">
+                                                                <img
+                                                                    src={product.media || "https://via.placeholder.com/150"}
+                                                                    alt={product.title || "Product"}
+                                                                    className="product-image"
+                                                                />
+                                                            </div>
+                                                            <div className="product-title">{product.title || "No Title"}</div>
+                                                            <div className="product-price">${product.price || "0.00"}</div>
+                                                            <button
+                                                                className="add-btn"
+                                                                disabled={offer.rewardType === "gift" && !offer.isGoalReached}
+                                                            >
+                                                                {offer.rewardType === "gift" ? "ADD FREE GIFT" : "ADD"}
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {offer.isGoalReached && (
+                                                <div className="free-shipping-banner">
+                                                    🎉 You've unlocked {offer.rewardType}!
+                                                </div>
+                                            )}
+                                            <div className="action-button-container">
+                                                <button className="action-btn" disabled={!offer.isGoalReached}>
+                                                    {buttonLabel}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {showConfetti && offerProgress.some((offer) => offer.isGoalReached) && (
+                                    <div className="confetti-text">🎉 Confetti Animation Triggered!</div>
                                 )}
                                 {showLockedGoals && sortedOffers.length > 1 && (
-                                    <Text>Locked Goals: Additional rewards to unlock...</Text>
+                                    <div className="locked-goals">Locked Goals: Additional rewards to unlock...</div>
                                 )}
                                 {showBadgeIcons && badgeIcon && (
-                                    <Image source={URL.createObjectURL(badgeIcon)} alt="Badge Icon" width="50px" />
+                                    <img
+                                        src={URL.createObjectURL(badgeIcon)}
+                                        alt="Badge Icon"
+                                        className="badge-icon"
+                                        style={{ width: "50px" }}
+                                    />
                                 )}
-                            </BlockStack>
-                        </Banner>
-                    </BlockStack>
+                            </div>
+                        </div>
+                    </div>
                 </Card>
             );
         } else if (activePreview === "cart") {
-
-
             return (
                 <Card title="Cart Page Preview">
                     <BlockStack gap="200">
                         <Text variant="headingSm">Cart Drawer Upsell</Text>
-
-                        {/* Cart Drawer Preview */}
                         <div
                             style={{
                                 border: "1px solid #ddd",
@@ -1060,220 +1441,196 @@ export default function AddToUnlock() {
                             <iframe
                                 style={{ width: "100%", height: "100%", border: "none" }}
                                 srcDoc={`<!DOCTYPE html>
-                                                    <html lang="en">
-                                                    <head>
-                                                    <meta charset="UTF-8" />
-                                                    <style>
-                                                        /* CART DRAWER CSS */
-                                                        .cart-drawer-overlay {
-                                                        position: fixed;
-                                                        top: 0; left: 0;
-                                                        width: 100%; height: 100%;
-                                                        background-color: rgba(0, 0, 0, 0.5);
-                                                        z-index: 1000;
-                                                        }
-
-                                                        .cart-drawer {
-                                                        position: fixed;
-                                                        top: 0; right: 0;
-                                                        width: 100%; max-width: 400px;
-                                                        height: 100%;
-                                                        background: #fff;
-                                                        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-                                                        z-index: 1001;
-                                                        display: flex;
-                                                        flex-direction: column;
-                                                        transition: right 0.3s ease;
-                                                        }
-
-                                                        .cart-header {
-                                                        display: flex;
-                                                        justify-content: space-around;
-
-                                                        flex-direction:column;
-                                                        padding: 16px;
-                                                        border-bottom: 1px solid #eee;
-                                                        }
-
-                                                        .cart-title { font-size: 1.2rem; font-weight: 600; }
-                                                        .close-cart { border: none; background: none; font-size: 1.5rem; cursor: pointer; }
-
-                                                        .cart-content {
-                                                        flex: 1;
-                                                        overflow-y: auto;
-                                                        padding: 16px;
-                                                        }
-
-                                                        .dsicount-title {
-                                                        font-size: 0.95rem;
-                                                        font-weight: 500;
-                                                        margin-bottom: 8px;
-                                                        }
-
-                                                        .un-fill {
-                                                        background: #eee;
-                                                        width: 100%;
-                                                        height: 8px;
-                                                        border-radius: 4px;
-                                                        margin-bottom: 20px;
-                                                        overflow: hidden;
-                                                        }
-
-                                                        .fill {
-                                                        background: #0070f3;
-                                                        height: 8px;
-                                                        }
-
-                                                        .cart-item {
-                                                        display: flex;
-                                                        padding: 12px 0;
-                                                        border-bottom: 1px solid #eee;
-                                                        }
-
-                                                        .cart-item-image {
-                                                        width: 80px; height: 80px;
-                                                        margin-right: 12px;
-                                                        }
-
-                                                        .cart-item-image img {
-                                                        width: 100%; height: 100%;
-                                                        object-fit: contain;
-                                                        }
-
-                                                        .cart-item-title { font-weight: 600; margin-bottom: 4px; }
-                                                        .cart-item-variant { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
-                                                        .cart-item-price { font-weight: 600; color: #5c6ac4; }
-
-                                                        .cart-footer {
-                                                        padding: 16px;
-                                                        border-top: 1px solid #eee;
-                                                        }
-
-                                                        .cart-subtotal {
-                                                        display: flex;
-                                                        justify-content: space-between;
-                                                        margin-bottom: 12px;
-                                                        font-weight: 600;
-                                                        }
-
-                                                        .cart-buttons button {
-                                                        width: 100%;
-                                                        padding: 10px;
-                                                        border-radius: 4px;
-                                                        font-weight: 600;
-                                                        margin-bottom: 8px;
-                                                        cursor: pointer;
-                                                        }
-
-                                                        .view-cart {
-                                                        background: #fff;
-                                                        border: 1px solid #5c6ac4;
-                                                        color: #5c6ac4;
-                                                        }
-
-                                                        .checkout {
-                                                        background: #5c6ac4;
-                                                        border: none;
-                                                        color: #fff;
-                                                        }
-
-                                                        .multi_step_progress {
-  position: relative;
-  width: 100%;
-  margin: 20px 0;
-}
-
-.progress_line_bg,
-.progress_line_fill {
-  position: absolute;
-  left: 0;
-}
-
-.progress_step {
-  position: absolute;
-  top: 85px;
-  transform: translateX(-50%);
-  text-align: center;
-}
-
-.progress_step .circle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color:#fff;
-}
-.progress_step .step_goal {
-  font-size: 12px;
-  margin-top: 4px;
-}
-                                                    </style>
-                                                    </head>
-                                                    <body>
-                                                    <div class="cart-drawer-overlay"></div>
-                                                    <div class="cart-drawer">
-                                                        <div class="cart-header">
-                                                        <div class=''>
-                                                        <span class="cart-title">Your Cart</span>
-                                                        <button class="close-cart">&times;</button>
-                                                        
-                                                        </div>
-                                                            <div>
-                                                        <div class="dsicount-title">${formattedPreGoalText}</div>
-                                                      <div class="un-fill" 
-                                                                style="
-                                                                    background:${progressBarStyle.backgroundColor};
-                                                                    border-radius:${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};height:${progressBarStyle.thickness === "thin" ? "10px" : "15px"};">
-                                                                <div class="fill" 
-                                                                    style="
-                                                                        width:${progressPercentage}%;
-                                                                        background:${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.primaryColor};
-                                                                        border-radius:${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
-                                                                        height:100%;
-                                                                        transition:width 0.3s ease-in-out;
-                                                                    "
-                                                                ></div>
-                                                                  
+                                <html lang="en">
+                                <head>
+                                    <meta charset="UTF-8" />
+                                    <style>
+                                        /* Existing CSS styles */
+                                        .cart-drawer-overlay {
+                                            position: fixed;
+                                            top: 0; left: 0;
+                                            width: 100%; height: 100%;
+                                            background-color: rgba(0, 0, 0, 0.5);
+                                            z-index: 1000;
+                                        }
+                                        .cart-drawer {
+                                            position: fixed;
+                                            top: 0; right: 0;
+                                            width: 100%; max-width: 400px;
+                                            height: 100%;
+                                            background: #fff;
+                                            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                                            z-index: 1001;
+                                            display: flex;
+                                            flex-direction: column;
+                                            transition: right 0.3s ease;
+                                        }
+                                        .cart-header {
+                                            display: flex;
+                                            justify-content: space-around;
+                                            flex-direction: column;
+                                            padding: 16px;
+                                            border-bottom: 1px solid #eee;
+                                        }
+                                        .cart-title { font-size: 1.2rem; font-weight: 600; }
+                                        .close-cart { border: none; background: none; font-size: 1.5rem; cursor: pointer; }
+                                        .cart-content {
+                                            flex: 1;
+                                            overflow-y: auto;
+                                            padding: 16px;
+                                        }
+                                        .dsicount-title {
+                                            font-size: 0.95rem;
+                                            font-weight: 500;
+                                            margin-bottom: 8px;
+                                        }
+                                        .un-fill {
+                                            background: #eee;
+                                            width: 100%;
+                                            height: 8px;
+                                            border-radius: 4px;
+                                            margin: 20px 0px;
+                                            overflow: hidden;
+                                        }
+                                        .fill {
+                                            background: #0070f3;
+                                            height: 8px;
+                                        }
+                                        .cart-item {
+                                            display: flex;
+                                            padding: 12px 0;
+                                            border-bottom: 1px solid #eee;
+                                        }
+                                        .cart-item-image {
+                                            width: 80px; height: 80px;
+                                            margin-right: 12px;
+                                        }
+                                        .cart-item-image img {
+                                            width: 100%; height: 100%;
+                                            object-fit: contain;
+                                        }
+                                        .cart-item-title { font-weight: 600; margin-bottom: 4px; }
+                                        .cart-item-variant { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+                                        .cart-item-price { font-weight: 600; color: #5c6ac4; }
+                                        .cart-footer {
+                                            padding: 16px;
+                                            border-top: 1px solid #eee;
+                                        }
+                                        .cart-subtotal {
+                                            display: flex;
+                                            justify-content: space-between;
+                                            margin-bottom: 12px;
+                                            font-weight: 600;
+                                        }
+                                        .cart-buttons button {
+                                            width: 100%;
+                                            padding: 10px;
+                                            border-radius: 4px;
+                                            font-weight: 600;
+                                            margin-bottom: 8px;
+                                            cursor: pointer;
+                                        }
+                                        .view-cart {
+                                            background: #fff;
+                                            border: 1px solid #5c6ac4;
+                                            color: #5c6ac4;
+                                        }
+                                        .checkout {
+                                            background: #5c6ac4;
+                                            border: none;
+                                            color: #fff;
+                                        }
+                                        .multi_step_progress {
+                                            position: relative;
+                                            width: 100%;
+                                            margin: 20px 0;
+                                        }
+                                        .progress_step {
+                                            position: absolute;
+                                            top: 75px;
+                                            transform: translateX(-125%);
+                                            text-align: center;
+                                        }
+                                        .progress_step .circle {
+                                            width: 32px;
+                                            height: 32px;
+                                            border-radius: 50%;
+                                            font-size: 14px;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: #fff;
+                                        }
+                                        .progress_step .step_goal {
+                                            font-size: 12px;
+                                            margin-top: 4px;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="cart-drawer-overlay"></div>
+                                    <div class="cart-drawer">
+                                        <div class="cart-header">
+                                            <div>
+                                                <span class="cart-title">Your Cart</span>
+                                                <button class="close-cart">&times;</button>
+                                            </div>
+                                            <div>
+                                                <div class="dsicount-title">${formattedPreGoalText}</div>
+                                                <div class="un-fill" 
+                                                    style="
+                                                        background: ${progressBarStyle.backgroundColor};
+                                                        border-radius: ${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
+                                                        height: ${progressBarStyle.thickness === "thin" ? "10px" : "15px"};
+                                                    ">
+                                                    <div class="fill" 
+                                                        style="
+                                                            width: ${progressPercentage}%;
+                                                            background: ${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.primaryColor};
+                                                            border-radius: ${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
+                                                            height: 100%;
+                                                            transition: width 0.3s ease-in-out;
+                                                        "
+                                                    ></div>
+                                                     ${offerProgress.map((offer) => `
+                                                            <div class="progress_step" style="left: ${Math.min(offer.percentage, 100)}%;">
+                                                                <div class="circle" style="background: ${offer.isGoalReached ? progressBarStyle.goalCompleteColor : "#ddd"};">
+                                                                    <img src="${offer.icon}" width="20px" alt="${offer.rewardType} Icon" />
+                                                                </div>
+                                                                <div class="step_goal">${offer.goalType === "quantity" ? offer.goalquantity : `${offer.currency}${offer.goalAmount}`}</div>
                                                             </div>
-                                                            <div class="progress_step" style="left:${progressPercentage}%;">
-    <div class="circle" style="background:${progressPercentage >= 20 ? progressBarStyle.goalCompleteColor : '#ddd'};">🚚</div>
-    <div class="step_goal">50</div>
-  </div>
-
-                                                        </div>
-                                                        </div>
-
-                                                        <div class="cart-content">
-                                                        
-
-                                                        <div class="cart-item">
-                                                            <div class="cart-item-image">
-                                                            <img src="https://via.placeholder.com/80" alt="Product" />
-                                                            </div>
-                                                            <div class="cart-item-details">
-                                                            <div class="cart-item-title">Sample Product</div>
-                                                            <div class="cart-item-variant">Blue / M</div>
-                                                            <div class="cart-item-price">$29.99</div>
-                                                            </div>
-                                                        </div>
-                                                        </div>
-
-                                                        <div class="cart-footer">
-                                                        <div class="cart-subtotal">
-                                                            <span>Subtotal</span>
-                                                            <span>$29.99</span>
-                                                        </div>
-                                                        <div class="cart-buttons">
-                                                            <button class="view-cart">View Cart</button>
-                                                            <button class="checkout">Checkout</button>
-                                                        </div>
-                                                        </div>
-                                                    </div>
-                                                    </body>
-                                                    </html>`}
+                                                        `
+                                )
+                                        .join("")}
+                                                </div>
+                                               
+                                            </div>
+                                        </div>
+                                        <div class="cart-content">
+                                            <div class="cart-item">
+                                                <div class="cart-item-image">
+                                                    <img src="${save2}" alt="Product" />
+                                                </div>
+                                                <div class="cart-item-details">
+                                                    <div class="cart-item-title">Sample Product</div>
+                                                    <div class="cart-item-variant">Blue / M</div>
+                                                    <div class="cart-item-price">$29.99</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="cart-footer">
+                                            <div class="cart-subtotal">
+                                                <span>Subtotal</span>
+                                                <span>$29.99</span>
+                                            </div>
+                                            <div class="cart-buttons">
+                                                <button class="view-cart">View Cart</button>
+                                                <button class="checkout">Checkout</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>`}
                             />
                         </div>
                     </BlockStack>
@@ -1289,7 +1646,7 @@ export default function AddToUnlock() {
                 <Layout>
                     <Layout.Section>
                         <BlockStack gap="400">
-                            <Card>
+                            {/* <Card>
                                 <BlockStack gap="200">
                                     <TextField
                                         label="Campaign Name"
@@ -1300,7 +1657,7 @@ export default function AddToUnlock() {
                                     />
                                     <Divider />
                                 </BlockStack>
-                            </Card>
+                            </Card> */}
                             <Card>
                                 <BlockStack gap="200">
                                     <Text as="h2" variant="headingMd" fontWeight="bold">

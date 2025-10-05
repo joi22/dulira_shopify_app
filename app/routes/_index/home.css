@@ -1,0 +1,163 @@
+/* === Homepage Upsell Preview === */
+
+.home-preview {
+  margin-top: 1.5rem;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 1rem;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 1.5rem;
+}
+
+.home-preview h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Banner container */
+.home-banner {
+  border: 1px solid #bfdbfe; /* blue-200 */
+  background-color: #eff6ff; /* blue-50 */
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+.home-preniew-container {
+  padding: 20px;
+  border: 1px solid;
+  height: 400px;
+  border-radius: 12px;
+}
+.feachers {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.offers-lenth {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  margin: 10px 0px;
+}
+.under-offer {
+  padding: 10px;
+  display: flex;
+  border-radius: 33px;
+  justify-content: center;
+  align-items: center;
+  background: #fff6dd;
+}
+.home-preview-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.features {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.under-offer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.product-details {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.offer-line {
+  margin-top: 8px;
+  font-size: 13px;
+  background: #f1f8ff;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #0058a3;
+  font-weight: 500;
+}
+
+.product-card {
+  background: #f9fafb;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  width: 160px;
+}
+/* Paragraph text */
+.home-banner p {
+  color: #374151; /* gray-700 */
+  margin-bottom: 0.75rem;
+}
+
+/* Progress Bar */
+.home-progress {
+  width: 100%;
+  background-color: #e5e7eb; /* gray-200 */
+  border-radius: 9999px;
+  height: 12px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.home-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+/* Offer cards */
+.home-offer {
+  border: 1px solid #e5e7eb;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.home-offer p {
+  color: #1f2937; /* gray-800 */
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* Confetti and locked goal texts */
+.home-confetti {
+  color: #16a34a; /* green-600 */
+  font-weight: 600;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 1.125rem;
+}
+
+.home-locked {
+  color: #6b7280; /* gray-600 */
+  font-size: 0.875rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Badge Icon */
+.home-badge {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.home-badge img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}

@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://snake-along-mem-quantity.trycloudflare.com';
+  const App_Domain = 'https://settings-sean-pays-portland.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     const cart = await cartResponse.json();
     const cartTotal = cart.total_price / 100;
 
-    let progressPercent = 0;
-    let remaining = 0;
+    let progressPercent = 10;
+    let remaining = 1;
 
     // ✅ Customization from DB
     const customization = campaign.customization || {};
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       offer.rewardType === 'shipping'
         ? 'FREE SHIPPING'
         : offer.rewardType === 'discount'
-        ? `APPLY ${offer.discountType === 'percentage' ? offer.discountValue + '%' : '€' + offer.discountValue} DISCOUNT`
+        ? `APPLY DISCOUNT`
         : 'REDEEM FREE GIFT';
 
     const cardContent = `
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   .progress {
     height: 100%;
     background: linear-gradient(90deg, #4caf50, #2e7d32);
-    width: 0%;
+    width: 5%;
     transition: width 0.5s ease;
     border-radius: 10px;
   }

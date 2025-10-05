@@ -25,6 +25,8 @@ import {
     Thumbnail,
     Box,
     BlockStack,
+    TextField,
+    Divider,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
@@ -81,7 +83,7 @@ export default function UpsellEngine() {
     const fetcher = useFetcher();
     const { campingall } = useLoaderData();
     const [status, setStatus] = useState(true);
-
+    const [campaignName, setCampaignName] = useState("");
     const [active, setActive] = useState(false);
     const handleChange = useCallback(() => setActive(!active), [active]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -181,15 +183,6 @@ export default function UpsellEngine() {
             category: "upsell",
         },
 
-        // 💡 Example for future: Loyalty campaigns
-        {
-            type: "points_reward",
-            title: "⭐ Points Reward",
-            desc: "Reward customers with points for purchases",
-            img: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/loyalty.png",
-            url: "addtounlock",
-            category: "loyalty",
-        },
     ];
 
     const handleSwitchChange = async (field, value, discountId) => {
@@ -304,7 +297,19 @@ export default function UpsellEngine() {
                 <Modal.Section>
                     {!selectedCategory ? (
                         <BlockStack gap={"300"}>
-                            <Text variant="headingMd">Step 1: Choose Category</Text>
+                            <Text variant="headingMd">Step 1: Name Your Upsell Campaign</Text>
+                            <TextField
+                                label="Campaign Name"
+                                value={campaignName}
+                                onChange={setCampaignName}
+                                placeholder="e.g., Summer Free Gift Offer"
+                                requiredIndicator
+                                error={!campaignName ? "Campaign name is required" : ""}
+                            />
+
+                            <Divider />
+                            <Text variant="headingMd">Step 2: Choose Category</Text>
+
                             <InlineStack wrap align="center" gap="300">
                                 {Category.map((cat) => (
                                     <Box
@@ -331,7 +336,7 @@ export default function UpsellEngine() {
                     ) : (
                         <BlockStack gap={"200"}>
                             <Text variant="headingMd">
-                                Step 2: Choose Campaign Type ({selectedCategory.title})
+                                Step 3: Choose Campaign Type ({selectedCategory.title})
                             </Text>
                             <InlineStack gap={"100"} align='start'>
                                 <Button onClick={() => setSelectedCategory(null)} plain>
@@ -355,7 +360,13 @@ export default function UpsellEngine() {
 
                                                         <p>{c.desc}</p>
                                                         <Button
-                                                            onClick={() => navigate(`/app/${c.url}?type=${c.type}`)}
+                                                            onClick={() => {
+                                                                if (!campaignName.trim()) {
+                                                                    alert("Please enter a campaign name first.");
+                                                                    return;
+                                                                }
+                                                                navigate(`/app/${c.url}?type=${c.type}&name=${encodeURIComponent(campaignName)}`);
+                                                            }}
                                                             primary
                                                         >
                                                             Select

@@ -61,24 +61,23 @@ model UpsellCampaign {
 }
 
 model customiz {
-  id            Int            @id @default(autoincrement())
-  campaignId    Int            @unique
-  badgeImageUrl String?
-  barStyle      String
-  barRadius     String
-  barColors     Json
-  campaign      UpsellCampaign @relation(fields: [campaignId], references: [id])
+  id         Int            @id @default(autoincrement())
+  campaignId Int            @unique
+  barStyle   String
+  barRadius  String
+  barColors  Json
+  campaign   UpsellCampaign @relation(fields: [campaignId], references: [id])
 }
 
 model AddToUnlockOffer {
-  id         Int     @id @default(autoincrement())
-  campaignId Int
-  shop       String?
-
+  id            Int     @id @default(autoincrement())
+  campaignId    Int
+  shop          String?
+  badgeImageUrl String?
   // Goal
-  goalType     String? // "amount_cart" | "quantity"
-  goalAmount   Int?
-  goalQuantity Int?
+  goalType      String? // "amount_cart" | "quantity"
+  goalAmount    Int?
+  goalQuantity  Int?
 
   // Reward
   rewardType     String? // "discount" | "gift"

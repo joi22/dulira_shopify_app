@@ -1,9 +1,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://snake-along-mem-quantity.trycloudflare.com';
+  const domain = 'https://settings-sean-pays-portland.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
-console.log()
   async function add_to_unlock() {
     try {
       const response = await fetch(apiUrl, { method: "GET" });
@@ -53,45 +52,38 @@ console.log()
           // Compute best price among all discount offers (lowest final price)
           let bestPrice = price;
           let bestOfferLabel = ''; // e.g. "20% OFF" or "Save PKR 200"
+      
+          let offersHtml = "";
           if (Array.isArray(campaign.offers)) {
             campaign.offers.forEach((offer) => {
-              if (offer.rewardType === "discount") {
-                let candidate = price;
-                if (offer.discountType === "percentage") {
-                  const pct = parseFloat(offer.discountCode || 0);
-                  candidate = price - (price * (pct / 100));
-                } else {
-                  const amt = parseFloat(offer.discountCode || 0);
-                  candidate = price - amt;
-                }
-                if (candidate < bestPrice) {
-                  bestPrice = candidate;
-                  bestOfferLabel = offer.discountType === "percentage"
-                    ? `${offer.discountCode}% OFF`
-                    : `Save PKR ${offer.discountCode}`;
-                }
-              }
-            });
-          }
+              const max_goal =
+                offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
 
-          // Build a lines block for all offers (text summary)
-          let offersHtml = '';
-          if (Array.isArray(campaign.offers)) {
-            campaign.offers.forEach((offer) => {
-              const max_goal = offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
-              let discout_limit = '';
-              if (offer.rewardType !== "gift" && offer.rewardType !== "shipping") {
-                discout_limit = offer.rewardType === "discount"
-                  ? (offer.discountType === "percentage" ? `${offer.discountCode}%` : `PKR ${offer.discountCode}`)
-                  : '';
+              // Create readable reward text
+              let rewardText = "";
+              if (offer.rewardType === "discount") {
+                rewardText =
+                  offer.discountType === "percentage"
+                    ? `${offer.discountCode}% Off`
+                    : `${offer.discountCode} Off`;
               } else if (offer.rewardType === "gift") {
-                discout_limit = "Get a free product";
+                rewardText = "Free Product";
               } else if (offer.rewardType === "shipping") {
-                discout_limit = "Free Shipping";
+                rewardText = "Free Shipping";
               }
+
+              // Normalize template text
+              let goalText = (offer.goalTextBefore || "").trim();
+
+              // Replace placeholders, ignoring spaces inside {{ }}
+              goalText = goalText
+                .replace(/\{\{\s*amount_left\s*\}\}/gi, max_goal || "")
+                .replace(/\{\{\s*reward\s*\}\}/gi, rewardText || "");
+
+              // Add HTML
               offersHtml += `
                 <div class="offer-line">
-                  <small>${max_goal || ''} → ${discout_limit}</small>
+                  <small>${goalText}</small>
                 </div>
               `;
             });
@@ -179,7 +171,6 @@ console.log()
 });
 </script>
 
-
 <style>
   #offers-list {
     display: flex;
@@ -202,11 +193,17 @@ console.log()
     margin-top: 10px;
   }
   .offer-line {
-    background: #f8f8f8;
-    margin: 5px 0;
-    padding: 5px;
+      margin-top: 8px;
+    font-size: 13px;
+    background: #f1f8ff;
     border-radius: 6px;
-    font-size: 14px;
+    padding: 6px 8px;
+    color: #0058a3;
+    font-weight: 500;
+  }
+  .offer-line small {
+    color: #333;
+    font-weight: 500;
   }
   .highlight {
     color: #e60023;
