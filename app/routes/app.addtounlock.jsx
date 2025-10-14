@@ -418,6 +418,7 @@ export default function AddToUnlock() {
         active: true,
         badges: false,
         lockedGoals: false,
+        showConfetti:true,
     });
     const [upsellselectedItems, setUpsellselectedItems] = useState([]);
     const [selectedCollections, setSelectedCollections] = useState([]);
@@ -1570,7 +1571,46 @@ export default function AddToUnlock() {
                                 <body>
                                     <div class="cart-drawer-overlay"></div>
                                     <div class="cart-drawer">
-                                        <div class="cart-header">
+                                    <div>
+                          ${
+            status.showConfetti === true
+              ? `
+             <canvas id="confetti-canvas" style="
+                position:fixed;
+                top:0;left:0;
+                width:100%;height:100%;
+                pointer-events:none;
+                z-index:2000;
+              "></canvas>
+              <script>
+                (function() {
+                  const script = document.createElement('script');
+                  script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js";
+                  script.onload = () => {
+                    const canvas = document.getElementById("confetti-canvas");
+                    const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
+                    function randomInRange(min, max) {
+                      return Math.random() * (max - min) + min;
+                    }
+                    const end = Date.now() + 100;
+                    (function frame() {
+                      myConfetti({
+                        angle: randomInRange(-100, -90),
+                        spread: randomInRange(150, 150),
+                        particleCount: randomInRange(10, 20),
+                        origin: { y: 0.0 },
+                      });
+                      if (Date.now() < end) requestAnimationFrame(frame);
+                    })();
+                  };
+                  document.body.appendChild(script);
+                })();
+              </script>
+              `
+              : ""
+          }
+                                   </div>
+                                                                <div class="cart-header">
                                             <div>
                                                 <span class="cart-title">Your Cart</span>
                                                 <button class="close-cart">&times;</button>
@@ -1629,6 +1669,8 @@ export default function AddToUnlock() {
                                             </div>
                                         </div>
                                     </div>
+
+                             
                                 </body>
                                 </html>`}
                             />
@@ -1782,13 +1824,13 @@ export default function AddToUnlock() {
                                                 <label className="switch-container">
                                                     <input
                                                         type="checkbox"
-                                                        checked={status.badges}
-                                                        onChange={(e) => handleswitchChange("badges", e.target.checked)}
+                                                        checked={status.showConfetti}
+                                                        onChange={(e) => handleswitchChange("showConfetti", e.target.checked)}
                                                         className="switch-input"
                                                     />
                                                     <span className="switch-slider"></span>
                                                 </label>
-                                                <Text as="h4" variant="headingMd">Show badges</Text>
+                                                <Text as="h4" variant="headingMd">Show showConfetti</Text>
                                             </InlineStack>
                                         </BlockStack>
                                     </Box>

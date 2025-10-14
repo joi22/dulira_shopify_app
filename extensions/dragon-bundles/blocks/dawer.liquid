@@ -1,6 +1,8 @@
+
+
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://brunette-namely-featuring-fallen.trycloudflare.com';
+    const App_Domain = 'https://pocket-lindsay-current-believed.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -123,7 +125,7 @@
       });
     }
 
-    function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
+   function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
     const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
     const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
 
@@ -135,7 +137,7 @@
     const progress = calculateProgress(offers, cartData);
 
     // Sort offers by goal value
-    const sortedOffers = (offers || []).sort((a, b) =>
+    const sortedOffers = offers.sort((a, b) =>
         a.goalType === 'quantity'
             ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
             : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
@@ -151,61 +153,43 @@
                     ? parseFloat(offer.goalQuantity || 0)
                     : parseFloat(offer.goalAmount || 0);
             const currentValue =
-                offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price || 0) / 100;
+                offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
             if (currentValue < goalValue) {
                 activeOffer = offer; // First uncompleted offer
                 break;
             }
             activeOffer = offer; // Last completed offer
         }
-
         if (activeOffer) {
+          console.log(activeOffer.goalTextAfter,"===== >>>> ")
             const isGoalReached =
                 activeOffer.goalType === 'quantity'
-                    ? (cartData.item_count || 0) >= parseFloat(activeOffer.goalQuantity || 0)
-                    : parseFloat(cartData.total_price || 0) / 100 >= parseFloat(activeOffer.goalAmount || 0);
-
+                    ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
+                    : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
             const rewardDescription =
                 activeOffer.rewardType === 'discount'
-                    ? `${activeOffer.discountCode || ''}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
+                    ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
                     : activeOffer.rewardType === 'shipping'
                     ? 'Free Shipping'
                     : 'Free Gift';
-
             const amountLeft =
                 activeOffer.goalType === 'quantity'
                     ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
-                    : `${activeOffer.currency || '$'}${Math.max(parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price || 0) / 100 || 0), 0).toFixed(2)}`;
-
+                    : `$${Math.max(parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0), 0).toFixed(2)}`;
             const goal =
                 activeOffer.goalType === 'quantity'
                     ? `${activeOffer.goalQuantity || 0} items`
-                    : `${activeOffer.currency || '$'}${activeOffer.goalAmount || 0}`;
-
-            // Log for debugging
-            console.log('Active Offer:', activeOffer);
-            console.log('Reward Description:', rewardDescription);
-            console.log('Amount Left:', amountLeft);
-            console.log('Goal:', goal);
-
-            // Select appropriate goal text and replace placeholders
-            const template = isGoalReached
-                ? (activeOffer.goalTextAfter || 'Unlocked {{reward}} at {{goal}}')
-                : (activeOffer.goalTextBefore || 'Add {{amount_left}} to unlock {{reward}}');
-
-            goalText = template
-                .replace(/{{amount_left}}|{{amount_}}/g, amountLeft) // Handle typos
-                .replace(/{{reward}}|{{rewads}}/g, rewardDescription)
-                .replace(/{{goal}}/g, goal);
-
-            console.log('Final Goal Text:', goalText);
+                    : `$${activeOffer.goalAmount || 0}`;
+            goalText = isGoalReached
+                ? (activeOffer.goalTextAfter)
+                : (activeOffer.goalTextBefore);
         }
     }
 
-    // Clear previous content
+    // Clear previous content to avoid duplicates
     container.innerHTML = '';
-
-    // Create goal text element
+    console.log(goalText,"main +++ ==== <<< ")
+    // Create or update the goal text element
     const goalTextElement = document.createElement('div');
     goalTextElement.className = 'goal-text';
     goalTextElement.innerText = goalText;
@@ -219,23 +203,25 @@
     const goals = sortedOffers.map((o) =>
         o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
     );
-    const minGoal = goals.length ? Math.min(...goals) : 0;
-    const maxGoal = goals.length ? Math.max(...goals) : 1;
+    const minGoal = Math.min(...goals);
+    const maxGoal = Math.max(...goals);
 
     sortedOffers.forEach((offer, index) => {
         const isQuantity = offer.goalType === 'quantity';
         const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
-        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price || 0) / 100;
+        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
         const unlocked = current >= goal;
 
-        const circleStyle = `background:${unlocked ? goalCompleteColor : '#ddd'}; color:${unlocked ? '#fff' : '#000'};`;
+        const circleStyle = `
+            background:${unlocked ? goalCompleteColor : '#ddd'}; 
+            color:${unlocked ? '#fff' : '#000'};`;
 
-        let leftPercent = maxGoal !== minGoal ? ((goal - minGoal) / (maxGoal - minGoal)) * 100 : 0;
+        let leftPercent = ((goal - minGoal) / (maxGoal - minGoal)) * 100;
         if (index === 0) leftPercent = 8;
         if (index === sortedOffers.length - 1) leftPercent = 100;
 
         html += `
-            <div class="progress_step" data-goal="${goal}" style="left: ${leftPercent}%;">
+            <div class="progress_step" data-goal="${goal}" style="left: ${(goal / maxGoal) * 100}%;">
               <div class="circle" style="${circleStyle}">${getOfferIcon(offer)}</div>
               <div class="step_goal">${goal}</div>
             </div>`;
@@ -247,9 +233,11 @@
         }
     });
 
-    html += `</div>`;
+    html += `</div>`; // Close progress bar
     container.innerHTML += html;
-}
+    // const announcement_bar = document.getElementById("announcement-bars");
+    // announcement_bar.innerHTML =html;
+  }
 
     async function updateProgressBar() {
       try {
@@ -379,6 +367,9 @@
 </script>
 
 <style>
+  .goal-text{
+    text-align: center;
+  }
   .gift_price {
   }
   .drawer__header {

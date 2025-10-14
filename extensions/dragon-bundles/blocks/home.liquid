@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://brunette-namely-featuring-fallen.trycloudflare.com';
+  const domain = 'https://pocket-lindsay-current-believed.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
   async function add_to_unlock() {
@@ -174,12 +174,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 <style>
   #offers-list {
     display: flex;
+    background: {{ block.settings.mode_back | default: '#fff' }};
     gap: 20px;
     overflow-x: auto;
-    padding: 10px 0;
+    padding: 15px;
+    margin: 5px;
   }
   .offer-card {
     border: 1px solid #eee;
+    background: #eee;
     border-radius: 8px;
     padding: 10px;
     flex: 0 0 auto;
@@ -193,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     margin-top: 10px;
   }
   .offer-line {
-      margin-top: 8px;
+    margin-top: 8px;
     font-size: 13px;
     background: #f1f8ff;
     border-radius: 6px;
@@ -251,6 +254,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
   #offers-list {
     display: flex;
+    background: {{ block.settings.mode_back | default: '#fff' }};
     gap: 20px;
     overflow-x: auto;
     padding: 10px 0;
@@ -269,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     z-index: 9999;
   }
   .offers-modal-content {
-    background: #fff;
+    background: {{ block.settings.mode_back | default: '#fff' }};
     padding: 20px;
     border-radius: 12px;
     max-width: 700px;
@@ -317,6 +321,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       "id": "title_bundel",
       "label": "Model heading",
       "default": "Bundle Deals"
+    },
+    {
+      "type": "color",
+      "id": "mode_back",
+      "label": "Model Background color",
+      "default": "#eeeeee"
     }
   ]
 }

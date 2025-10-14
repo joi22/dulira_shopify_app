@@ -1,8 +1,70 @@
 <script>
 document.addEventListener("DOMContentLoaded", async function () {
-  const domain = 'https://constraint-twiki-crops-rows.trycloudflare.com';
+  const domain = 'https://pocket-lindsay-current-believed.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
+
+  // Fetch cart data
+  async function fetchCartData() {
+    try {
+      const response = await fetch('/cart.js', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (!response.ok) throw new Error('Failed to fetch cart data');
+      return await response.json();
+    } catch (err) {
+      console.error('Error fetching cart data:', err);
+      return { item_count: 0, total_price: 0 };
+    }
+  }
+
+  // Icon display
+  function getOfferIcon(offer) {
+    if (offer.icon && (offer.icon.startsWith('http') || offer.icon.startsWith('data:'))) {
+      return `<img src="${offer.icon}" alt="Offer Icon" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; display: block; margin: 8px auto;">`;
+    }
+    if (offer.rewardType === 'discount') return '💰';
+    if (offer.rewardType === 'shipping') return '🚚';
+    if (offer.rewardType === 'gift') return '🎁';
+    return '⭐';
+  }
+
+  // Render free gift products
+  function renderRewardProducts(container, gifts, cartData) {
+    if (!gifts || !gifts.length) return;
+    let gridHtml = `<div class="free_products">`;
+    gifts.forEach((prod) => {
+      gridHtml += `
+        <div class="product_card_dwer">
+          <div class="product_upsell">
+            <img src="${prod.image || ''}" alt="${prod.title}">
+            <div>${prod.title}</div>
+            <button class="add-to-cart-btn" data-variant="${prod.variantId || ''}">Select</button>
+          </div>
+        </div>`;
+    });
+    gridHtml += `</div>`;
+    container.insertAdjacentHTML('beforeend', gridHtml);
+
+    container.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
+      btn.addEventListener('click', async function () {
+        const variantId = this.getAttribute('data-variant');
+        this.disabled = true;
+        this.innerText = 'Adding...';
+        try {
+          await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: variantId, quantity: 1 }),
+          });
+          this.innerText = 'Added!';
+          document.dispatchEvent(new CustomEvent('cart:updated'));
+        } catch (err) {
+          console.error('Error adding reward product:', err);
+          this.disabled = false;
+          this.innerText = 'Select';
+        }
+      });
+    });
+  }
 
   try {
     const res = await fetch(apiUrl);
@@ -10,71 +72,190 @@ document.addEventListener("DOMContentLoaded", async function () {
     const data = await res.json();
     console.log("Announcement API:", data);
 
-    // Example: use campaign info for announcement
     const campaign = data.upsellTriggerProduct?.campaign;
-    if (!campaign) return;
+    if (!campaign || !campaign.offers?.length) return;
 
-    // set texts dynamically
-    document.getElementById("announcement-left-text").innerText = "🚚 Free shipping on 3+ items";
-    document.getElementById("announcement-right-text").innerHTML =
-      `Extra <span class="highlight">${campaign.offers?.[0]?.discountCode || "20"}% off</span> & Buy more save more`;
+    const cartData = await fetchCartData();
+    const customization = campaign.customization || {};
+    const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization;
+    const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+    const gifts = campaign.rewardProducts || [];
 
-  
+    // Calculate progress
+    function calculateProgress(offers, cartData) {
+      const isQuantity = offers[0]?.goalType === 'quantity';
+      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+      const maxGoal = Math.max(...offers.map(o => o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)));
+      return Math.min((current / maxGoal) * 100, 100);
+    }
 
-    // show bar
-    document.getElementById("announcement-bar").style.display = "flex";
-    document.querySelector(".utility-bar__grid").style.padding = "0px";
+    // Render progress bar
+    function renderSegmentProgressBar(container, offers, cartData, customization, gifts) {
+      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+      const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+      const borderRadius = barRadius === 'square' ? '0px' : '6px';
+      const barHeight = barStyle === 'thin' ? '7px' : '12px';
+      const topPosition = barStyle === 'thin' ? '42px' : '40px';
+
+      const progress = calculateProgress(offers, cartData);
+      const sortedOffers = offers.sort((a, b) => (a.goalType === 'quantity'
+        ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
+        : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)));
+
+      let goalText = 'No offers available';
+      if (sortedOffers.length > 0) {
+        let activeOffer = sortedOffers.find(o =>
+          o.goalType === 'quantity'
+            ? cartData.item_count < parseFloat(o.goalQuantity || 0)
+            : parseFloat(cartData.total_price) / 100 < parseFloat(o.goalAmount || 0)
+        ) || sortedOffers[sortedOffers.length - 1];
+
+        const isGoalReached =
+          activeOffer.goalType === 'quantity'
+            ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
+            : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
+
+        const rewardDescription =
+          activeOffer.rewardType === 'discount'
+            ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
+            : activeOffer.rewardType === 'shipping'
+            ? 'Free Shipping'
+            : 'Free Gift';
+
+        const amountLeft =
+          activeOffer.goalType === 'quantity'
+            ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
+            : `$${Math.max(parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0), 0).toFixed(2)}`;
+
+        const goal =
+          activeOffer.goalType === 'quantity'
+            ? `${activeOffer.goalQuantity || 0} items`
+            : `$${activeOffer.goalAmount || 0}`;
+
+        goalText = isGoalReached
+          ? activeOffer.goalTextAfter.replace('{{reward}}', rewardDescription).replace('{{goal}}', goal)
+          : activeOffer.goalTextBefore.replace('{{amount_left}}', amountLeft).replace('{{reward}}', rewardDescription).replace('{{goal}}', goal);
+      }
+
+      container.innerHTML = `
+        <div class="goal-text">${goalText}</div>
+        <div class="multi_step_progress">
+          <div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>
+          <div class="progress_line_fill" style="width:${progress}%; background:${progress >= 100 ? goalCompleteColor : primaryColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>
+        </div>
+      `;
+    }
+
+    const container = document.getElementById('announcement-bar');
+    renderSegmentProgressBar(container, campaign.offers, cartData, customization, gifts);
+    container.style.display = 'flex';
 
   } catch (err) {
-    console.error("Announcement error:", err);
+    console.error('Announcement error:', err);
   }
 });
 </script>
 
 <style>
-  /* .announcement-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: {{block.settings.backgroundcolor}};
-    color:{{block.settings.color}}
-    padding: 10px 20px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    color: #111;
-    position: relative;
-  } */
-  .announcement-bar .left {
-    display: flex;
-    align-items: center;
+/* ---------- Layout ---------- */
+.announcement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 20px;
+  text-align: center;
+  /* color: {{ block.settings.color }};
+  background: {{ block.settings.backgroundcolor }}; */
+  padding: 10px 0;
+}
+
+.bundle-left, .bundle-right {
+  flex: 1;
+}
+
+.bundle-left strong,
+.bundle-right strong {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.bundle-left span,
+.bundle-right span {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.bundle-center {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ---------- Progress bar ---------- */
+.announcement-bars {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+  font-family: Arial, sans-serif;
+}
+
+.goal-text {
+  margin-bottom: 8px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.multi_step_progress {
+  position: relative;
+  width: 100%;
+  height: 12px;
+}
+
+.progress_line_bg,
+.progress_line_fill {
+  position: absolute;
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.progress_line_fill {
+  transition: width 0.4s ease;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .announcement-header {
+    flex-direction: column;
     gap: 10px;
   }
-  .announcement-bar .left .icon {
-    font-size: 16px;
+  .bundle-center {
+    width: 100%;
   }
-  .announcement-bar .right {
-    text-align: right;
+  .announcement-bars {
+    max-width: 85%;
   }
-  .announcement-bar .highlight {
-    color: red;
-    font-weight: bold;
-  }
-  .announcement-bar .countdown {
-    font-size: 12px;
-    margin-top: 2px;
-    color: #333;
-  }
+}
 </style>
-<div>
-  <div id="announcement-bars" class="announcement-bar-s" >
-    <div class="left">
-      <span class="icon">🚚</span>
-      <span id="announcement-left-text"></span>
-    </div>
-    <div class="right">
-      <div id="announcement-right-text"></div>
-      {% comment %} <div id="announcement-countdown" class="countdown"></div> {% endcomment %}
-    </div>
+
+<div class="announcement-header">
+  <div class="bundle-left">
+    <strong>{{ block.settings.bundet_text | default: "Bundle deals" }}</strong><br>
+    <span>🚚 Free shipping on 3+ items</span>
+  </div>
+  <div class="bundle-center">
+    <div id="announcement-bar" class="announcement-bars"></div>
+  </div>
+  <div class="bundle-right">
+    <strong>Buy more, save more</strong><br>
+    <span>🎉 Best value on every extra item</span>
   </div>
 </div>
 
@@ -83,18 +264,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   "name": "Announcement Bar Bundles",
   "target": "section",
   "settings": [
-    {
-      "type": "color",
-      "id": "color",
-      "label": "Block color",
-      "default": "#fff"
-    },
-    {
-      "type": "color",
-      "id": "backgroundcolor",
-      "label": "background color",
-      "default": "#000000"
-    }
+    { "type": "color", "id": "color", "label": "Text color", "default": "#ffffff" },
+    { "type": "color", "id": "backgroundcolor", "label": "Background color", "default": "#000000" },
+    { "type": "text", "id": "bundet_text", "label": "Left Title", "default": "Bundle deals" }
   ]
 }
 {% endschema %}
