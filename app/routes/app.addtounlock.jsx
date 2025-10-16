@@ -1932,39 +1932,82 @@ export default function AddToUnlock() {
                                                 </BlockStack>
                                             </Card>
 
-                                            <Card sectioned>
-                                                <BlockStack gap="300">
-                                                    <Text variant="headingMd" as="h3">
-                                                        Reward Type
-                                                    </Text>
-                                                    <Box paddingBlockStart="100">
-                                                        <ChoiceList
-                                                            title="Reward Mode"
-                                                            choices={[
-                                                                { label: "Fixed Deal", value: "fixed" },
-                                                                { label: "Flame Match (Customer picks)", value: "flame" },
-                                                            ]}
-                                                            selected={[offer.rewardMode]}
-                                                            onChange={(value) => {
-                                                                const mode = value[0];
-                                                                updateOffer(offer.id, "rewardMode", mode);
-                                                                updateOffer(offer.id, "rewardType", mode === "flame" ? "gift" : "discount");
-                                                            }}
-                                                        />
-                                                    </Box>
-                                                    {offer.rewardMode === "fixed" && (
-                                                        <ChoiceList
-                                                            title="Reward Type"
-                                                            choices={[
-                                                                { label: "Discount", value: "discount" },
-                                                                { label: "Free Shipping", value: "shipping" },
-                                                            ]}
-                                                            selected={[offer.rewardType]}
-                                                            onChange={(value) => updateOffer(offer.id, "rewardType", value[0])}
-                                                        />
-                                                    )}
-                                                </BlockStack>
-                                            </Card>
+<Card sectioned>
+    <BlockStack gap="300">
+        <Text variant="headingMd" as="h3">
+            Reward Type
+        </Text>
+        <Box paddingBlockStart="100">
+            <ChoiceList
+                title="Reward Mode"
+                choices={[
+                    { label: "Fixed Deal", value: "fixed" },
+                    { label: "Flame Match (Customer picks)", value: "flame" },
+                ]}
+                selected={[offer.rewardMode]}
+                onChange={(value) => {
+                    const mode = value[0];
+                    updateOffer(offer.id, "rewardMode", mode);
+                    updateOffer(offer.id, "rewardType", mode === "flame" ? "gift" : "discount");
+                    // Auto-generate reward type name based on selection
+                    const rewardName = mode === "flame" ? "Flame Match Gift" : "Fixed Discount";
+                    updateOffer(offer.id, "rewardTypeName", rewardName);
+                }}
+            />
+        </Box>
+        
+        {/* New Reward Type Name Field */}
+        <TextField
+            label="Reward Type Name"
+            value={offer.rewardTypeName || ""}
+            onChange={(value) => updateOffer(offer.id, "rewardTypeName", value)}
+            placeholder="Enter reward type name"
+            helpText="Give a descriptive name for this reward type"
+            autoComplete="off"
+        />
+        
+        {offer.rewardMode === "fixed" && (
+            <BlockStack gap="200">
+                <ChoiceList
+                    title="Reward Type"
+                    choices={[
+                        { label: "Discount", value: "discount" },
+                        { label: "Free Shipping", value: "shipping" },
+                    ]}
+                    selected={[offer.rewardType]}
+                    onChange={(value) => {
+                        const rewardType = value[0];
+                        updateOffer(offer.id, "rewardType", rewardType);
+                        // Auto-update reward type name based on selection
+                        const rewardName = rewardType === "discount" ? "Fixed Discount" : "Free Shipping";
+                        updateOffer(offer.id, "rewardTypeName", rewardName);
+                    }}
+                />
+                
+                {/* Dynamic display of current reward type */}
+                <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
+                    <Text as="p" variant="bodyMd" fontWeight="medium">
+                        Current Reward: {offer.rewardTypeName || "Not set"}
+                    </Text>
+                    <Text as="p" variant="bodySm" tone="subdued">
+                        Type: {offer.rewardType || "Not selected"} | Mode: {offer.rewardMode || "Not selected"}
+                    </Text>
+                </Box>
+            </BlockStack>
+        )}
+        
+        {offer.rewardMode === "flame" && (
+            <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
+                <Text as="p" variant="bodyMd" fontWeight="medium">
+                    Flame Match Reward: {offer.rewardTypeName || "Customer Choice Gift"}
+                </Text>
+                <Text as="p" variant="bodySm" tone="subdued">
+                    Customers can choose their preferred reward from available options
+                </Text>
+            </Box>
+        )}
+    </BlockStack>
+</Card>
 
                                             <Card sectioned>
                                                 <BlockStack gap="300">

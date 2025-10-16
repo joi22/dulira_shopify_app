@@ -1,6 +1,6 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "a93a74cfaf55a4913b232c449c7e44ce"
+client_id = "cd96039651f98d3a6122c168827ffcdc"
 name = "dragon-bundles"
 application_url = "https://example.com"
 embedded = true

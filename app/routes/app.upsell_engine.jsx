@@ -40,9 +40,24 @@ export const loader = async ({ request }) => {
 
     const campingall = await prisma.UpsellCampaign.findMany({
         where: { shop },
+        include: {
+            offers: {
+                select: {
+                    rewardMode: true,
+                    rewardType: true
+                }
+            }
+        }
     });
 
-    return { campingall };
+    // Transform the data to include rewardMode from offers
+    const transformedCampaigns = campingall.map(campaign => ({
+        ...campaign,
+        rewardMode: campaign.offers?.[0]?.rewardMode || null, // First offer se data le rahe hain
+        rewardType: campaign.offers?.[0]?.rewardType || null
+    }));
+
+    return { campingall: transformedCampaigns };
 };
 
 export const action = async ({ request }) => {
@@ -87,7 +102,7 @@ export default function UpsellEngine() {
     const [active, setActive] = useState(false);
     const handleChange = useCallback(() => setActive(!active), [active]);
     const [selectedCategory, setSelectedCategory] = useState(null);
-
+console.log(campingall ,'====== >>')
     const resourceName = {
         singular: "campaign",
         plural: "campaigns",
@@ -217,81 +232,92 @@ export default function UpsellEngine() {
                 onAction: handleChange,
             }}
         >
-            <Layout sectioned>
-                <Card>
-                    {!campingall || campingall.length === 0 ? (
-                        <EmptyState
-                            heading="No campaigns yet"
-                            action={{ content: "Create campaign", onAction: handleChange }}
-                            image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                        >
-                            <p>Create an upsell campaign to start boosting revenue.</p>
-                        </EmptyState>
-                    ) : (
-                        <IndexTable
-                            resourceName={resourceName}
-                            itemCount={campingall.length}
-                            selectable={false}
-                            headings={[
-                                { title: "Status" },
-                                { title: "Campaign" },
-                                { title: "Type" },
-                                { title: "Placement" },
-                                { title: "Created At" },
-                                { title: "Actions" },
-                            ]}
-                        >
-                            {campingall.map((campaign, index) => (
-                                <IndexTable.Row
-                                    id={campaign.id}
-                                    key={campaign.id}
-                                    position={index}
-                                >
-                                    <IndexTable.Cell>
-                                        <label className="switch-container">
-                                            <input
-                                                type="checkbox"
-                                                checked={status}
-                                                onChange={(e) =>
-                                                    handleSwitchChange(
-                                                        "Offer_status",
-                                                        e.target.checked,
-                                                        campaign.id
-                                                    )
-                                                }
-                                                className="switch-input"
-                                            />
-                                            <span className="switch-slider"></span>
-                                        </label>
-                                    </IndexTable.Cell>
-                                    <IndexTable.Cell>
-                                        <Text>{campaign.name}</Text>
-                                    </IndexTable.Cell>
-                                    <IndexTable.Cell>{campaign.type}</IndexTable.Cell>
-                                    <IndexTable.Cell>{campaign.placement}</IndexTable.Cell>
-                                    <IndexTable.Cell>{campaign.createdAt}</IndexTable.Cell>
-                                    <IndexTable.Cell>
-                                        <ButtonGroup>
-                                            <ActionMenu
-                                                actions={[
-                                                    { content: "Preview", onAction: () => console.log("Preview") },
-                                                    { content: "Edit", onAction: () => console.log("Edit") },
-                                                    {
-                                                        content: "Delete",
-                                                        onAction: () => handeldelete(campaign.id),
-                                                        destructive: true,
-                                                    },
-                                                ]}
-                                            />
-                                        </ButtonGroup>
-                                    </IndexTable.Cell>
-                                </IndexTable.Row>
-                            ))}
-                        </IndexTable>
-                    )}
-                </Card>
-            </Layout>
-
+<Layout sectioned>
+    <Card>
+        {!campingall || campingall.length === 0 ? (
+            <EmptyState
+                heading="No campaigns yet"
+                action={{ content: "Create campaign", onAction: handleChange }}
+                image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+            >
+                <p>Create an upsell campaign to start boosting revenue.</p>
+            </EmptyState>
+        ) : (
+            <IndexTable
+                resourceName={resourceName}
+                itemCount={campingall.length}
+                selectable={false}
+                headings={[
+                    { title: "Status" },
+                    { title: "Campaign" },
+                    { title: "Type" },
+                    { title: "Placement" },
+                    { title: "Reward Type" },
+                    { title: "Created At" },
+                    { title: "Actions" },
+                ]}
+            >
+                {campingall.map((campaign, index) => (
+                    <IndexTable.Row
+                        id={campaign.id}
+                        key={campaign.id}
+                        position={index}
+                    >
+                        <IndexTable.Cell>
+                            <label className="switch-container">
+                                <input
+                                    type="checkbox"
+                                    checked={campaign.status || false}
+                                    onChange={(e) =>
+                                        handleSwitchChange(
+                                            "Offer_status",
+                                            e.target.checked,
+                                            campaign.id
+                                        )
+                                    }
+                                    className="switch-input"
+                                />
+                                <span className="switch-slider"></span>
+                            </label>
+                        </IndexTable.Cell>
+                        <IndexTable.Cell>
+                            <Text>{campaign.name}</Text>
+                        </IndexTable.Cell>
+                        <IndexTable.Cell>{campaign.type}</IndexTable.Cell>
+                        <IndexTable.Cell>{campaign.placement}</IndexTable.Cell>
+                        <IndexTable.Cell>
+                            {campaign.rewardMode}
+                        </IndexTable.Cell>
+                        <IndexTable.Cell>
+                            {new Date(campaign.createdAt).toLocaleDateString()}
+                        </IndexTable.Cell>
+                        <IndexTable.Cell>
+                            <ButtonGroup>
+                                <ActionMenu
+                                    actions={[
+                                        { 
+                                            content: "Preview", 
+                                            onAction: () => console.log("Preview", campaign.id) 
+                                        },
+                                        { 
+                                            content: "Edit", 
+                                            onAction: () => console.log("Edit", campaign.id) 
+                                        },
+                                        {
+                                            content: "Delete",
+                                            onAction: () => handeldelete(campaign.id),
+                                            destructive: true,
+                                        },
+                                    ]}
+                                />
+                            </ButtonGroup>
+                        </IndexTable.Cell>
+                    </IndexTable.Row>
+                ))}
+            </IndexTable>
+        )}
+    </Card>
+</Layout>
             {/* ✅ Modal */}
             <Modal open={active} onClose={handleChange} title="Choose a Campaign" large>
                 <Modal.Section>
