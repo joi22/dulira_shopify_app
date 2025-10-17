@@ -61,7 +61,7 @@ export default function CardsPopup() {
     display: "flex",
     alignItems: "center",
     gap: "10px", // Arrow aur heading ke beech gap
-    marginBottom: "30px",
+    marginBottom: "",
   }}
 >
   <button
@@ -81,6 +81,7 @@ export default function CardsPopup() {
 
   <h2
     style={{
+      marginTop:"-20px",
       fontSize: "22px",
       fontWeight: 600,
       color: "#333",
@@ -96,10 +97,12 @@ export default function CardsPopup() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                gap: "18px",
+                gridTemplateColumns: "repeat(3, 1fr)", // 👈 exactly 3 cards per row
+                gap: "5px",
+                // padding:"10px",
               }}
             >
+
 <div
   style={{
     background: "#fff",
@@ -131,6 +134,7 @@ export default function CardsPopup() {
       background: "rgba(0,0,0,0.05)",
     }}
   >
+                  
     {/* Text inside border */}
     <span
       style={{
@@ -179,22 +183,61 @@ export default function CardsPopup() {
         width: "40px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />      </div>
       <div style={{
         width: "40px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/750/750453.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      /> 
+      </div>
       <div style={{
         width: "40px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/2161/2161173.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
       <div style={{
         width: "40px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://www.freeiconspng.com/uploads/shoe-icon-14.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
     </div>
   </div>
 
@@ -307,7 +350,17 @@ export default function CardsPopup() {
         width: "90px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
     </div>
   </div>
 
@@ -364,7 +417,17 @@ export default function CardsPopup() {
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
     </div>
   </div>
 </div>
@@ -463,7 +526,17 @@ export default function CardsPopup() {
         width: "90px", height: "40px", borderRadius: "8px", marginTop: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="https://www.freeiconspng.com/uploads/shoe-icon-14.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
     </div>
   </div>
 
@@ -511,7 +584,17 @@ export default function CardsPopup() {
         width: "60px", height: "40px", borderRadius: "8px",marginTop: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/2161/2161173.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
     </div>
   </div>
 </div>
@@ -633,27 +716,77 @@ export default function CardsPopup() {
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/750/750453.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/2161/2161173.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://www.freeiconspng.com/uploads/shoe-icon-14.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+    </div>
   </div>
 
   {/* Second row - 5 images */}
@@ -670,27 +803,77 @@ export default function CardsPopup() {
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+                      }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/884/884432.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://www.freeiconspng.com/uploads/shoe-icon-14.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/750/750453.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
     <div style={{
       width: "40px", height: "40px", borderRadius: "8px",
       background: "transparent", border: "1px dashed #ccc",
       display: "flex", justifyContent: "center", alignItems: "center"
-    }}></div>
+    }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        /> 
+    </div>
   </div>
 </div>
   </div>
@@ -755,7 +938,17 @@ export default function CardsPopup() {
         width: "80px", height: "80px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                    <img
+                      src="https://www.clipartmax.com/png/middle/217-2174235_jacket-clipart-lady-jacket-coat-icon.png"
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                      }}
+                    />
+      </div>
   
 
   <div
@@ -806,16 +999,36 @@ export default function CardsPopup() {
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
       <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                        <img
+                          src="                https://png.pngtree.com/png-clipart/20190630/original/pngtree-vector-tie-icon-png-image_4152651.jpg
+"
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                          }}
+                        />
+      </div>
     </div>
   </div>
 </div>
-
   {/* Card title - static (button ke just upar left side) */}
   <div style={{ 
     textAlign: "left", 
@@ -867,7 +1080,7 @@ export default function CardsPopup() {
       alignItems: "center",
       padding: "8px",
       height: "60px",
-      width: "80%",
+      width: "90%",
       border: "1px solid #ccc",
       borderRadius: "12px",
       background: "rgba(0,0,0,0.05)",
@@ -921,7 +1134,17 @@ export default function CardsPopup() {
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
              <div style={{
         width: "20px", height: "20px", borderRadius: "8px",
         display: "flex", justifyContent: "center", alignItems: "center"
@@ -930,27 +1153,78 @@ export default function CardsPopup() {
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/750/750453.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      /> 
+      </div>
        <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="                      https://t4.ftcdn.net/jpg/14/29/19/97/360_F_1429199783_o6yIzsOgX5pEySbahEigmcUKKBGTyIrt.jpg
+"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      /> 
+      </div>
       <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/2161/2161173.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
       <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
       <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>
+                      <img
+                        src="https://www.freeiconspng.com/uploads/shoe-icon-14.png"
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover", // 👈 image div ko fill kare, shape maintain rakhe
+                        }}
+                      />
+      </div>
     </div>
   </div>
 

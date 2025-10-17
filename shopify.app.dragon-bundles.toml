@@ -1,20 +1,27 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "a93a74cfaf55a4913b232c449c7e44ce"
+client_id = "bc86448bb3e4820788b5d259f1d20323"
 name = "dragon-bundles"
-application_url = "https://example.com"
+application_url = "https://arabia-losing-wednesday-superintendent.trycloudflare.com"
 embedded = true
-
-[build]
-automatically_update_urls_on_dev = true
-include_config_on_deploy = true
+handle = "dragon-bundles"
 
 [webhooks]
-api_version = "2026-01"
+api_version = "2025-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "read_publications,write_discounts,write_draft_orders,write_files,write_orders,write_products,write_publications"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [
+  "https://arabia-losing-wednesday-superintendent.trycloudflare.com/auth/callback",
+  "https://arabia-losing-wednesday-superintendent.trycloudflare.com/auth/shopify/callback",
+  "https://arabia-losing-wednesday-superintendent.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true

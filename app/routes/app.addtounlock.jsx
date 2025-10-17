@@ -427,6 +427,11 @@ export default function AddToUnlock() {
     const [formattedGoalText, setFormattedGoalText] = useState("Spend $50 to unlock a free gift!");
     const [formattedPreGoalText, setFormattedPreGoalText] = useState("Add more to your cart to unlock rewards.");
     const [showConfetti, setShowConfetti] = useState(false);
+    const [showBadges, setShowBadges] = useState(true);
+
+    const handleToggle = () => {
+        setShowBadges(!showBadges); // true ↔ false
+    };
     const [showBadgeIcons, setShowBadgeIcons] = useState(false);
     const [showLockedGoals, setShowLockedGoals] = useState(false);
     const [badgeIcon, setBadgeIcon] = useState(null);
@@ -474,7 +479,7 @@ export default function AddToUnlock() {
             buyCollectionPicker: [],
             rewardProducts: [],
             rewardCollection: [],
-            goalTextBefore: "🛍 Add {{amount_left}} to unlock {{reward}}!",
+            goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
             goalTextAfter: "🎉 You’ve unlocked {{reward}}!",
         },
     ]);
@@ -1434,147 +1439,183 @@ export default function AddToUnlock() {
                         <div
                             style={{
                                 border: "1px solid #ddd",
-                                borderRadius: "8px",
+                                 // Increased border radius
                                 overflow: "hidden",
-                                height: "600px",
+                                height: "500px", // Reduced height from 600px to 500px
                             }}
                         >
                             <iframe
                                 style={{ width: "100%", height: "100%", border: "none" }}
                                 srcDoc={`<!DOCTYPE html>
-                                <html lang="en">
-                                <head>
-                                    <meta charset="UTF-8" />
-                                    <style>
-                                        /* Existing CSS styles */
-                                        .cart-drawer-overlay {
-                                            position: fixed;
-                                            top: 0; left: 0;
-                                            width: 100%; height: 100%;
-                                            background-color: rgba(0, 0, 0, 0.5);
-                                            z-index: 1000;
-                                        }
-                                        .cart-drawer {
-                                            position: fixed;
-                                            top: 0; right: 0;
-                                            width: 100%; max-width: 400px;
-                                            height: 100%;
-                                            background: #fff;
-                                            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-                                            z-index: 1001;
-                                            display: flex;
-                                            flex-direction: column;
-                                            transition: right 0.3s ease;
-                                        }
-                                        .cart-header {
-                                            display: flex;
-                                            justify-content: space-around;
-                                            flex-direction: column;
-                                            padding: 16px;
-                                            border-bottom: 1px solid #eee;
-                                        }
-                                        .cart-title { font-size: 1.2rem; font-weight: 600; }
-                                        .close-cart { border: none; background: none; font-size: 1.5rem; cursor: pointer; }
-                                        .cart-content {
-                                            flex: 1;
-                                            overflow-y: auto;
-                                            padding: 16px;
-                                        }
-                                        .dsicount-title {
-                                            font-size: 0.95rem;
-                                            font-weight: 500;
-                                            margin-bottom: 8px;
-                                        }
-                                        .un-fill {
-                                            background: #eee;
-                                            width: 100%;
-                                            height: 8px;
-                                            border-radius: 4px;
-                                            margin: 20px 0px;
-                                            overflow: hidden;
-                                        }
-                                        .fill {
-                                            background: #0070f3;
-                                            height: 8px;
-                                        }
-                                        .cart-item {
-                                            display: flex;
-                                            padding: 12px 0;
-                                            border-bottom: 1px solid #eee;
-                                        }
-                                        .cart-item-image {
-                                            width: 80px; height: 80px;
-                                            margin-right: 12px;
-                                        }
-                                        .cart-item-image img {
-                                            width: 100%; height: 100%;
-                                            object-fit: contain;
-                                        }
-                                        .cart-item-title { font-weight: 600; margin-bottom: 4px; }
-                                        .cart-item-variant { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
-                                        .cart-item-price { font-weight: 600; color: #5c6ac4; }
-                                        .cart-footer {
-                                            padding: 16px;
-                                            border-top: 1px solid #eee;
-                                        }
-                                        .cart-subtotal {
-                                            display: flex;
-                                            justify-content: space-between;
-                                            margin-bottom: 12px;
-                                            font-weight: 600;
-                                        }
-                                        .cart-buttons button {
-                                            width: 100%;
-                                            padding: 10px;
-                                            border-radius: 4px;
-                                            font-weight: 600;
-                                            margin-bottom: 8px;
-                                            cursor: pointer;
-                                        }
-                                        .view-cart {
-                                            background: #fff;
-                                            border: 1px solid #5c6ac4;
-                                            color: #5c6ac4;
-                                        }
-                                        .checkout {
-                                            background: #5c6ac4;
-                                            border: none;
-                                            color: #fff;
-                                        }
-                                        .multi_step_progress {
-                                            position: relative;
-                                            width: 100%;
-                                            margin: 20px 0;
-                                        }
-                                        .progress_step {
-                                            position: absolute;
-                                            top: 75px;
-                                            transform: translateX(-125%);
-                                            text-align: center;
-                                        }
-                                        .progress_step .circle {
-                                            width: 32px;
-                                            height: 32px;
-                                            border-radius: 50%;
-                                            font-size: 14px;
-                                            display: flex;
-                                            align-items: center;
-                                            justify-content: center;
-                                            color: #fff;
-                                        }
-                                        .progress_step .step_goal {
-                                            font-size: 12px;
-                                            margin-top: 4px;
-                                        }
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="cart-drawer-overlay"></div>
-                                    <div class="cart-drawer">
-                                    <div>
-                          ${
-            status.showConfetti === true
-              ? `
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8" />
+                        <style>
+                            /* Existing CSS styles */
+                            .cart-drawer-overlay {
+                                position: fixed;
+                                top: 0; left: 0;
+                                width: 100%; height: 100%;
+                                background-color: rgba(0, 0, 0, 0.5);
+                                z-index: 1000;
+                               
+                            }
+                            .cart-drawer {
+                                margin-right: 5px;
+                                margin-top: 8px;
+                                border-radius: 16px;
+                                position: fixed;
+                                top: 0; right: 0;
+                                width: 97%; ;
+                                height: 97%;
+                                background: #fff;
+                                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                                z-index: 1001;
+                                display: flex;
+                                flex-direction: column;
+                                transition: right 0.3s ease;
+                                border-left: none; /* Remove left border */
+                                
+                            }
+                            .cart-header {
+                                display: flex;
+                                justify-content: space-around;
+                                flex-direction: column;
+                                padding: 16px;
+                                border-bottom: 1px solid #eee;
+                            }
+                            .cart-title { 
+                                font-size: 1.2rem; 
+                                font-weight: 700; 
+                                text-align: center;
+                            }
+                            .close-cart { 
+                                border: none; 
+                                background: none; 
+                                font-size: 1.5rem; 
+                                cursor: pointer; 
+                            }
+                            .cart-content {
+                                flex: 1;
+                                overflow-y: auto;
+                                padding: 16px;
+                            }
+                            .dsicount-title {
+                                font-size: 1rem;
+                                font-weight: 700;
+                                margin-bottom: 12px;
+                                text-align: center;
+                                color: #333;
+                            }
+                            .un-fill {
+                                background: #f0f0f0;
+                                width: 100%;
+                                height: 12px;
+                                border-radius: 15px; /* Increased border radius */
+                                margin: 20px 0px;
+                                overflow: hidden;
+                                border: 1px solid #e0e0e0;
+                            }
+                            .fill {
+                                background: #5A75F8;
+                                height: 100%;
+                                border-radius: 15px; /* Increased border radius */
+                            }
+                            .cart-item {
+                                display: flex;
+                                padding: 12px 0;
+                                border-bottom: 1px solid #eee;
+                            }
+                            .cart-item-image {
+                                width: 80px; height: 80px;
+                                margin-right: 12px;
+                            }
+                            .cart-item-image img {
+                                width: 100%; height: 100%;
+                                object-fit: contain;
+                            }
+                            .cart-item-title { font-weight: 600; margin-bottom: 4px; }
+                            .cart-item-variant { font-size: 0.85rem; color: #666; margin-bottom: 4px; }
+                            .cart-item-price { font-weight: 600; color: #5c6ac4; }
+                            .cart-footer {
+                                padding: 16px;
+                                border-top: 1px solid #eee;
+                            }
+                            .cart-subtotal {
+                                display: flex;
+                                justify-content: space-between;
+                                margin-bottom: 12px;
+                                font-weight: 600;
+                            }
+                            .cart-buttons button {
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px; /* Increased border radius */
+                                font-weight: 600;
+                                margin-bottom: 8px;
+                                cursor: pointer;
+                            }
+                            .view-cart {
+                                background: #fff;
+                                border: 1px solid #5c6ac4;
+                                color: #5c6ac4;
+                            }
+.checkout {
+    background: #5c6ac4;
+    border: none;
+    color: #fff;
+    height: 60px;           /* Increased height */
+    font-weight: 700;       /* Bold text */
+    font-size: 24px;        /* Increased font size */
+    border-radius: 6px;     /* Optional: keeps corners rounded */
+    cursor: pointer;        /* Pointer on hover */
+    padding: 0 20px;        /* Adjust horizontal padding if needed */
+}
+
+                            .multi_step_progress {
+                                position: relative;
+                                width: 100%;
+                                margin: 20px 0;
+                            }
+                            .progress_step {
+                                position: absolute;
+                                top: 65px;
+                                transform: translateX(-125%);
+                                text-align: center;
+                            }
+                            .progress_step .circle {
+
+                                border-radius: 50%;
+                                font-size: 14px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: #fff;
+                            }
+                            .progress_step .step_goal {
+                                font-size: 12px;
+                                margin-top: 4px;
+                            }
+                            
+                            /* New styles for header layout */
+                            .header-top {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                margin-bottom: 15px;
+                            }
+                            .discount-container {
+                                text-align: center;
+                                margin: 10px 0;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="cart-drawer-overlay"></div>
+                        <div class="cart-drawer">
+                        <div>
+              ${status.showConfetti === true
+                                        ? `
              <canvas id="confetti-canvas" style="
                 position:fixed;
                 top:0;left:0;
@@ -1607,40 +1648,107 @@ export default function AddToUnlock() {
                 })();
               </script>
               `
-              : ""
-          }
-                                   </div>
-                                                                <div class="cart-header">
-                                            <div>
-                                                <span class="cart-title">Your Cart</span>
-                                                <button class="close-cart">&times;</button>
-                                            </div>
-                                            <div>
+                                        : ""
+                                    }
+                           </div>
+                                                        <div class="cart-header">
+<div style="position: relative; text-align: center; margin-bottom: 25px;">
+  <span
+    class="cart-title"
+    style="font-weight: 600; font-size: 16px; position: absolute; left: 50%; transform: translateX(-50%);"
+  >
+    Your Cart
+  </span>
+
+  <button
+    class="close-cart"
+    style="background: transparent; border: none; font-size: 20px; cursor: pointer; position: absolute; right: 0;"
+  >
+    &times;
+  </button>
+</div>
+
+                                            <div class="discount-container">
                                                 <div class="dsicount-title">${formattedPreGoalText}</div>
                                                 <div class="un-fill" 
                                                     style="
                                                         background: ${progressBarStyle.backgroundColor};
-                                                        border-radius: ${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
-                                                        height: ${progressBarStyle.thickness === "thin" ? "10px" : "15px"};
+                                                        border-radius: 15px;
+                                                        height: 12px;
                                                     ">
                                                     <div class="fill" 
                                                         style="
                                                             width: ${progressPercentage}%;
-                                                            background: ${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.primaryColor};
-                                                            border-radius: ${progressBarStyle.cornerRadius === "square" ? "0" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "20px"};
+                                                            background: #5A75F8;
+                                                            border-radius: 15px;
                                                             height: 100%;
                                                             transition: width 0.3s ease-in-out;
                                                         "
                                                     ></div>
-                                                     ${offerProgress.map((offer) => `
-                                                            <div class="progress_step" style="left: ${Math.min(offer.percentage, 100)}%;">
-                                                                <div class="circle" style="background: ${offer.isGoalReached ? progressBarStyle.goalCompleteColor : "#ddd"};">
-                                                                    <img src="${offer.icon}" width="20px" alt="${offer.rewardType} Icon" />
-                                                                </div>
-                                                                <div class="step_goal">${offer.goalType === "quantity" ? offer.goalquantity : `${offer.currency}${offer.goalAmount}`}</div>
-                                                            </div>
-                                                        `
-                                )
+${showBadges
+                                        ? offerProgress
+                                            .map(
+                                                (offer) => `
+          <div class="progress_step" style="left: ${Math.min(offer.percentage, 100)}%;">
+              
+              <div 
+                class="circle" 
+                style="
+                  background: ${offer.isGoalReached
+                                                        ? progressBarStyle.goalCompleteColor
+                                                        : "#ddd"
+                                                    };
+                  width: 50px;
+                  height: 50px;
+                  border-radius: 50%;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: 600;
+                  text-align: center;
+                  font-size: 12px;
+                  gap: 4px;
+                  margin-top: 5px;
+
+                                background-color: #5C6AC4;
+                "
+              >
+                  <!-- Text inside circle, above image -->
+                  <div>
+                    ${offer.isGoalReached
+                                                        ? offer.rewardType === "reward"
+                                                            ? "Reward"
+                                                            : offer.rewardType === "shipping"
+                                                                ? "Free"
+                                                                : offer.rewardType === "gift"
+                                                                    ? "Gift"
+                                                                    : ""
+                                                        : ""
+                                                    }
+                  </div>
+
+                  <img 
+                    src="${offer.icon}" 
+                    width="25px" 
+                    alt="${offer.rewardType} Icon" 
+                  />
+              </div>
+
+              <div class="step_goal" style="margin-top: 6px;">
+                ${offer.goalType === "quantity"
+                                                        ? offer.goalquantity
+                                                        : `${offer.currency}${offer.goalAmount}`
+                                                    }
+              </div>
+          </div>
+        `
+                                            )
+                                            .join("")
+                                        : ""}
+
+
                                         .join("")}
                                                 </div>
                                                
@@ -1664,13 +1772,10 @@ export default function AddToUnlock() {
                                                 <span>$29.99</span>
                                             </div>
                                             <div class="cart-buttons">
-                                                <button class="view-cart">View Cart</button>
-                                                <button class="checkout">Checkout</button>
+                                                <button class="checkout">Checkout . $29.99</button>
                                             </div>
                                         </div>
                                     </div>
-
-                             
                                 </body>
                                 </html>`}
                             />
@@ -1832,6 +1937,22 @@ export default function AddToUnlock() {
                                                 </label>
                                                 <Text as="h4" variant="headingMd">Show showConfetti</Text>
                                             </InlineStack>
+    <InlineStack align="space-between">
+      <label className="switch-container">
+        <input
+          type="checkbox"
+          className="switch-input"
+          checked={showBadges}
+          onChange={handleToggle}
+        />
+        <span className="switch-slider"></span>
+      </label>
+
+                                                <Text as="h4" variant="headingMd">
+                                                    {showBadges ? "Hide Badges" : "Show Badges"}
+                                                </Text>
+
+    </InlineStack>
                                         </BlockStack>
                                     </Box>
                                 </BlockStack>
