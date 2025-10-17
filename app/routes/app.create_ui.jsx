@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Button } from "@shopify/polaris";
+import { Icon } from "@shopify/polaris";
+import {
+  AlertCircleIcon
+} from '@shopify/polaris-icons';
 export default function CardsPopup() {
   const [open, setOpen] = useState(false);
 
@@ -246,7 +250,9 @@ export default function CardsPopup() {
     textAlign: "left", 
     marginBottom: "12px", 
     width: "100%",
-    marginTop: "auto", // Ye button ke upar lane ke liye
+    marginTop: "auto", 
+    display: "flex",
+    // Ye button ke upar lane ke liye
   }}>
     <h3
       style={{
@@ -255,11 +261,15 @@ export default function CardsPopup() {
         color: "#333",
         margin: 0,
         paddingLeft: "8px",
+        marginRight: "150px"
       }}
     >
       Fixed bundle
     </h3>
-    
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
   </div>
 
   {/* Select button - static */}
@@ -342,10 +352,9 @@ export default function CardsPopup() {
       }}
     >
       <div style={{
-        width: "60px", height: "40px", borderRadius: "8px",
-        background: "transparent", border: "1px dashed #ccc",
+        width: "60px", height: "40px", fontWeight:"800",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>3 x</div>
       <div style={{
         width: "90px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
@@ -409,10 +418,9 @@ export default function CardsPopup() {
       }}
     >
       <div style={{
-        width: "40px", height: "40px", borderRadius: "8px",
-        background: "transparent", border: "1px dashed #ccc",
+        width: "40px", height: "40px", fontWeight: "800",
         display: "flex", justifyContent: "center", alignItems: "center"
-      }}></div>
+      }}>4 x</div>
       <div style={{
         width: "60px", height: "40px", borderRadius: "8px",
         background: "transparent", border: "1px dashed #ccc",
@@ -563,7 +571,7 @@ export default function CardsPopup() {
         padding: "0 8px",
         left: "10%",
         fontSize: "12px",
-        color: "#333",
+                        color: "#FF0000",
         fontWeight: "500",
       }}
     >
@@ -981,7 +989,7 @@ export default function CardsPopup() {
       Save <span
       style={{
         color : "#FF0000",
-      }}> 10% </span>
+      }}> Add-ons </span>
     </span>
     
     {/* Two static image divs */}

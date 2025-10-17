@@ -1344,8 +1344,7 @@ export default function AddToUnlock() {
                                     
                                                 <div
                                                     className="progress-bar"
-                                                    style={{
-                                                         height:
+                                                    style={{height:
                                                         progressBarStyle.thickness === "thin" ? "10px" : "15px",
                                                         background: progressBarStyle.backgroundColor,
                                                         borderRadius:
@@ -1458,7 +1457,6 @@ export default function AddToUnlock() {
                                 width: 100%; height: 100%;
                                 background-color: rgba(0, 0, 0, 0.5);
                                 z-index: 1000;
-                               
                             }
                             .cart-drawer {
                                 margin-right: 5px;
@@ -1475,7 +1473,6 @@ export default function AddToUnlock() {
                                 flex-direction: column;
                                 transition: right 0.3s ease;
                                 border-left: none; /* Remove left border */
-                                
                             }
                             .cart-header {
                                 display: flex;
@@ -1484,16 +1481,16 @@ export default function AddToUnlock() {
                                 padding: 16px;
                                 border-bottom: 1px solid #eee;
                             }
-                            .cart-title { 
-                                font-size: 1.2rem; 
-                                font-weight: 700; 
+                            .cart-title {
+                                font-size: 1.2rem;
+                                font-weight: 700;
                                 text-align: center;
                             }
-                            .close-cart { 
-                                border: none; 
-                                background: none; 
-                                font-size: 1.5rem; 
-                                cursor: pointer; 
+                            .close-cart {
+                                border: none;
+                                background: none;
+                                font-size: 1.5rem;
+                                cursor: pointer;
                             }
                             .cart-content {
                                 flex: 1;
