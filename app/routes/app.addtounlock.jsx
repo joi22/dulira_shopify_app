@@ -250,12 +250,12 @@ export const action = async ({ request }) => {
     } else if (selectedTriggerType === "all") {
         upsell_allproducts = formData.get("upsell_allproducts") === "true";
     }
-    console.log(status, "=============== <<<<<<   This Status ")
     const offers = JSON.parse(formData.get("offers") || "[]");
+
+    console.log(offers, "+++++++++=======  Offer ")
     const showConfetti = formData.get("showConfetti") === "on";
     const showLockedGoals = formData.get("showLockedGoals") === "on";
     const showBadgeIcons = formData.get("showBadgeIcons") === "on";
-
     const badgeImage = formData.get("badgeImage"); // File or null
     const progressBarStyle = JSON.parse(formData.get("progressBarStyle") || "{}");
     const placement = JSON.parse(formData.get("placement") || "{}");
@@ -331,7 +331,10 @@ export const action = async ({ request }) => {
                 discountType: offer.discountType,
                 discountCode: parseFloat(offer.discountCode) || null,
                 goalTextBefore: offer.goalTextBefore,
-                goalTextAfter: offer.goalTextAfter
+                goalTextAfter: offer.goalTextAfter,
+
+                // 👇 Ye line add karo
+                bad: offer.badgeImageUrl || null,
             },
         });
 
@@ -412,13 +415,14 @@ export default function AddToUnlock() {
     const fetcher = useFetcher();
     const navigate = useNavigate();
     const [campaignName, setCampaignName] = useState("");
+    const [barSize, setBarSize] = useState("false");
     const [selectedTriggerType, setSelectedTriggerType] = useState("all");
     const [upsell_allproduct, setUpsell_allproduct] = useState(false);
     const [status, setStatus] = useState({
         active: true,
         badges: false,
         lockedGoals: false,
-        showConfetti:true,
+        showConfetti: true,
     });
     const [upsellselectedItems, setUpsellselectedItems] = useState([]);
     const [selectedCollections, setSelectedCollections] = useState([]);
@@ -754,7 +758,7 @@ export default function AddToUnlock() {
     const campaignNames = searchParams.get("name") || "";
 
     const handleSubmit = () => {
-        console.log(campaignNames, "this propes >><<<<", location)
+        console.log( "this propes >><<<<", offers)
         console.log(badgeIcon, "this ")
         if (!campaignNames) {
             shopify.toast.show("Campaign name is required.", { isError: true });
@@ -875,10 +879,7 @@ export default function AddToUnlock() {
         formData.append("showConfetti", showConfetti ? "on" : "off");
         formData.append("showLockedGoals", showLockedGoals ? "on" : "off");
         formData.append("showBadgeIcons", showBadgeIcons ? "on" : "off");
-
-        if (badgeIcon) {
-            formData.append("badgeImage", badgeIcon);
-        }
+        
         formData.append("progressBarStyle", JSON.stringify(progressBarStyle));
         formData.append("placement", JSON.stringify(placement));
 
@@ -1331,21 +1332,22 @@ export default function AddToUnlock() {
                                     return (
                                         <div key={offer.id} className="offer-card">
                                             <div className="main-title">{
-                                                
-                                                    <div className="offer-line">
-                                                        <span>{renderGoalText(offer)}</span>
-                                                    </div>
-                                                
+
+                                                <div className="offer-line">
+                                                    <span>{renderGoalText(offer)}</span>
+                                                </div>
+
                                             }</div>
                                             <div
                                                 className="progress-container"
-                                               
+
                                             >
-                                    
+
                                                 <div
                                                     className="progress-bar"
-                                                    style={{height:
-                                                        progressBarStyle.thickness === "thin" ? "10px" : "15px",
+                                                    style={{
+                                                        height:
+                                                            progressBarStyle.thickness === "thin" ? "10px" : "15px",
                                                         background: progressBarStyle.backgroundColor,
                                                         borderRadius:
                                                             progressBarStyle.cornerRadius === "square"
@@ -1438,7 +1440,7 @@ export default function AddToUnlock() {
                         <div
                             style={{
                                 border: "1px solid #ddd",
-                                 // Increased border radius
+                                // Increased border radius
                                 overflow: "hidden",
                                 height: "500px", // Reduced height from 600px to 500px
                             }}
@@ -1671,17 +1673,19 @@ export default function AddToUnlock() {
                                                     style="
                                                         background: ${progressBarStyle.backgroundColor};
                                                         border-radius: 15px;
-                                                        height: 12px;
+                                                        height: ${barSize ? "7px" : "12px"};;
                                                     ">
-                                                    <div class="fill" 
-                                                        style="
-                                                            width: ${progressPercentage}%;
-                                                            background: #5A75F8;
-                                                            border-radius: 15px;
-                                                            height: 100%;
-                                                            transition: width 0.3s ease-in-out;
-                                                        "
-                                                    ></div>
+<div
+  class="fill"
+  style="
+    width: ${progressPercentage}%;
+    background: #5A75F8;
+    border-radius: 15px;
+    height: ${barSize ? "70%" : "100%"};
+    transition: width 0.3s ease-in-out, height 0.3s ease-in-out;
+  "
+></div>
+
 ${showBadges
                                         ? offerProgress
                                             .map(
@@ -1705,7 +1709,7 @@ ${showBadges
                   color: white;
                   font-weight: 600;
                   text-align: center;
-                  font-size: 12px;
+                  font-size: 9px;
                   gap: 4px;
                   margin-top: 5px;
 
@@ -1715,12 +1719,12 @@ ${showBadges
                   <!-- Text inside circle, above image -->
                   <div>
                     ${offer.isGoalReached
-                                                        ? offer.rewardType === "reward"
-                                                            ? "Reward"
+                                                        ? offer.rewardType === "discount"
+                                                            ? "10% Off"
                                                             : offer.rewardType === "shipping"
-                                                                ? "Free"
+                                                                ? "Free Ship"
                                                                 : offer.rewardType === "gift"
-                                                                    ? "Gift"
+                                                                    ? "free Gift"
                                                                     : ""
                                                         : ""
                                                     }
@@ -1728,7 +1732,7 @@ ${showBadges
 
                   <img 
                     src="${offer.icon}" 
-                    width="25px" 
+                    width="15px" 
                     alt="${offer.rewardType} Icon" 
                   />
               </div>
@@ -1746,7 +1750,7 @@ ${showBadges
                                         : ""}
 
 
-                                        .join("")}
+                                        
                                                 </div>
                                                
                                             </div>
@@ -1934,22 +1938,22 @@ ${showBadges
                                                 </label>
                                                 <Text as="h4" variant="headingMd">Show showConfetti</Text>
                                             </InlineStack>
-    <InlineStack align="space-between">
-      <label className="switch-container">
-        <input
-          type="checkbox"
-          className="switch-input"
-          checked={showBadges}
-          onChange={handleToggle}
-        />
-        <span className="switch-slider"></span>
-      </label>
+                                            <InlineStack align="space-between">
+                                                <label className="switch-container">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="switch-input"
+                                                        checked={showBadges}
+                                                        onChange={handleToggle}
+                                                    />
+                                                    <span className="switch-slider"></span>
+                                                </label>
 
                                                 <Text as="h4" variant="headingMd">
                                                     {showBadges ? "Hide Badges" : "Show Badges"}
                                                 </Text>
 
-    </InlineStack>
+                                            </InlineStack>
                                         </BlockStack>
                                     </Box>
                                 </BlockStack>
@@ -2050,82 +2054,73 @@ ${showBadges
                                                 </BlockStack>
                                             </Card>
 
-<Card sectioned>
-    <BlockStack gap="300">
-        <Text variant="headingMd" as="h3">
-            Reward Type
-        </Text>
-        <Box paddingBlockStart="100">
-            <ChoiceList
-                title="Reward Mode"
-                choices={[
-                    { label: "Fixed Deal", value: "fixed" },
-                    { label: "Flame Match (Customer picks)", value: "flame" },
-                ]}
-                selected={[offer.rewardMode]}
-                onChange={(value) => {
-                    const mode = value[0];
-                    updateOffer(offer.id, "rewardMode", mode);
-                    updateOffer(offer.id, "rewardType", mode === "flame" ? "gift" : "discount");
-                    // Auto-generate reward type name based on selection
-                    const rewardName = mode === "flame" ? "Flame Match Gift" : "Fixed Discount";
-                    updateOffer(offer.id, "rewardTypeName", rewardName);
-                }}
-            />
-        </Box>
-        
-        {/* New Reward Type Name Field */}
-        <TextField
-            label="Reward Type Name"
-            value={offer.rewardTypeName || ""}
-            onChange={(value) => updateOffer(offer.id, "rewardTypeName", value)}
-            placeholder="Enter reward type name"
-            helpText="Give a descriptive name for this reward type"
-            autoComplete="off"
-        />
-        
-        {offer.rewardMode === "fixed" && (
-            <BlockStack gap="200">
-                <ChoiceList
-                    title="Reward Type"
-                    choices={[
-                        { label: "Discount", value: "discount" },
-                        { label: "Free Shipping", value: "shipping" },
-                    ]}
-                    selected={[offer.rewardType]}
-                    onChange={(value) => {
-                        const rewardType = value[0];
-                        updateOffer(offer.id, "rewardType", rewardType);
-                        // Auto-update reward type name based on selection
-                        const rewardName = rewardType === "discount" ? "Fixed Discount" : "Free Shipping";
-                        updateOffer(offer.id, "rewardTypeName", rewardName);
-                    }}
-                />
-                
-                {/* Dynamic display of current reward type */}
-                <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
-                    <Text as="p" variant="bodyMd" fontWeight="medium">
-                        Current Reward: {offer.rewardTypeName || "Not set"}
-                    </Text>
-                    <Text as="p" variant="bodySm" tone="subdued">
-                        Type: {offer.rewardType || "Not selected"} | Mode: {offer.rewardMode || "Not selected"}
-                    </Text>
-                </Box>
-            </BlockStack>
-        )}
-        
-        {offer.rewardMode === "flame" && (
-            <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
-                <Text as="p" variant="bodyMd" fontWeight="medium">
-                    Flame Match Reward: {offer.rewardTypeName || "Customer Choice Gift"}
-                </Text>
-                <Text as="p" variant="bodySm" tone="subdued">
-                    Customers can choose their preferred reward from available options
-                </Text>
-            </Box>
-        )}
-    </BlockStack>
-</Card>
+                                            <Card sectioned>
+                                                <BlockStack gap="300">
+                                                    <Text variant="headingMd" as="h3">
+                                                        Reward Type
+                                                    </Text>
+                                                    <Box paddingBlockStart="100">
+                                                        <ChoiceList
+                                                            title="Reward Mode"
+                                                            choices={[
+                                                                { label: "Fixed Deal", value: "fixed" },
+                                                                { label: "Flame Match (Customer picks)", value: "flame" },
+                                                            ]}
+                                                            selected={[offer.rewardMode]}
+                                                            onChange={(value) => {
+                                                                const mode = value[0];
+                                                                updateOffer(offer.id, "rewardMode", mode);
+                                                                updateOffer(offer.id, "rewardType", mode === "flame" ? "gift" : "discount");
+                                                                // Auto-generate reward type name based on selection
+                                                                const rewardName = mode === "flame" ? "Flame Match Gift" : "Fixed Discount";
+                                                                updateOffer(offer.id, "rewardTypeName", rewardName);
+                                                            }}
+                                                        />
+                                                    </Box>
+
+
+                                                    {offer.rewardMode === "fixed" && (
+                                                        <BlockStack gap="200">
+                                                            <ChoiceList
+                                                                title="Reward Type"
+                                                                choices={[
+                                                                    { label: "Discount", value: "discount" },
+                                                                    { label: "Free Shipping", value: "shipping" },
+                                                                ]}
+                                                                selected={[offer.rewardType]}
+                                                                onChange={(value) => {
+                                                                    const rewardType = value[0];
+                                                                    updateOffer(offer.id, "rewardType", rewardType);
+                                                                    // Auto-update reward type name based on selection
+                                                                    const rewardName = rewardType === "discount" ? "Fixed Discount" : "Free Shipping";
+                                                                    updateOffer(offer.id, "rewardTypeName", rewardName);
+                                                                }}
+                                                            />
+
+                                                            {/* Dynamic display of current reward type */}
+                                                            {/* <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
+                                                                <Text as="p" variant="bodyMd" fontWeight="medium">
+                                                                    Current Reward: {offer.rewardTypeName || "Not set"}
+                                                                </Text>
+                                                                <Text as="p" variant="bodySm" tone="subdued">
+                                                                    Type: {offer.rewardType || "Not selected"} | Mode: {offer.rewardMode || "Not selected"}
+                                                                </Text>
+                                                            </Box> */}
+                                                        </BlockStack>
+                                                    )}
+
+                                                    {offer.rewardMode === "flame" && (
+                                                        <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
+                                                            <Text as="p" variant="bodyMd" fontWeight="medium">
+                                                                Flame Match Reward: {offer.rewardTypeName || "Customer Choice Gift"}
+                                                            </Text>
+                                                            <Text as="p" variant="bodySm" tone="subdued">
+                                                                Customers can choose their preferred reward from available options
+                                                            </Text>
+                                                        </Box>
+                                                    )}
+                                                </BlockStack>
+                                            </Card>
 
                                             <Card sectioned>
                                                 <BlockStack gap="300">
@@ -2320,14 +2315,26 @@ ${showBadges
                             <Card sectioned>
                                 <BlockStack gap="300">
                                     <Text variant="headingMd" as="h3">Design Customization</Text>
+
                                     <Select
                                         label="Progress Bar Thickness"
                                         options={[
                                             { label: "Thin", value: "thin" },
                                             { label: "Thick", value: "thick" },
                                         ]}
-                                        value={progressBarStyle.thickness}
-                                        onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, thickness: value }))}
+                                        value={progressBarStyle.thickness || "thick"} // default value
+                                        onChange={(value) => {
+                                            // Update the thickness in progressBarStyle
+                                            setProgressBarStyle((prev) => ({ ...prev, thickness: value }));
+
+                                            // Update barSize state if the value is thin
+                                            if (value === "thin") {
+                                                setBarSize(true);
+                                                console.log("value", barSize);
+                                            } else {
+                                                setBarSize(false);
+                                            }
+                                        }}
                                     />
                                     <Select
                                         label="Corner Radius"
@@ -2339,32 +2346,132 @@ ${showBadges
                                         value={progressBarStyle.cornerRadius}
                                         onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, cornerRadius: value }))}
                                     />
-                                    <InlineStack gap={"200"}>
-                                        <TextField
-                                            label="Primary Color"
-                                            type="color"
-                                            value={progressBarStyle.primaryColor}
-                                            onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, primaryColor: value }))}
-                                        />
-                                        <TextField
-                                            label="Secondary Color"
-                                            type="color"
-                                            value={progressBarStyle.secondaryColor}
-                                            onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, secondaryColor: value }))}
-                                        />
-                                        <TextField
-                                            label="Goal Complete Color"
-                                            type="color"
-                                            value={progressBarStyle.goalCompleteColor}
-                                            onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, goalCompleteColor: value }))}
-                                        />
-                                        <TextField
-                                            label="Background Color"
-                                            type="color"
-                                            value={progressBarStyle.backgroundColor}
-                                            onChange={(value) => setProgressBarStyle((prev) => ({ ...prev, backgroundColor: value }))}
-                                        />
+                                    <style>
+                                        {`
+  input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 3px;
+  }
+  input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+  }
+  input[type="color"] {
+    border: none;
+    border-radius: 3px;
+    padding: 0;
+    cursor: pointer;
+    appearance: none;
+    outline: none;
+    box-shadow: 0 0 0 1px #d1d5db; /* light premium grey border */
+  }
+`}
+                                    </style>
+
+                                    <InlineStack gap="200">
+                                        <h2
+                                        style={
+                                                { fontSize: "14px", color: "grey", fontWeight:"600",}
+                                        }
+                                        >Progree Bar Colors</h2>
+                                        <div style={{ display: "flex",  width: "100%", marginBottom: "16px" }}>
+                                         
+                                            {/* First color */}
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <input
+                                                    type="color"
+                                                    value={progressBarStyle.primaryColor}
+                                                    onChange={(e) =>
+                                                        setProgressBarStyle((prev) => ({
+                                                            ...prev,
+                                                            primaryColor: e.target.value,
+                                                        }))
+                                                    }
+                                                    style={{
+                                                        width: "42px",
+                                                        height: "42px",
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                    }}
+                                                />
+                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize: "15px", }}>Primary</span>
+                                            </div>
+
+                                            {/* Second color */}
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <input
+                                                    type="color"
+                                                    value={progressBarStyle.secondaryColor}
+                                                    onChange={(e) =>
+                                                        setProgressBarStyle((prev) => ({
+                                                            ...prev,
+                                                            secondaryColor: e.target.value,
+                                                        }))
+                                                    }
+                                                    style={{
+                                                        width: "42px",
+                                                        height: "42px",
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                        marginLeft:"130px",
+                                                    }}
+                                                />
+                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize: "15px", }}>Secondary</span>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: "flex", width: "100%" }}>
+                                            {/* Third color */}
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <input
+                                                    type="color"
+                                                    value={progressBarStyle.goalCompleteColor}
+                                                    onChange={(e) =>
+                                                        setProgressBarStyle((prev) => ({
+                                                            ...prev,
+                                                            goalCompleteColor: e.target.value,
+                                                        }))
+                                                    }
+                                                    style={{
+                                                        width: "42px",
+                                                        height: "42px",
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                    }}
+                                                />
+                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize: "15px", }}>Goal complete</span>
+                                            </div>
+
+                                            {/* Fourth color */}
+                                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <input
+                                                    type="color"
+                                                    value={progressBarStyle.backgroundColor}
+                                                    onChange={(e) =>
+                                                        setProgressBarStyle((prev) => ({
+                                                            ...prev,
+                                                            backgroundColor: e.target.value,
+                                                        }))
+                                                    }
+                                                    style={{
+                                                        width: "42px",
+                                                        height: "42px",
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                        marginLeft: "82px",
+                                                    }}
+                                                />
+                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize:"15px", }}>Background</span>
+                                            </div>
+                                        </div>
+
                                     </InlineStack>
+
+
                                 </BlockStack>
                             </Card>
                         </BlockStack>

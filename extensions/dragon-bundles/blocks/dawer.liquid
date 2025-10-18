@@ -1,8 +1,6 @@
-
-
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://pocket-lindsay-current-believed.trycloudflare.com';
+    const App_Domain = 'https://shipping-fighter-assign-money.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -125,88 +123,89 @@
       });
     }
 
-   function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
-    const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
-    const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+    function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
+      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+      const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
 
-    const borderRadius = barRadius === 'square' ? '0px' : '6px';
-    const barHeight = barStyle === 'thin' ? '7px' : '12px';
-    const topPosition = barStyle === 'thin' ? '42px' : '40px';
+      const borderRadius = barRadius === 'square' ? '0px' : '6px';
+      const barHeight = barStyle === 'thin' ? '7px' : '12px';
+      const topPosition = barStyle === 'thin' ? '42px' : '40px';
 
-    // Calculate overall progress
-    const progress = calculateProgress(offers, cartData);
+      // Calculate overall progress
+      const progress = calculateProgress(offers, cartData);
 
-    // Sort offers by goal value
-    const sortedOffers = offers.sort((a, b) =>
+      // Sort offers by goal value
+      const sortedOffers = offers.sort((a, b) =>
         a.goalType === 'quantity'
-            ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
-            : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
-    );
+          ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
+          : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
+      );
 
-    // Determine the active offer for the goal text
-    let goalText = 'No offers available';
-    if (sortedOffers.length > 0) {
+      // Determine the active offer for the goal text
+      let goalText = 'No offers available';
+      if (sortedOffers.length > 0) {
         let activeOffer = null;
         for (const offer of sortedOffers) {
-            const goalValue =
-                offer.goalType === 'quantity'
-                    ? parseFloat(offer.goalQuantity || 0)
-                    : parseFloat(offer.goalAmount || 0);
-            const currentValue =
-                offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-            if (currentValue < goalValue) {
-                activeOffer = offer; // First uncompleted offer
-                break;
-            }
-            activeOffer = offer; // Last completed offer
+          const goalValue =
+            offer.goalType === 'quantity' ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
+          const currentValue =
+            offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+          if (currentValue < goalValue) {
+            activeOffer = offer; // First uncompleted offer
+            break;
+          }
+          activeOffer = offer; // Last completed offer
         }
         if (activeOffer) {
-          console.log(activeOffer.goalTextAfter,"===== >>>> ")
-            const isGoalReached =
-                activeOffer.goalType === 'quantity'
-                    ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
-                    : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
-            const rewardDescription =
-                activeOffer.rewardType === 'discount'
-                    ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
-                    : activeOffer.rewardType === 'shipping'
-                    ? 'Free Shipping'
-                    : 'Free Gift';
-            const amountLeft =
-                activeOffer.goalType === 'quantity'
-                    ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
-                    : `$${Math.max(parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0), 0).toFixed(2)}`;
-            const goal =
-                activeOffer.goalType === 'quantity'
-                    ? `${activeOffer.goalQuantity || 0} items`
-                    : `$${activeOffer.goalAmount || 0}`;
-            goalText = isGoalReached
-                ? (activeOffer.goalTextAfter)
-                : (activeOffer.goalTextBefore);
+          console.log(activeOffer.goalTextAfter, '===== >>>> ');
+          const isGoalReached =
+            activeOffer.goalType === 'quantity'
+              ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
+              : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
+          const rewardDescription =
+            activeOffer.rewardType === 'discount'
+              ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
+              : activeOffer.rewardType === 'shipping'
+              ? 'Free Shipping'
+              : 'Free Gift';
+          const amountLeft =
+            activeOffer.goalType === 'quantity'
+              ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
+              : `$${Math.max(
+                  parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0),
+                  0
+                ).toFixed(2)}`;
+          const goal =
+            activeOffer.goalType === 'quantity'
+              ? `${activeOffer.goalQuantity || 0} items`
+              : `$${activeOffer.goalAmount || 0}`;
+          goalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
         }
-    }
+      }
 
-    // Clear previous content to avoid duplicates
-    container.innerHTML = '';
-    console.log(goalText,"main +++ ==== <<< ")
-    // Create or update the goal text element
-    const goalTextElement = document.createElement('div');
-    goalTextElement.className = 'goal-text';
-    goalTextElement.innerText = goalText;
-    container.appendChild(goalTextElement);
+      // Clear previous content to avoid duplicates
+      container.innerHTML = '';
+      console.log(goalText, 'main +++ ==== <<< ');
+      // Create or update the goal text element
+      const goalTextElement = document.createElement('div');
+      goalTextElement.className = 'goal-text';
+      goalTextElement.innerText = goalText;
+      container.appendChild(goalTextElement);
 
-    // Build progress bar HTML
-    let html = `<div class="multi_step_progress">`;
-    html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
-    html += `<div class="progress_line_fill" style="width:${progress}%; background:${progress >= 100 ? goalCompleteColor : primaryColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+      // Build progress bar HTML
+      let html = `<div class="multi_step_progress">`;
+      html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+      html += `<div class="progress_line_fill" style="width:${progress}%; background:${
+        progress >= 100 ? goalCompleteColor : primaryColor
+      }; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
 
-    const goals = sortedOffers.map((o) =>
+      const goals = sortedOffers.map((o) =>
         o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-    );
-    const minGoal = Math.min(...goals);
-    const maxGoal = Math.max(...goals);
+      );
+      const minGoal = Math.min(...goals);
+      const maxGoal = Math.max(...goals);
 
-    sortedOffers.forEach((offer, index) => {
+      sortedOffers.forEach((offer, index) => {
         const isQuantity = offer.goalType === 'quantity';
         const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
         const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
@@ -227,17 +226,17 @@
             </div>`;
 
         if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
-            if (Gifts && Gifts.length) {
-                renderRewardProducts(container, Gifts, cartData);
-            }
+          if (Gifts && Gifts.length) {
+            renderRewardProducts(container, Gifts, cartData);
+          }
         }
-    });
+      });
 
-    html += `</div>`; // Close progress bar
-    container.innerHTML += html;
-    // const announcement_bar = document.getElementById("announcement-bars");
-    // announcement_bar.innerHTML =html;
-  }
+      html += `</div>`; // Close progress bar
+      container.innerHTML += html;
+      // const announcement_bar = document.getElementById("announcement-bars");
+      // announcement_bar.innerHTML =html;
+    }
 
     async function updateProgressBar() {
       try {
@@ -287,8 +286,8 @@
 
         if (currentCampaignData.type === 'add_to_unlock') {
           setTimeout(() => {
-          upsellContainer.scrollIntoView({ behavior: 'smooth' });
-          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
+            upsellContainer.scrollIntoView({ behavior: 'smooth' });
+            renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
           }, 3000);
         }
       } catch (err) {
@@ -367,7 +366,7 @@
 </script>
 
 <style>
-  .goal-text{
+  .goal-text {
     text-align: center;
   }
   .gift_price {

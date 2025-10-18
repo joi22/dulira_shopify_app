@@ -261,7 +261,7 @@ export default function CardsPopup() {
         color: "#333",
         margin: 0,
         paddingLeft: "8px",
-        marginRight: "150px"
+        marginRight: "180px"
       }}
     >
       Fixed bundle
@@ -441,24 +441,31 @@ export default function CardsPopup() {
 </div>
 
   {/* Card title - static (button ke just upar left side) */}
-  <div style={{ 
-    textAlign: "left", 
-    marginBottom: "12px", 
-    width: "100%",
-    marginTop: "40px", // Ye button ke upar lane ke liye
-  }}>
-    <h3
-      style={{
-        fontSize: "15px",
-        fontWeight: 600,
-        color: "#333",
-        margin: 0,
-        paddingLeft: "8px",
-      }}
-    >
-      Volume discounts
-    </h3>
-  </div> 
+                <div style={{
+                  textAlign: "left",
+                  marginBottom: "12px",
+                  width: "100%",
+                  marginTop: "auto",
+                  display: "flex",
+                  // Ye button ke upar lane ke liye
+                }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#333",
+                      margin: 0,
+                      paddingLeft: "8px",
+                      marginRight: "140px"
+                    }}
+                  >
+                    Volume discounts
+                  </h3>
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
+                </div>
   {/* Select button - static */}
 <Button fullWidth tone="success" variant="secondary">
   Select
@@ -609,24 +616,31 @@ export default function CardsPopup() {
 
 
   {/* Card title - static (button ke just upar left side) */}
-  <div style={{ 
-    textAlign: "left", 
-    marginBottom: "12px", 
-    width: "100%",
-    marginTop: "auto", // Ye button ke upar lane ke liye
-  }}>
-    <h3
-      style={{
-        fontSize: "15px",
-        fontWeight: 600,
-        color: "#333",
-        margin: 0,
-        paddingLeft: "8px",
-      }}
-    >
-      Buy X Get Y
-    </h3>
-  </div>
+                <div style={{
+                  textAlign: "left",
+                  marginBottom: "12px",
+                  width: "100%",
+                  marginTop: "auto",
+                  display: "flex",
+                  // Ye button ke upar lane ke liye
+                }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#333",
+                      margin: 0,
+                      paddingLeft: "8px",
+                      marginRight: "180px"
+                    }}
+                  >
+                    Buy X Get Y
+                  </h3>
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
+                </div>
 
   {/* Select button - static */}
 <Button fullWidth tone="success" variant="secondary">
@@ -887,24 +901,31 @@ export default function CardsPopup() {
   </div>
 
   {/* Card title - static (button ke just upar left side) */}
-  <div style={{ 
-    textAlign: "left", 
-    marginBottom: "12px", 
-    width: "100%",
-    marginTop: "auto", // Ye button ke upar lane ke liye
-  }}>
-    <h3
-      style={{
-        fontSize: "15px",
-        fontWeight: 600,
-        color: "#333",
-        margin: 0,
-        paddingLeft: "8px",
-      }}
-    >
-      Mix and Match
-    </h3>
-  </div>
+                <div style={{
+                  textAlign: "left",
+                  marginBottom: "12px",
+                  width: "100%",
+                  marginTop: "auto",
+                  display: "flex",
+                  // Ye button ke upar lane ke liye
+                }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#333",
+                      margin: 0,
+                      paddingLeft: "8px",
+                      marginRight: "180px"
+                    }}
+                  >
+                    Fixed bundle
+                  </h3>
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
+                </div>
 
   {/* Select button - static */}
 <Button fullWidth tone="success" variant="secondary">
@@ -1038,24 +1059,31 @@ export default function CardsPopup() {
   </div>
 </div>
   {/* Card title - static (button ke just upar left side) */}
-  <div style={{ 
-    textAlign: "left", 
-    marginBottom: "12px", 
-    width: "100%",
-    marginTop: "40px", // Ye button ke upar lane ke liye
-  }}>
-    <h3
-      style={{
-        fontSize: "15px",
-        fontWeight: 600,
-        color: "#333",
-        margin: 0,
-        paddingLeft: "8px",
-      }}
-    >
-      Product and Ons
-    </h3>
-  </div>
+                <div style={{
+                  textAlign: "left",
+                  marginBottom: "12px",
+                  width: "100%",
+                  marginTop: "auto",
+                  display: "flex",
+                  // Ye button ke upar lane ke liye
+                }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#333",
+                      margin: 0,
+                      paddingLeft: "8px",
+                      marginRight: "140px"
+                    }}
+                  >
+                    Product add-ons
+                  </h3>
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
+                </div>
 
   {/* Select button - static */}
 <Button fullWidth tone="success" variant="secondary">
@@ -1237,24 +1265,31 @@ export default function CardsPopup() {
   </div>
 
   {/* Card title - static (button ke just upar left side) */}
-  <div style={{ 
-    textAlign: "left", 
-    marginBottom: "12px", 
-    width: "100%",
-    marginTop: "auto", // Ye button ke upar lane ke liye
-  }}>
-    <h3
-      style={{
-        fontSize: "15px",
-        fontWeight: 600,
-        color: "#333",
-        margin: 0,
-        paddingLeft: "8px",
-      }}
-    >
-      Frequently bought together
-    </h3>
-  </div>
+                <div style={{
+                  textAlign: "left",
+                  marginBottom: "12px",
+                  width: "100%",
+                  marginTop: "auto",
+                  display: "flex",
+                  // Ye button ke upar lane ke liye
+                }}>
+                  <h3
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#333",
+                      margin: 0,
+                      paddingLeft: "8px",
+                      marginRight: "70px"
+                    }}
+                  >
+                    Frequently bought together
+                  </h3>
+                  <Icon
+                    source={AlertCircleIcon}
+                    tone="base"
+                  />
+                </div>
 
   {/* Select button - static */}
 <Button fullWidth tone="success" variant="secondary">
