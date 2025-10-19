@@ -334,7 +334,7 @@ export const action = async ({ request }) => {
                 goalTextAfter: offer.goalTextAfter,
 
                 // 👇 Ye line add karo
-                bad: offer.badgeImageUrl || null,
+                badgeImageUrl: offer.badgeImageUrl || null,
             },
         });
 
@@ -432,7 +432,16 @@ export default function AddToUnlock() {
     const [formattedPreGoalText, setFormattedPreGoalText] = useState("Add more to your cart to unlock rewards.");
     const [showConfetti, setShowConfetti] = useState(false);
     const [showBadges, setShowBadges] = useState(true);
+    const urlParams = new URLSearchParams(window.location.search);
 
+    // 'dealType' parameter ki value
+    const dealType = urlParams.get('dealType');
+
+    console.log(dealType);
+    const rewardModeOptions = [
+        dealType !== "flame" && { label: "Fixed Deal", value: "fixed" },
+        dealType !== "fixed" && { label: "Flame Match (Customer picks)", value: "flame" },
+    ].filter(Boolean);
     const handleToggle = () => {
         setShowBadges(!showBadges); // true ↔ false
     };
@@ -1442,7 +1451,7 @@ export default function AddToUnlock() {
                                 border: "1px solid #ddd",
                                 // Increased border radius
                                 overflow: "hidden",
-                                height: "500px", // Reduced height from 600px to 500px
+                                height: "700px", // Reduced height from 600px to 500px
                             }}
                         >
                             <iframe
@@ -1499,6 +1508,99 @@ export default function AddToUnlock() {
                                 overflow-y: auto;
                                 padding: 16px;
                             }
+                              .gift-section {
+            margin-top: 20px;
+            padding: 16px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .gift-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .gift-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .gift-item {
+            display: flex;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        
+        .gift-item-image {
+            width: 60px;
+            height: 60px;
+            margin-right: 10px;
+        }
+        
+        .gift-item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .gift-item-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .gift-item-title {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .gift-item-variant {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .gift-item-price {
+            font-weight: 600;
+            color: #5c6ac4;
+            font-size: 14px;
+        }
+        
+        .gift-badge {
+            background-color: #5c6ac4;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        
+        /* Gift Item Button Styles */
+        .gift-item-actions {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .add-to-cart-btn {
+            background-color: #5c6ac4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
                             .dsicount-title {
                                 font-size: 1rem;
                                 font-weight: 700;
@@ -1520,6 +1622,7 @@ export default function AddToUnlock() {
                                 height: 100%;
                                 border-radius: 15px; /* Increased border radius */
                             }
+                                
                             .cart-item {
                                 display: flex;
                                 padding: 12px 0;
@@ -1709,7 +1812,7 @@ ${showBadges
                   color: white;
                   font-weight: 600;
                   text-align: center;
-                  font-size: 9px;
+                  font-size: 10px;
                   gap: 4px;
                   margin-top: 5px;
 
@@ -1722,9 +1825,9 @@ ${showBadges
                                                         ? offer.rewardType === "discount"
                                                             ? "10% Off"
                                                             : offer.rewardType === "shipping"
-                                                                ? "Free Ship"
+                                                                ? "Free"
                                                                 : offer.rewardType === "gift"
-                                                                    ? "free Gift"
+                                                                    ? "Gift"
                                                                     : ""
                                                         : ""
                                                     }
@@ -1732,7 +1835,7 @@ ${showBadges
 
                   <img 
                     src="${offer.icon}" 
-                    width="15px" 
+                    width="25px" 
                     alt="${offer.rewardType} Icon" 
                   />
               </div>
@@ -1766,7 +1869,21 @@ ${showBadges
                                                     <div class="cart-item-price">$29.99</div>
                                                 </div>
                                             </div>
-                                        </div>
+                                                    <div class="gift-section">
+                <div class="gift-section-title">🎁 Gift Items</div>
+                <div class="gift-items-container">
+                    <!-- Gift Item 1 -->
+                    <div class="gift-item">
+                        <div class="gift-item-image">
+                            <img src="data:image/jpeg;base64,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" alt="Gift Product" />
+                        </div>
+                        <div class="gift-item-details">
+                            <div class="gift-item-title">Premium Socks <span class="gift-badge">FREE</span></div>
+                            <div class="gift-item-actions">
+                                <button class="add-to-cart-btn" data-product="premium-socks">Add to Cart</button>
+                            </div>
+                        </div>
+                    </div>
                                         <div class="cart-footer">
                                             <div class="cart-subtotal">
                                                 <span>Subtotal</span>
@@ -2062,24 +2179,23 @@ ${showBadges
                                                     <Box paddingBlockStart="100">
                                                         <ChoiceList
                                                             title="Reward Mode"
-                                                            choices={[
-                                                                { label: "Fixed Deal", value: "fixed" },
-                                                                { label: "Flame Match (Customer picks)", value: "flame" },
-                                                            ]}
+                                                            choices={rewardModeOptions}
                                                             selected={[offer.rewardMode]}
                                                             onChange={(value) => {
                                                                 const mode = value[0];
                                                                 updateOffer(offer.id, "rewardMode", mode);
                                                                 updateOffer(offer.id, "rewardType", mode === "flame" ? "gift" : "discount");
-                                                                // Auto-generate reward type name based on selection
+
+                                                                // Auto-generate reward type name
                                                                 const rewardName = mode === "flame" ? "Flame Match Gift" : "Fixed Discount";
                                                                 updateOffer(offer.id, "rewardTypeName", rewardName);
                                                             }}
                                                         />
+
                                                     </Box>
 
 
-                                                    {offer.rewardMode === "fixed" && (
+                                                    {offer.rewardMode === "fixed" && dealType !== "flame" && (
                                                         <BlockStack gap="200">
                                                             <ChoiceList
                                                                 title="Reward Type"
@@ -2091,21 +2207,10 @@ ${showBadges
                                                                 onChange={(value) => {
                                                                     const rewardType = value[0];
                                                                     updateOffer(offer.id, "rewardType", rewardType);
-                                                                    // Auto-update reward type name based on selection
                                                                     const rewardName = rewardType === "discount" ? "Fixed Discount" : "Free Shipping";
                                                                     updateOffer(offer.id, "rewardTypeName", rewardName);
                                                                 }}
                                                             />
-
-                                                            {/* Dynamic display of current reward type */}
-                                                            {/* <Box padding="200" background="bg-surface-secondary" border="divider" borderRadius="200">
-                                                                <Text as="p" variant="bodyMd" fontWeight="medium">
-                                                                    Current Reward: {offer.rewardTypeName || "Not set"}
-                                                                </Text>
-                                                                <Text as="p" variant="bodySm" tone="subdued">
-                                                                    Type: {offer.rewardType || "Not selected"} | Mode: {offer.rewardMode || "Not selected"}
-                                                                </Text>
-                                                            </Box> */}
                                                         </BlockStack>
                                                     )}
 
