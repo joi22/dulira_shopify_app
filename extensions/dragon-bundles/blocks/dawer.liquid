@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://shipping-fighter-assign-money.trycloudflare.com';
+    const App_Domain = 'https://vendor-sustainability-loan-goat.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -81,21 +81,35 @@
       // ✅ Otherwise show available gifts
       gift_price.style.display = 'block';
 
-      let gridHtml = `<div class="free_products">`;
-      Gifts.forEach((prod) => {
-        gridHtml += `
-          <div class="product_card_dwer">
-            <div class="product_upsell">
-              <img src="${prod.media}" alt="${prod.title}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">
-              <div>${prod.title}</div>
-              <button class="add-to-cart-btn" data-variant="${prod.variantId}">
-                Select
-              </button>
-            </div>
-          </div>
-        `;
-      });
-      gridHtml += `</div>`;
+    let gridHtml = `
+     <div class="gift-section">
+  <div class="gift-section-title">🎁 Gift Items</div>
+  <div class="gift-items-container">
+`;
+
+Gifts.forEach((prod) => {
+  gridHtml += `
+    <div class="gift-item">
+      <div class="gift-item-image">
+        <img src="${prod.media}" alt="${prod.title}">
+      </div>
+      <div class="gift-item-details">
+        <div class="gift-item-title">
+          ${prod.title} <span class="gift-badge">FREE</span>
+        </div>
+        <div class="gift-item-actions">
+          <button class="add-to-cart-btn" data-variant="${prod.variantId}">
+            Select
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+  `;
+});
+
+gridHtml += `</div>`; // closes gift-items-container
+
 
       gift_price.innerHTML = gridHtml;
 
@@ -366,6 +380,98 @@
 </script>
 
 <style>
+                              }
+                              .gift-section {
+            margin-top: 20px;
+            padding: 16px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+     .gift-section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .gift-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .gift-item {
+            display: flex;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        
+        .gift-item-image {
+            width: 60px;
+            height: 60px;
+            margin-right: 10px;
+        }
+        
+        .gift-item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .gift-item-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .gift-item-title {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .gift-item-variant {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .gift-item-price {
+            font-weight: 600;
+            color: #5c6ac4;
+            font-size: 14px;
+        }
+           .gift-badge {
+            background-color: #5c6ac4;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        
+        /* Gift Item Button Styles */
+        .gift-item-actions {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .add-to-cart-btn {
+            background-color: #5c6ac4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
   .goal-text {
     text-align: center;
   }
@@ -410,7 +516,7 @@
     box-sizing: border-box;
   }
 
-  .product_card_dwer .add-to-cart-btn {
+  {% comment %} .product_card_dwer .add-to-cart-btn {
     background: #4caf50;
     color: white;
     border: none;
@@ -425,7 +531,7 @@
   .product_card_dwer .add-to-cart-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
-  }
+  } {% endcomment %}
 
   .product_card_dwer .product_upsell {
     display: flex;

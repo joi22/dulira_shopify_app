@@ -767,18 +767,21 @@ export default function AddToUnlock() {
     const campaignNames = searchParams.get("name") || "";
 
     const handleSubmit = () => {
-        console.log( "this propes >><<<<", offers)
-        console.log(badgeIcon, "this ")
+        console.log("Offers data:", offers);
+        console.log("Badge icon:", badgeIcon);
+
         if (!campaignNames) {
             shopify.toast.show("Campaign name is required.", { isError: true });
             return;
         }
 
+        // Validate each offer
         for (const [index, offer] of offers.entries()) {
             if (offer.goalType === "amount_cart" && (!offer.goalAmount || isNaN(offer.goalAmount) || parseFloat(offer.goalAmount) <= 0)) {
                 shopify.toast.show(`Offer ${index + 1}: Valid goal amount is required.`, { isError: true });
                 return;
             }
+
             if (offer.goalType === "quantity" && (!offer.goalquantity || isNaN(offer.goalquantity) || parseInt(offer.goalquantity) <= 0)) {
                 shopify.toast.show(`Offer ${index + 1}: Valid goal quantity is required.`, { isError: true });
                 return;
@@ -789,87 +792,45 @@ export default function AddToUnlock() {
                     shopify.toast.show(`Offer ${index + 1}: Valid discount value is required.`, { isError: true });
                     return;
                 }
-                if (
-                    offer.discountType === "percentage" &&
-                    (parseFloat(offer.discountCode) <= 0 || parseFloat(offer.discountCode) > 100)
-                ) {
-                    shopify.toast.show(
-                        `Offer ${index + 1}: Discount percentage must be between 1 and 100.`,
-                        { isError: true }
-                    );
+                if (offer.discountType === "percentage" && (parseFloat(offer.discountCode) <= 0 || parseFloat(offer.discountCode) > 100)) {
+                    shopify.toast.show(`Offer ${index + 1}: Discount percentage must be between 1 and 100.`, { isError: true });
                     return;
                 }
             }
 
-            if (offer.rewardType === "gift" && offer.rewardMode === "fixed" && offer.rewardProducts.length === 0) {
-                shopify.toast.show(`Offer ${index + 1}: At least one reward product is required for Fixed Deal.`, {
-                    isError: true,
-                });
-                return;
-            }
-            if (
-                offer.rewardType === "gift" &&
-                offer.rewardMode === "flame" &&
-                offer.rewardProducts.length === 0 &&
-                offer.rewardCollection.length === 0
-            ) {
-                shopify.toast.show(
-                    `Offer ${index + 1}: At least one reward product or collection is required for Flame Match.`,
-                    { isError: true }
-                );
-                return;
-            }
-
-            // if (
-            //     offer.rewardType === "gift" &&
-            //     offer.productPickType === "products" &&
-            //     offer.buyProductPicker.length === 0
-            // ) {
-            //     shopify.toast.show(`Offer ${index + 1}: At least one product is required for Buy X configuration.`, {
-            //         isError: true,
-            //     });
-            //     return;
-            // }
-            if (
-                offer.rewardType === "gift" &&
-                offer.productPickType === "collections" &&
-                offer.buyCollectionPicker.length === 0
-            ) {
-                shopify.toast.show(
-                    `Offer ${index + 1}: At least one collection is required for Buy X configuration.`,
-                    { isError: true }
-                );
-                return;
+            if (offer.rewardType === "gift") {
+                if (offer.rewardMode === "fixed" && offer.rewardProducts.length === 0) {
+                    shopify.toast.show(`Offer ${index + 1}: At least one reward product is required for Fixed Deal.`, { isError: true });
+                    return;
+                }
+                if (offer.rewardMode === "flame" && offer.rewardProducts.length === 0 && offer.rewardCollection.length === 0) {
+                    shopify.toast.show(`Offer ${index + 1}: At least one reward product or collection is required for Flame Match.`, { isError: true });
+                    return;
+                }
+                if (offer.productPickType === "collections" && offer.buyCollectionPicker.length === 0) {
+                    shopify.toast.show(`Offer ${index + 1}: At least one collection is required for Buy X configuration.`, { isError: true });
+                    return;
+                }
             }
         }
 
-        if (
-            selectedTriggerType === "products" &&
-            upsellselectedItems.length === 0 &&
-            !upsell_allproduct
-        ) {
-            shopify.toast.show("At least one product is required when selecting specific products.", {
-                isError: true,
-            });
+        // Validate triggers
+        if (selectedTriggerType === "products" && upsellselectedItems.length === 0 && !upsell_allproduct) {
+            shopify.toast.show("At least one product is required when selecting specific products.", { isError: true });
             return;
         }
         if (selectedTriggerType === "collections" && selectedCollections.length === 0) {
-            shopify.toast.show("At least one collection is required when selecting specific collections.", {
-                isError: true,
-            });
+            shopify.toast.show("At least one collection is required when selecting specific collections.", { isError: true });
             return;
         }
         if (!placement || placement.length === 0) {
-            shopify.toast.show(
-                "At least one placement is required when selecting placement.",
-                { isError: true }
-            );
+            shopify.toast.show("At least one placement is required when selecting placement.", { isError: true });
             return;
         }
-        console.log(placement, "THis placement")
 
-        //        setMainBtnLoading(true);
+        console.log("Placement:", placement);
 
+        // Prepare form data
         const formData = new FormData();
         formData.append("campaignName", campaignNames);
         formData.append("selectedCampaignType", "add_to_unlock");
@@ -884,20 +845,24 @@ export default function AddToUnlock() {
             formData.append("upsell_allproducts", "true");
         }
 
+        // Append offers (including gift items)
         formData.append("offers", JSON.stringify(offers));
+
         formData.append("showConfetti", showConfetti ? "on" : "off");
         formData.append("showLockedGoals", showLockedGoals ? "on" : "off");
         formData.append("showBadgeIcons", showBadgeIcons ? "on" : "off");
-        
         formData.append("progressBarStyle", JSON.stringify(progressBarStyle));
         formData.append("placement", JSON.stringify(placement));
 
+        // Submit form
         fetcher.submit(formData, {
             method: "POST",
             encType: "multipart/form-data",
         });
-        setMainBtnLoading(false)
+
+        setMainBtnLoading(false);
     };
+
 
     const preview_products = [
         {
@@ -1873,18 +1838,31 @@ ${showBadges
                 <div class="gift-section-title">🎁 Gift Items</div>
                 <div class="gift-items-container">
                     <!-- Gift Item 1 -->
-                    <div class="gift-item">
-                        <div class="gift-item-image">
-                            <img src="data:image/jpeg;base64,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" alt="Gift Product" />
+${offers.length > 0
+                                        ? offers.map(offer =>
+                                            offer.rewardProducts && offer.rewardProducts.length > 0
+                                                ? offer.rewardProducts.map(item => `
+                <div class="gift-item">
+                    <div class="gift-item-image">
+                        <img src="${item.media || 'https://via.placeholder.com/100'}" alt="${item.title}" />
+                    </div>
+                    <div class="gift-item-details">
+                        <div class="gift-item-title">
+                            ${item.title} <span class="gift-badge">FREE</span>
                         </div>
-                        <div class="gift-item-details">
-                            <div class="gift-item-title">Premium Socks <span class="gift-badge">FREE</span></div>
-                            <div class="gift-item-actions">
-                                <button class="add-to-cart-btn" data-product="premium-socks">Add to Cart</button>
-                            </div>
+                        <div class="gift-item-actions">
+                            <button class="add-to-cart-btn" data-product="${item.id}">Add to Cart</button>
                         </div>
                     </div>
-                                        <div class="cart-footer">
+                </div>
+            `).join("")
+                                                : ""
+                                        ).join("")
+                                        : ""
+}
+
+
+                                      <div class="cart-footer">
                                             <div class="cart-subtotal">
                                                 <span>Subtotal</span>
                                                 <span>$29.99</span>

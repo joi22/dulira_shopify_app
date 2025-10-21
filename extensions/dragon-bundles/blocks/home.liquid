@@ -1,8 +1,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://shipping-fighter-assign-money.trycloudflare.com';
+  const domain = 'https://pounds-kansas-cloth-shades.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
+  let titleOffer = "Bundle Deals"
   async function add_to_unlock() {
     try {
       const response = await fetch(apiUrl, { method: "GET" });
@@ -43,79 +44,91 @@ document.addEventListener('DOMContentLoaded', async function () {
       const num_offers = Array.isArray(campaign.offers) ? campaign.offers.length : 0;
 
       if (campaign.type === "add_to_unlock" && Array.isArray(campaign.triggerProducts)) {
-        campaign.triggerProducts.slice(0, 2).forEach((pro, index) => {
-          const title = pro.productTitle || '';
-          // media may be an array or string
-          const media = (Array.isArray(pro.media) && pro.media[0]?.src) ? pro.media[0].src : (pro.media || '');
-          const price = parseFloat(pro.price) || 0;
+        // Create one big card containing two small product cards
+        const products = campaign.triggerProducts.slice(0, 2);
+        
+        let offersHtml = "";
+        if (Array.isArray(campaign.offers)) {
+          campaign.offers.forEach((offer) => {
+            const max_goal =
+              offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
 
-          // Compute best price among all discount offers (lowest final price)
-          let bestPrice = price;
-          let bestOfferLabel = ''; // e.g. "20% OFF" or "Save PKR 200"
-      
-          let offersHtml = "";
-          if (Array.isArray(campaign.offers)) {
-            campaign.offers.forEach((offer) => {
-              const max_goal =
-                offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
+            // Create readable reward text
+            let rewardText = "";
+            if (offer.rewardType === "discount") {
+              rewardText =
+                offer.discountType === "percentage"
+                  ? `${offer.discountCode}% Off`
+                  : `${offer.discountCode} Off`;
+            } else if (offer.rewardType === "gift") {
+              rewardText = "Free Product";
+            } else if (offer.rewardType === "shipping") {
+              rewardText = "Free Shipping";
+            }
 
-              // Create readable reward text
-              let rewardText = "";
-              if (offer.rewardType === "discount") {
-                rewardText =
-                  offer.discountType === "percentage"
-                    ? `${offer.discountCode}% Off`
-                    : `${offer.discountCode} Off`;
-              } else if (offer.rewardType === "gift") {
-                rewardText = "Free Product";
-              } else if (offer.rewardType === "shipping") {
-                rewardText = "Free Shipping";
-              }
+            // Normalize template text
+            let goalText = (offer.goalTextBefore || "").trim();
 
-              // Normalize template text
-              let goalText = (offer.goalTextBefore || "").trim();
+            // Replace placeholders, ignoring spaces inside {{ }}
+            goalText = goalText
+              .replace(/\{\{\s*amount_left\s*\}\}/gi, max_goal || "")
+              .replace(/\{\{\s*reward\s*\}\}/gi, rewardText || "");
 
-              // Replace placeholders, ignoring spaces inside {{ }}
-              goalText = goalText
-                .replace(/\{\{\s*amount_left\s*\}\}/gi, max_goal || "")
-                .replace(/\{\{\s*reward\s*\}\}/gi, rewardText || "");
-
-              // Add HTML
-              offersHtml += `
-                <div class="offer-line">
-                  <small>${goalText}</small>
-                </div>
-              `;
-            });
-          }
-
-          // Action (first product → product page, others → add to cart)
-          const productAction = index === 0
-            ? `<a href="/products/${pro.handle}" class="btn-link">View Product</a>`
-            : `<button onclick="addToCart('${pro.variantId || pro.productId}')">Add to Cart</button>`;
-
-          // Price HTML: show discounted price only if bestPrice < price
-          const priceHtml = bestPrice < price
-            ? `<p><span class="old-price">PKR ${price.toFixed(2)}</span>
-                 <strong class="discounted">PKR ${bestPrice.toFixed(2)}</strong>
-                 <div class="best-offer-label">${bestOfferLabel}</div>
-               </p>`
-            : `<p><strong>PKR ${price.toFixed(2)}</strong></p>`;
-
-          // Build product card
-          const offerCard = `
-            <div class="offer-card">
-              <img src="${media}" alt="${escapeHtml(title)}">
-              <div class="offer-info">
-                <h4>${escapeHtml(title)}</h4>
-                ${priceHtml}
-                ${offersHtml}
-
+            // Add HTML
+            offersHtml += `
+              <div class="offer-line">
+                <small>${goalText}</small>
               </div>
+            `;
+          });
+        }
+
+        // Build the big card containing two small product cards
+        const bigOfferCard = `
+          <div class="big-offer-card">
+          
+          <h1>${titleOffer}</h1>
+          <div id="offers_di"></div>
+            <div class="products-container">
+              ${products.map((pro, index) => {
+                const title = pro.productTitle || '';
+                const media = (Array.isArray(pro.media) && pro.media[0]?.src) ? pro.media[0].src : (pro.media || '');
+                const price = parseFloat(pro.price) || 0;
+                const bestPrice = price;
+                
+                // Price HTML
+                const priceHtml = bestPrice < price
+                  ? `<div class="price-section">
+                       <span class="old-price">PKR ${price.toFixed(2)}</span>
+                       <strong class="discounted">PKR ${bestPrice.toFixed(2)}</strong>
+                     </div>`
+                  : `<div class="price-section">
+                       <strong class="current-price">PKR ${price.toFixed(2)}</strong>
+                     </div>`;
+
+                // Action (first product → product page, others → add to cart)
+                const productAction = index === 0
+                  ? `<a href="/products/${pro.handle}" class="btn-link view-product">View Product</a>`
+                  : `<button class="btn-link add-to-cart" onclick="addToCart('${pro.variantId || pro.productId}')">Add to Cart</button>`;
+
+                return `
+                  <div class="small-product-card">
+                    <div class="product-image">
+                      <img src="${media}" alt="${escapeHtml(title)}">
+                    </div>
+                    <div class="product-info">
+                      <h4 class="product-title">${escapeHtml(title)}</h4>
+                      ${priceHtml}
+                      ${productAction}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
-          `;
-          model_render.insertAdjacentHTML("beforeend", offerCard);
-        });
+
+        `;
+        
+        model_render.insertAdjacentHTML("beforeend", bigOfferCard);
 
         // top badge showing number of offers
         const offre_show = `
@@ -128,8 +141,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         // Show modal
         document.getElementById("offers-modal").style.display = "flex";
-
-
       }
 
     } catch (err) {
@@ -174,140 +185,246 @@ document.addEventListener('DOMContentLoaded', async function () {
 <style>
   #offers-list {
     display: flex;
+    justify-content: center;
+    align-items: center;
     background: {{ block.settings.mode_back | default: '#fff' }};
-    gap: 20px;
-    overflow-x: auto;
-    padding: 15px;
-    margin: 5px;
+    padding: 20px;
   }
-  .offer-card {
-    border: 1px solid #eee;
-    background: #eee;
-    border-radius: 8px;
-    padding: 10px;
-    flex: 0 0 auto;
+  
+  /* Big card containing two small product cards */
+  .big-offer-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    padding: 25px;
     max-width: 300px;
+    width: 50%;
+    border: 1px solid #e0e0e0;
   }
-  .offer-card img {
-    width: 100%;
+  
+  .products-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+  
+  .small-product-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid #e9ecef;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .small-product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .product-image img {
+    width: 100px;
+    height: 100px;
     border-radius: 8px;
+    object-fit: cover;
+    margin-bottom: 12px;
   }
-  .offer-info {
-    margin-top: 10px;
-  }
-  .offer-line {
-    margin-top: 8px;
-    font-size: 13px;
-    background: #f1f8ff;
-    border-radius: 6px;
-    padding: 6px 8px;
-    color: #0058a3;
-    font-weight: 500;
-  }
-  .offer-line small {
+  
+  .product-title {
+    font-size: 14px;
+    line-height: 1.3;
     color: #333;
-    font-weight: 500;
+    margin-bottom: 10px;
+    height: 36px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
-  .highlight {
-    color: #e60023;
+  
+  .price-section {
+    margin-bottom: 12px;
+  }
+  
+  .current-price {
+    font-size: 16px;
     font-weight: bold;
+    color: #e91e63;
   }
-  .btn-link,
-  .offer-card button {
-    margin-top: 8px;
-    padding: 6px 12px;
-    background: #0070f3;
-    color: #fff;
+  
+  .old-price {
+    text-decoration: line-through;
+    color: #888;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+  
+  .discounted {
+    color: #e91e63;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  .btn-link {
+    display: block;
+    padding: 8px 16px;
     border-radius: 6px;
     text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+  
+  .view-product {
+    background: #0070f3;
+    color: #fff;
+    border: none;
+  }
+  
+  .add-to-cart {
+    background: #28a745;
+    color: #fff;
     border: none;
     cursor: pointer;
+    width: 100%;
+  }
+  
+  .view-product:hover {
+    background: #0056b3;
+  }
+  
+  .add-to-cart:hover {
+    background: #218838;
+  }
+  
+  .offers-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .offers-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  
+  .offer-line {
+    background: #e3f2fd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-left: 4px solid #2196f3;
+  }
+  
+  .offer-line small {
+    color: #1565c0;
+    font-weight: 500;
+    font-size: 13px;
   }
 </style>
 
 <div id="offers-modal" style="display:none;">
   <div class="offers-modal-content">
-    <button id="close-offers" style="float:right;">✖</button>
-    <h2>{{ block.settings.title_bundel | default: 'Bundle Deals' }}</h2>
-    <div id="offers_di"></div>
-    <div id="offers-list"></div>
+    <button id="close-offers" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; z-index: 10001;">✖</button>
+    <h2 style="text-align: center; margin-bottom: 20px;">{{ block.settings.title_bundel | default: 'Bundle Deals' }}</h2>
+    <div class="wrapper">
+      <div id="offers_di"></div>
+      <div id="offers-list">
+        <h1>Hello</h1>
+      </div>
+    </div>
   </div>
 </div>
 
 <style>
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
   #offers_di {
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-bottom: 20px;
   }
+  
   .gif {
     width: 25px;
     margin: 0px 5px;
   }
+  
   .offer-deatils {
     display: flex;
     justify-content: center;
     background-color: #fff6dd;
     align-items: center;
-    width: 40%;
+    width: auto;
     border-radius: 20px;
+    padding: 10px 20px;
+    border: 1px solid #ffd54f;
   }
-  #offers-list {
-    display: flex;
-    background: {{ block.settings.mode_back | default: '#fff' }};
-    gap: 20px;
-    overflow-x: auto;
-    padding: 10px 0;
-    justify-content: center;
-  }
+  
   #offers-modal {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 9999;
   }
+  
   .offers-modal-content {
     background: {{ block.settings.mode_back | default: '#fff' }};
-    padding: 20px;
-    border-radius: 12px;
-    max-width: 700px;
+    padding: 30px;
+    border-radius: 16px;
     width: 90%;
+    max-width: 700px;
+    position: relative;
+    overflow-y: auto;
+    max-height: 90vh;
   }
-  .offer-card {
-    border: 1px solid #eee;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    flex: 0 0 auto;
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .offers-modal-content {
+      padding: 20px 15px;
+      width: 95%;
+    }
+    
+    .products-container {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .big-offer-card {
+      padding: 20px;
+    }
+    
+    .product-image img {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .offer-deatils {
+      width: 90%;
+    }
   }
-  .offer-card img {
-    width: 250px;
-    height: auto;
-    border-radius: 8px;
-  }
-  .old-price {
-    text-decoration: line-through;
-    color: #888;
-    margin-right: 8px;
-  }
-  .discounted {
-    color: #e60023;
-    font-weight: bold;
-  }
-  .btn-link {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 6px 12px;
-    background: #0070f3;
-    color: #fff;
-    border-radius: 6px;
-    text-decoration: none;
+  
+  @media (min-width: 769px) {
+    .big-offer-card {
+      min-width: 500px;
+    }
   }
 </style>
 

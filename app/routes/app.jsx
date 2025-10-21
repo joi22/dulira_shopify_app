@@ -25,6 +25,7 @@ export default function App() {
         {/* <Link to="/app/upsell">Upsell Engine</Link> */}
         <Link to="/app/upsell_engine">Upsell Engine</Link>
         <Link to="/app/create_ui">working</Link>
+        <Link to="/app/home_card">Cards</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
