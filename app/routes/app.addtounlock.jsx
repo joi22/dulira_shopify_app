@@ -334,10 +334,10 @@ export const action = async ({ request }) => {
                 goalTextAfter: offer.goalTextAfter,
 
                 // 👇 Ye line add karo
-                badgeImageUrl: offer.badgeImageUrl || null,
+                badgeImageUrl: offer.badgeImage || offer.image || null,
             },
         });
-
+ 
         // --- Reward Products
         if (offer.rewardProducts?.length > 0) {
             await prisma.upsellRewardProduct.createMany({
@@ -437,7 +437,7 @@ export default function AddToUnlock() {
     // 'dealType' parameter ki value
     const dealType = urlParams.get('dealType');
 
-    console.log(dealType);
+    console.log(dealType, "==== .... >> deal type ");
     const rewardModeOptions = [
         dealType !== "flame" && { label: "Fixed Deal", value: "fixed" },
         dealType !== "fixed" && { label: "Flame Match (Customer picks)", value: "flame" },

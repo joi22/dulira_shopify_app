@@ -10,6 +10,7 @@ import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
+
 const CATEGORIES = [
     { type: "upsell", title: "Upsell", description: "Encourage customers to upgrade or add higher-value products.", icon: GiftCardIcon },
     { type: "cross_sell", title: "Cross-sell", description: "Suggest complementary products to increase order value.", icon: OrderRepeatIcon },
@@ -21,18 +22,28 @@ const CATEGORIES = [
 const CAMPAIGN_CARDS = [
     {
         id: 1, title: "Fixed bundle", type: "buy_one_get_one", url: "addtounlock",
-        images: [
-            "https://cdn-icons-png.flaticon.com/512/4804/4804045.png",
-            "https://cdn-icons-png.flaticon.com/512/750/750453.png",
-            "https://cdn-icons-png.flaticon.com/512/2161/2161173.png",
-            "https://www.freeiconspng.com/uploads/shoe-icon-14.png"
-        ]
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
     },
-    { id: 2, title: "Volume discounts", type: "buy_more_save_more", url: "addtounlock" },
-    { id: 3, title: "Buy X Get Y", type: "bogo", url: "addtounlock" },
-    { id: 4, title: "Fixed bundle", type: "add_to_unlock", url: "addtounlock" },
-    { id: 5, title: "Product add-ons", type: "order_bump", url: "addtounlock" },
-    { id: 6, title: "Frequently bought together", type: "checkout_upsell", url: "addtounlock" }
+    {
+        id: 2, title: "Volume discounts", type: "buy_more_save_more", url: "addtounlock",
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
+    },
+    {
+        id: 3, title: "Buy X Get Y", type: "bogo", url: "addtounlock",
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
+    },
+    {
+        id: 4, title: "Fixed bundle", type: "add_to_unlock", url: "addtounlock",
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
+    },
+    {
+        id: 5, title: "Product add-ons", type: "order_bump", url: "addtounlock",
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
+    },
+    {
+        id: 6, title: "Frequently bought together", type: "checkout_upsell", url: "addtounlock",
+        images: ["https://media.istockphoto.com/id/1471990929/vector/special-offer-banner-mega-sale-off-store-poster-sticker-vector.jpg?s=612x612&w=0&k=20&c=OH8s5-naQZqffl7t11snXxUBVNcSqMFjkr-b8oICsBI="]
+    }
 ];
 
 export const loader = async ({ request }) => {
@@ -80,49 +91,109 @@ const CampaignCard = ({ card, index, campaignName, onSelect }) => {
 
     return (
         <div style={{
-            background: "#fff", border: "1px solid #e4e4e4", borderRadius: "14px", padding: "18px 16px 14px",
-            display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "210px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.04)", alignItems: "center",
+            background: "#fff",
+            border: "1px solid #e4e4e4",
+            borderRadius: "14px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            minHeight: "210px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            alignItems: "center",
+            padding: "16px",
         }}>
-            {index === 0 && (
+            {/* Image display section - same for all cards */}
+            <div style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "120px",
+                width: "100%",
+                border: "1px solid #e1e1e1",
+                borderRadius: "12px",
+                background: "#f8f8f8",
+                marginBottom: "12px",
+                overflow: "hidden"
+            }}>
                 <div style={{
-                    position: "relative", marginTop: "40px", display: "flex", justifyContent: "center", alignItems: "center",
-                    padding: "8px", height: "60px", width: "60%", border: "1px solid #ccc", borderRadius: "12px", background: "rgba(0,0,0,0.05)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    height: "100%"
                 }}>
-                    <span style={{ position: "absolute", top: "-10px", background: "#fff", padding: "0 8px", left: "10%", fontSize: "12px", color: "#333", fontWeight: "500" }}>Buy all</span>
-                    <span style={{ position: "absolute", top: "-10px", background: "#fff", padding: "0 10px", right: "10%", fontSize: "12px", color: "#333", fontWeight: "500" }}>Save <span style={{ color: "#FF0000" }}>20%</span></span>
-                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", width: "100%", marginTop: "8px" }}>
-                        {card.images.map((img, imgIndex) => (
-                            <div key={imgIndex} style={{ width: "40px", height: "40px", borderRadius: "8px", background: "transparent", border: "1px dashed #ccc", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {index === 1 && (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", marginTop: "40px" }}>
-                    {[20, 10].map((discount, discountIndex) => (
-                        <div key={discountIndex} style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", padding: "8px", height: "60px", width: "30%", border: "1px solid #ccc", borderRadius: "12px", background: "rgba(0,0,0,0.05)" }}>
-                            <span style={{ position: "absolute", top: "-10px", background: "#fff", padding: "0 8px", left: "10%", fontSize: "12px", color: "#333", fontWeight: "500" }}>Save <span style={{ color: "#FF0000" }}>{discount}%</span></span>
-                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", width: "100%", marginTop: "8px" }}>
-                                <div style={{ width: discountIndex === 0 ? "60px" : "40px", height: "40px", fontWeight: "800", display: "flex", justifyContent: "center", alignItems: "center" }}>{discountIndex === 0 ? "3 x" : "4 x"}</div>
-                                <div style={{ width: discountIndex === 0 ? "90px" : "60px", height: "40px", borderRadius: "8px", background: "transparent", border: "1px dashed #ccc", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                                    <img src="https://cdn-icons-png.flaticon.com/512/4804/4804045.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                </div>
+                    {card.images.map((img, imgIndex) => (
+                        <div key={imgIndex} style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: "8px",
+                            background: "transparent",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            position: "relative",
+                            overflow: "hidden"
+                        }}>
+                            {/* Use actual image instead of gradient background */}
+                            <img
+                                src={img}
+                                alt={card.title}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    borderRadius: "8px"
+                                }}
+                                onError={(e) => {
+                                    // Fallback if image fails to load
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                }}
+                            />
+                            {/* Fallback gradient background */}
+                            <div style={{
+                                width: "100%",
+                                height: "100%",
+                                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                borderRadius: "8px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                color: "white",
+                                fontSize: "14px",
+                                fontWeight: "600",
+                                display: "none" // Hidden by default, shown only if image fails
+                            }}>
+                                {card.title}
                             </div>
                         </div>
                     ))}
                 </div>
-            )}
+            </div>
 
-            <div style={{ textAlign: "left", marginBottom: "12px", width: "100%", marginTop: "auto", display: "flex" }}>
-                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#333", margin: 0, paddingLeft: "8px", marginRight: "auto" }}>{card.title}</h3>
+            <div style={{
+                textAlign: "left",
+                marginBottom: "12px",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+            }}>
+                <h3 style={{
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: "#333",
+                    marginRight: "120px"
+                }}>
+                    {card.title}
+                </h3>
                 <Icon source={AlertCircleIcon} tone="base" />
             </div>
 
-            <Button fullWidth tone="success" variant="secondary" onClick={handleSelect}>Select</Button>
+            <Button fullWidth tone="success" variant="secondary" onClick={handleSelect}>
+                Select
+            </Button>
         </div>
     );
 };
@@ -234,7 +305,6 @@ const DealTypeModal = ({ open, onClose, onSelect, campaignName, selectedCard }) 
         </Modal>
     );
 };
-
 
 export default function UpsellEngine() {
     const navigate = useNavigate();

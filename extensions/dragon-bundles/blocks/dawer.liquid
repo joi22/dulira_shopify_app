@@ -1,11 +1,11 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://vendor-sustainability-loan-goat.trycloudflare.com';
+    const App_Domain = 'https://lawsuit-distance-excuse-cheap.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
 
-    let currentCampaignData = null; // Cache campaign data to avoid re-fetching on every update
+    let currentCampaignData = null;
     let currentCustomization = null;
 
     async function fetchCartData() {
@@ -24,7 +24,6 @@
 
     function getOfferIcon(offer) {
       const icon = offer.badgeImageUrl;
-      console.log(offer, 'this Progress bar == >><<');
       // Check if icon is a URL (image)
       if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
         return `<img src="${icon}" alt="Offer Icon" style="width: 25px; position: relative; top: 5px;">`;
@@ -51,7 +50,6 @@
     }
 
     function renderRewardProducts(container, Gifts, cartData) {
-      console.log(Gifts, '======== +>>> Gifts MAin ', cartData);
       if (!Gifts || !Gifts.length) return;
 
       // 🔎 Check if any gift product is already in cart
@@ -81,35 +79,33 @@
       // ✅ Otherwise show available gifts
       gift_price.style.display = 'block';
 
-    let gridHtml = `
-     <div class="gift-section">
-  <div class="gift-section-title">🎁 Gift Items</div>
-  <div class="gift-items-container">
-`;
+      let gridHtml = `
+        <div class="gift-section">
+          <div class="gift-section-title">🎁 Gift Items</div>
+          <div class="gift-items-container">
+      `;
 
-Gifts.forEach((prod) => {
-  gridHtml += `
-    <div class="gift-item">
-      <div class="gift-item-image">
-        <img src="${prod.media}" alt="${prod.title}">
-      </div>
-      <div class="gift-item-details">
-        <div class="gift-item-title">
-          ${prod.title} <span class="gift-badge">FREE</span>
-        </div>
-        <div class="gift-item-actions">
-          <button class="add-to-cart-btn" data-variant="${prod.variantId}">
-            Select
-          </button>
-        </div>
-      </div>
-      </div>
-    </div>
-  `;
-});
+      Gifts.forEach((prod) => {
+        gridHtml += `
+          <div class="gift-item">
+            <div class="gift-item-image">
+              <img src="${prod.media}" alt="${prod.title}">
+            </div>
+            <div class="gift-item-details">
+              <div class="gift-item-title">
+                ${prod.title} <span class="gift-badge">FREE</span>
+              </div>
+              <div class="gift-item-actions">
+                <button class="add-to-cart-btn" data-variant="${prod.variantId}">
+                  Select
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
 
-gridHtml += `</div>`; // closes gift-items-container
-
+      gridHtml += `</div></div>`;
 
       gift_price.innerHTML = gridHtml;
 
@@ -171,35 +167,17 @@ gridHtml += `</div>`; // closes gift-items-container
           activeOffer = offer; // Last completed offer
         }
         if (activeOffer) {
-          console.log(activeOffer.goalTextAfter, '===== >>>> ');
           const isGoalReached =
             activeOffer.goalType === 'quantity'
               ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
               : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
-          const rewardDescription =
-            activeOffer.rewardType === 'discount'
-              ? `${activeOffer.discountCode}${activeOffer.discountType === 'percentage' ? '%' : '$'} Discount`
-              : activeOffer.rewardType === 'shipping'
-              ? 'Free Shipping'
-              : 'Free Gift';
-          const amountLeft =
-            activeOffer.goalType === 'quantity'
-              ? `${parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0)} items`
-              : `$${Math.max(
-                  parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0),
-                  0
-                ).toFixed(2)}`;
-          const goal =
-            activeOffer.goalType === 'quantity'
-              ? `${activeOffer.goalQuantity || 0} items`
-              : `$${activeOffer.goalAmount || 0}`;
           goalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
         }
       }
 
       // Clear previous content to avoid duplicates
       container.innerHTML = '';
-      console.log(goalText, 'main +++ ==== <<< ');
+      
       // Create or update the goal text element
       const goalTextElement = document.createElement('div');
       goalTextElement.className = 'goal-text';
@@ -216,7 +194,6 @@ gridHtml += `</div>`; // closes gift-items-container
       const goals = sortedOffers.map((o) =>
         o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
       );
-      const minGoal = Math.min(...goals);
       const maxGoal = Math.max(...goals);
 
       sortedOffers.forEach((offer, index) => {
@@ -228,10 +205,6 @@ gridHtml += `</div>`; // closes gift-items-container
         const circleStyle = `
             background:${unlocked ? goalCompleteColor : '#ddd'}; 
             color:${unlocked ? '#fff' : '#000'};`;
-
-        let leftPercent = ((goal - minGoal) / (maxGoal - minGoal)) * 100;
-        if (index === 0) leftPercent = 8;
-        if (index === sortedOffers.length - 1) leftPercent = 100;
 
         html += `
             <div class="progress_step" data-goal="${goal}" style="left: ${(goal / maxGoal) * 100}%;">
@@ -248,8 +221,6 @@ gridHtml += `</div>`; // closes gift-items-container
 
       html += `</div>`; // Close progress bar
       container.innerHTML += html;
-      // const announcement_bar = document.getElementById("announcement-bars");
-      // announcement_bar.innerHTML =html;
     }
 
     async function updateProgressBar() {
@@ -289,8 +260,6 @@ gridHtml += `</div>`; // closes gift-items-container
           drawer.insertBefore(header, drawer.firstChild);
         }
 
-        // const existingUpsell = header.querySelector('.upsell-container');
-        // if (existingUpsell) existingUpsell.remove();
         let upsellContainer = header.querySelector('.upsell-container');
         if (!upsellContainer) {
           upsellContainer = document.createElement('div');
@@ -299,10 +268,8 @@ gridHtml += `</div>`; // closes gift-items-container
         }
 
         if (currentCampaignData.type === 'add_to_unlock') {
-          setTimeout(() => {
-            upsellContainer.scrollIntoView({ behavior: 'smooth' });
-            renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
-          }, 3000);
+          // FIX: Remove the auto-scroll that was causing issues
+          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
         }
       } catch (err) {
         console.error('Error updating progress bar:', err);
@@ -324,8 +291,7 @@ gridHtml += `</div>`; // closes gift-items-container
       observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Setup quantity change listener for real-time updates (increase/decrease)
-    // Listen to Shopify cart updates + quantity changes
+    // Setup quantity change listener for real-time updates
     function setupQuantityListener() {
       const debouncedUpdate = debounce(updateProgressBar, 300);
 
@@ -340,7 +306,7 @@ gridHtml += `</div>`; // closes gift-items-container
         true
       );
 
-      // Listen to plus/minus button clicks (they dispatch "change" on input after AJAX)
+      // Listen to plus/minus button clicks
       document.addEventListener(
         'change',
         function (event) {
@@ -351,7 +317,7 @@ gridHtml += `</div>`; // closes gift-items-container
         true
       );
 
-      // Listen to Shopify drawer/cart events (when AJAX updates the whole drawer)
+      // Listen to Shopify drawer/cart events
       document.addEventListener('cart:updated', updateProgressBar);
       document.addEventListener('cart-drawer:updated', updateProgressBar);
     }
@@ -374,285 +340,24 @@ gridHtml += `</div>`; // closes gift-items-container
       document.addEventListener('cart-drawer:open', updateProgressBar);
       setupQuantityListener(); // Initialize the listener once drawer is ready
 
-      setInterval(updateProgressBar, 1000);
+      // FIX: Reduced interval to prevent excessive DOM manipulation
+      setInterval(updateProgressBar, 5000);
     });
   });
 </script>
 
 <style>
-                              }
-                              .gift-section {
-            margin-top: 20px;
-            padding: 16px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
-     .gift-section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        
-        .gift-items-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .gift-item {
-            display: flex;
-            padding: 10px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border: 1px solid #eee;
-        }
-        
-        .gift-item-image {
-            width: 60px;
-            height: 60px;
-            margin-right: 10px;
-        }
-        
-        .gift-item-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .gift-item-details {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .gift-item-title {
-            font-weight: 500;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        
-        .gift-item-variant {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 4px;
-        }
-        
-        .gift-item-price {
-            font-weight: 600;
-            color: #5c6ac4;
-            font-size: 14px;
-        }
-           .gift-badge {
-            background-color: #5c6ac4;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 8px;
-        }
-        
-        /* Gift Item Button Styles */
-        .gift-item-actions {
-            display: flex;
-            align-items: center;
-            margin-top: 8px;
-        }
-        
-        .add-to-cart-btn {
-            background-color: #5c6ac4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-  .goal-text {
-    text-align: center;
-  }
-  .gift_price {
-  }
-  .drawer__header {
-    position: relative;
-    z-index: 5;
-    flex-direction: column;
-  }
-
-  .drawer__header.upsell-header {
-    padding-bottom: 0;
-  }
-
-  /* Ensure cart drawer content doesn't overlap */
+  /* FIX: Improved scroll management */
   cart-drawer .drawer__inner,
   .cart-drawer .drawer__inner {
     overflow-y: auto;
     position: relative;
     z-index: 1;
-  }
-
-  /* Styles for free products and upsell cards */
-  .free_products {
+    height: 100%;
     display: flex;
-    justify-content: start;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-  }
-
-  .product_card_dwer {
-    border: 1px solid #e0e0e0;
-    padding: 10px;
-    font-size: 13px;
-    margin: 5px;
-    border-radius: 7px;
-    flex: 1;
-    min-width: 150px;
-    box-sizing: border-box;
-  }
-
-  {% comment %} .product_card_dwer .add-to-cart-btn {
-    background: #4caf50;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    width: 100%;
-    font-weight: bold;
-    margin-top: 8px;
-  }
-
-  .product_card_dwer .add-to-cart-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  } {% endcomment %}
-
-  .product_card_dwer .product_upsell {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
     flex-direction: column;
   }
 
-  .progress_card {
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-
-  .gift_campaign_container,
-  .discount_campaign_container {
-    margin-bottom: 20px;
-    padding: 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #f9f9f9;
-  }
-
-  .bmsm-card {
-    padding: 16px;
-    border-radius: 12px;
-    background-color: #eef0ff;
-    margin: 20px 0;
-    border: 2px solid #5f59f7;
-    font-family: Arial, sans-serif;
-    text-align: center;
-  }
-
-  .bmsm-card label {
-    font-size: 11px;
-    padding: 8px 12px;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    min-width: 120px;
-    text-align: center;
-    cursor: pointer;
-    display: inline-block;
-    margin: 5px;
-  }
-
-  .bmsm-card label input[type='radio'] {
-    margin-right: 5px;
-  }
-
-  .progress_bars {
-    display: flex;
-    gap: 10px;
-    margin: 10px 0;
-    flex-wrap: wrap;
-  }
-
-  .progress_single {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    min-width: 150px;
-  }
-
-  .progress_track {
-    background: #e0e0e0;
-    border-radius: 5px;
-    height: 10px;
-    width: 100%;
-    overflow: hidden;
-    flex: 1;
-  }
-
-  .progress_fill {
-    background: #4caf50;
-    height: 100%;
-    transition: width 0.3s ease;
-  }
-
-  .progress_icon {
-    margin-left: 6px;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .multi_step_progress {
-      height: 80px;
-    }
-
-    .progress_step {
-      width: 50px;
-    }
-
-    .progress_step .circle {
-      width: 35px;
-      height: 35px;
-      line-height: 35px;
-      font-size: 16px;
-    }
-
-    .progress_step .step_label {
-      font-size: 10px;
-      height: 20px;
-    }
-
-    .free_products {
-      flex-direction: column;
-    }
-
-    .product_card_dwer {
-      width: 100%;
-      margin: 5px 0;
-    }
-  }
-</style>
-
-<style>
   .upsell-container {
     width: 100%;
     max-width: 600px;
@@ -660,12 +365,17 @@ gridHtml += `</div>`; // closes gift-items-container
     background: white;
     padding: 20px;
     border-radius: 10px;
+    /* FIX: Ensure it doesn't interfere with scrolling */
+    position: relative;
+    z-index: 2;
   }
 
   .multi_step_progress {
     position: relative;
     width: 100%;
     height: 90px;
+    /* FIX: Prevent overflow issues */
+    overflow: visible;
   }
 
   .progress_line_bg {
@@ -712,6 +422,167 @@ gridHtml += `</div>`; // closes gift-items-container
     font-size: 12px;
     color: #666;
     margin-top: 4px;
+  }
+
+  .gift-section {
+    margin-top: 20px;
+    padding: 16px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    /* FIX: Ensure proper overflow handling */
+    overflow: hidden;
+  }
+
+  .gift-section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  
+  .gift-items-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    /* FIX: Prevent horizontal overflow */
+    max-width: 100%;
+  }
+  
+  .gift-item {
+    display: flex;
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+    /* FIX: Ensure items don't overflow */
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .gift-item-image {
+    width: 60px;
+    height: 60px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  
+  .gift-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  
+  .gift-item-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* FIX: Prevent text overflow */
+    min-width: 0;
+  }
+  
+  .gift-item-title {
+    font-weight: 500;
+    font-size: 14px;
+    margin-bottom: 4px;
+    /* FIX: Handle long text */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .gift-badge {
+    background-color: #5c6ac4;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+  }
+  
+  /* Gift Item Button Styles */
+  .gift-item-actions {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+  }
+  
+  .add-to-cart-btn {
+    background-color: #5c6ac4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .goal-text {
+    text-align: center;
+    /* FIX: Prevent text from causing layout shifts */
+    margin-bottom: 10px;
+  }
+
+  .drawer__header {
+    position: relative;
+    z-index: 5;
+    flex-direction: column;
+    /* FIX: Ensure proper stacking */
+    flex-shrink: 0;
+  }
+
+  .drawer__header.upsell-header {
+    padding-bottom: 0;
+  }
+
+  /* FIX: Ensure cart items section scrolls properly */
+  cart-drawer-items,
+  .cart-drawer-items {
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100% - 200px);
+  }
+
+  .gift_box {
+    /* FIX: Ensure gift section doesn't break layout */
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .multi_step_progress {
+      height: 80px;
+    }
+
+    .progress_step {
+      width: 50px;
+    }
+
+    .progress_step .circle {
+      width: 35px;
+      height: 35px;
+      line-height: 35px;
+      font-size: 16px;
+    }
+
+    .upsell-container {
+      padding: 15px;
+    }
+    
+    .gift-item {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .gift-item-image {
+      margin-right: 0;
+      margin-bottom: 10px;
+      align-self: center;
+    }
   }
 </style>
 
