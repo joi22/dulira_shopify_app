@@ -337,7 +337,7 @@ export const action = async ({ request }) => {
                 badgeImageUrl: offer.badgeImage || offer.image || null,
             },
         });
- 
+        
         // --- Reward Products
         if (offer.rewardProducts?.length > 0) {
             await prisma.upsellRewardProduct.createMany({
@@ -389,6 +389,8 @@ export const action = async ({ request }) => {
             });
         }
     }
+
+
     await add_to_unlock_(
         shop,
         accessToken,
@@ -1859,7 +1861,7 @@ ${offers.length > 0
                                                 : ""
                                         ).join("")
                                         : ""
-}
+                                    }
 
 
                                       <div class="cart-footer">
@@ -2453,12 +2455,12 @@ ${offers.length > 0
 
                                     <InlineStack gap="200">
                                         <h2
-                                        style={
-                                                { fontSize: "14px", color: "grey", fontWeight:"600",}
-                                        }
+                                            style={
+                                                { fontSize: "14px", color: "grey", fontWeight: "600", }
+                                            }
                                         >Progree Bar Colors</h2>
-                                        <div style={{ display: "flex",  width: "100%", marginBottom: "16px" }}>
-                                         
+                                        <div style={{ display: "flex", width: "100%", marginBottom: "16px" }}>
+
                                             {/* First color */}
                                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                                 <input
@@ -2498,7 +2500,7 @@ ${offers.length > 0
                                                         background: "transparent",
                                                         border: "none",
                                                         cursor: "pointer",
-                                                        marginLeft:"130px",
+                                                        marginLeft: "130px",
                                                     }}
                                                 />
                                                 <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize: "15px", }}>Secondary</span>
@@ -2548,7 +2550,7 @@ ${offers.length > 0
                                                         marginLeft: "82px",
                                                     }}
                                                 />
-                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize:"15px", }}>Background</span>
+                                                <span style={{ color: "#a0a0a0", fontWeight: 700, fontSize: "15px", }}>Background</span>
                                             </div>
                                         </div>
 

@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://leon-sampling-chairman-built.trycloudflare.com';
+  const domain = 'https://organisation-son-putting-productivity.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
   let titleOffer = "Bundle Deals"
@@ -118,17 +118,21 @@ document.addEventListener('DOMContentLoaded', async function () {
                        </div>`;
 
                   // Only show product info without actions
-                  return `
-                    <div class="small-product-card">
-                      <div class="product-image">
-                        <img src="${media}" alt="${escapeHtml(title)}">
-                      </div>
-                      <div class="product-info">
-                        <h4 class="product-title">${escapeHtml(title)}</h4>
-                        ${priceHtml}
-                      </div>
-                    </div>
-                  `;
+return `
+  <div class="small-product-card">
+    <div class="product-image">
+      <img src="${media}" alt="${escapeHtml(title)}">
+    </div>
+    <div class="product-info">
+      <h4 class="product-title">${escapeHtml(title)}</h4>
+      ${priceHtml}
+      <div class="goal-text">
+        ${offersHtml}
+      </div>
+    </div>
+  </div>
+`;
+
                 }).join('')}
               </div>
             </div>
@@ -171,6 +175,36 @@ document.addEventListener('DOMContentLoaded', async function () {
 
 <style>
   /* FLEX LAYOUT FOR CARDS */
+.goal-text {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* space between each offer line */
+}
+
+.goal-text .offer-line {
+  background: #fff6dd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #ffd54f;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(255, 213, 79, 0.2);
+  transition: background 0.2s ease;
+}
+
+.goal-text .offer-line:hover {
+  background: #ffefb0;
+}
+
+.goal-text .offer-line small {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  line-height: 1.4;
+  display: block;
+}
+
+
   .card-main {
     display: flex;
     flex-wrap: wrap;
@@ -312,83 +346,80 @@ document.addEventListener('DOMContentLoaded', async function () {
      border: 1px solid #ffd54f;
    }
 
-   #offers-modal {
-     position: relative;
-     top: 0;
-     left: 0;
-     width: 80vw;
-     height: 80vh;
+ /* Remove unwanted scrollbars */
+#offers-modal,
+.offers-modal-content,
+.wrapper,
+.card-main,
+.big-offer-card,
+.products-container {
+  overflow: hidden !important;
+}
+
+/* Ensure layout fits cleanly */
+#offers-modal {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 80vw;
+  height: auto; /* was fixed 80vh — changed to auto to prevent overflow */
+  max-height: 90vh;
   background: {{ block.settings.mode_back | default: '#fff' }};
-     display: flex;
-     z-index: 9999;
-     padding: 20px;
-     overflow-y: auto;
-   }
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 9999;
+  padding: 20px;
+  overflow-y: auto; /* only if modal content exceeds view */
+  scrollbar-width: none; /* hide Firefox scrollbar */
+}
 
-   .offers-modal-content {
-     width: 100%;
-     height: 100%;
-     display: flex;
-     flex-direction: column;
-     align-items: center;
-   }
+/* hide scrollbar for Chrome, Edge, Safari */
+#offers-modal::-webkit-scrollbar {
+  display: none;
+}
 
-   /* Responsive Design */
-   @media (max-width: 768px) {
-     .card-main {
-       flex-direction: column;
-       align-items: center;
-       gap: 15px;
-       padding: 10px;
-     }
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  overflow: visible !important; /* prevent nested scrolls */
+}
 
-     .big-offer-card {
-       width: 100%;
-       max-width: 280px;
-       height: auto;
-       min-height: 320px;
-     }
+.card-main {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  overflow: visible;
+}
 
-     .products-container {
-       grid-template-columns: 1fr;
-       gap: 10px;
-     }
+.products-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 0;
+  overflow: visible;
+}
 
-     .product-image img {
-       width: 60px;
-       height: 60px;
-     }
+.big-offer-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  width: 300px;
+  min-height: 350px;
+  border: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  overflow: visible; /* critical fix */
+}
 
-     .offer-deatils {
-       width: 90%;
-     }
-
-     .offers-modal-content {
-       padding: 15px 10px;
-     }
-   }
-
-   @media (min-width: 769px) and (max-width: 1024px) {
-     .card-main {
-       justify-content: space-around;
-       gap: 15px;
-     }
-
-     .big-offer-card {
-       width: 280px;
-     }
-   }
-
-   @media (min-width: 1025px) {
-     .card-main {
-       justify-content: center;
-       gap: 25px;
-     }
-
-     .big-offer-card {
-       width: 300px;
-     }
-   }
 </style>
 
 {% schema %}

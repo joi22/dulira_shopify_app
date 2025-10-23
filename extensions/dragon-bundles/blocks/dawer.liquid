@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://lawsuit-distance-excuse-cheap.trycloudflare.com';
+    const App_Domain = 'https://accessed-browser-warrior-measured.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -50,16 +50,21 @@
     }
 
     function renderRewardProducts(container, Gifts, cartData) {
+
+      console.log(Gifts,"new All giftes ")
       if (!Gifts || !Gifts.length) return;
 
       // 🔎 Check if any gift product is already in cart
+      
       const cartHasGift = cartData.items.some((item) =>
         Gifts.some((gift) => String(gift.variantId) === String(item.variant_id))
       );
-
+      console.log(cartHasGift,"==== >><<<< update x>>>>",cartData)
       // Target cart drawer
       const pro_gift = document.querySelector('cart-drawer-items');
+      console.log("the ==== >>> ")
       if (!pro_gift) return;
+      console.log("the ==== >>> 2 ")
 
       // ✅ Check if gift container already exists
       let gift_price = pro_gift.querySelector('.gift_box');
@@ -68,6 +73,7 @@
         gift_price.className = 'gift_box';
         pro_gift.appendChild(gift_price);
       }
+      console.log(gift_price,"===--- New Prices ")
 
       // ✅ If gift already in cart → hide immediately
       if (cartHasGift) {
@@ -84,7 +90,7 @@
           <div class="gift-section-title">🎁 Gift Items</div>
           <div class="gift-items-container">
       `;
-
+console.log(Gifts,"==== >>><<<<>>>>")
       Gifts.forEach((prod) => {
         gridHtml += `
           <div class="gift-item">
@@ -213,6 +219,7 @@
             </div>`;
 
         if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
+          console.log(Gifts,"this Leanth Producta")
           if (Gifts && Gifts.length) {
             renderRewardProducts(container, Gifts, cartData);
           }
@@ -224,6 +231,8 @@
     }
 
     async function updateProgressBar() {
+      console.log('Starting updateProgressBar...');
+    console.log('Api endpoint:', Api);
       try {
         const cartData = await fetchCartData();
         if (!cartData) return;
@@ -233,7 +242,6 @@
           const response = await fetch(Api);
           if (!response.ok) throw new Error('Failed to fetch upsell data');
           const data = await response.json();
-
           const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
           if (!upsellTriggers.length) return;
 
@@ -247,6 +255,7 @@
           currentCustomization = latestCampaign.customization || [];
         }
 
+        console.log(currentCampaignData ,"this Api For Dawer ++++ === <<><><>>")
         const Offers = currentCampaignData.offers || [];
         const customization = currentCustomization;
         const Gifts = currentCampaignData.rewardProducts || [];
