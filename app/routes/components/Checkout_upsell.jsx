@@ -19,10 +19,8 @@ const CheckoutUI = ({
   discountValue,
   setDiscountValue,
   selectedProducts,
-  setSelectedProducts
+  setSelectedProducts,
 }) => {
-
-
   const removeProduct = (id) => {
     setSelectedProducts((prev) => prev.filter((p) => p.id !== id));
   };
@@ -65,8 +63,8 @@ const CheckoutUI = ({
           onChange={() => setUpsellType("fixed")}
         />
         {upsellType === "fixed" && (
-          <Banner title="Select Upsell Product" status="info">
-            <Button onClick={pickFreeItems}>Select Product</Button>
+          <Banner title="Select Reward Product" status="info">
+            <Button onClick={pickFreeItems}>Select Reward Product</Button>
           </Banner>
         )}
 
@@ -79,37 +77,52 @@ const CheckoutUI = ({
           onChange={() => setUpsellType("flame")}
         />
         {upsellType === "flame" && (
-          <Banner title="Select Product Selection" status="info">
-            <Button onClick={pickFreeItems}>Select Multiple Products</Button>
+          <Banner title="Select Reward Product Collection" status="info">
+            <Button onClick={pickFreeItems}>
+              Select Multiple Reward Products
+            </Button>
           </Banner>
         )}
 
-        {/* Show selected products */}
+        {/* Show selected reward products */}
         {selectedProducts.length > 0 && (
-          <ResourceList
-            resourceName={{ singular: "product", plural: "products" }}
-            items={selectedProducts}
-            renderItem={(item) => {
-              const { id, title, media, price } = item;
-              return (
-                <ResourceList.Item
-                  id={id}
-                  media={<Thumbnail source={media} alt={title} />}
-                  accessibilityLabel={`View details for ${title}`}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <strong>{title}</strong>
-                      <div>${price}</div>
+          <div>
+            <Text variant="headingSm" fontWeight="semibold">
+              {upsellType === "fixed"
+                ? "Selected Reward Product:"
+                : "Selected Reward Products:"}
+            </Text>
+            <ResourceList
+              resourceName={{ singular: "product", plural: "products" }}
+              items={selectedProducts}
+              renderItem={(item) => {
+                const { id, title, media, price } = item;
+                return (
+                  <ResourceList.Item
+                    id={id}
+                    media={<Thumbnail source={media} alt={title} />}
+                    accessibilityLabel={`View details for ${title}`}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <strong>{title}</strong>
+                        <div>${price}</div>
+                      </div>
+                      <Button destructive onClick={() => removeProduct(id)}>
+                        Remove
+                      </Button>
                     </div>
-                    <Button destructive onClick={() => removeProduct(id)}>
-                      Remove
-                    </Button>
-                  </div>
-                </ResourceList.Item>
-              );
-            }}
-          />
+                  </ResourceList.Item>
+                );
+              }}
+            />
+          </div>
         )}
 
         {/* Discount Options */}

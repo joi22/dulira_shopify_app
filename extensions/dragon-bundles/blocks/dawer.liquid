@@ -1,119 +1,313 @@
 <script>
-document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://recommendations-rounds-twin-hall.trycloudflare.com';
-  const shop = Shopify.shop;
-  const productId = '{{ product.id }}';
-  const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
+  document.addEventListener('DOMContentLoaded', async function () {
+    const App_Domain = 'https://guidance-weights-projectors-travelling.trycloudflare.com';
+    const shop = Shopify.shop;
+    const productId = '{{ product.id }}';
+    const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
 
-  let currentCampaignData = null;
-  let currentCustomization = null;
-  let wasComplete = false;
+    let currentCampaignData = null;
+    let currentCustomization = null;
+    let wasComplete = false;
 
-  // ✅ Simple 1-Second Confetti Function
-  function showQuickConfetti() {
-    if (typeof confetti === 'undefined') return;
-    
-    // Simple confetti burst for 1 second
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      zIndex: 10000
-    });
-    
-    // Stop after 1 second
-    setTimeout(() => {
-      confetti.reset();
-    }, 1000);
-  }
+    // ✅ Simple 1-Second Confetti Function
+    function showQuickConfetti() {
+      if (typeof confetti === 'undefined') return;
 
-  async function fetchCartData() {
-    try {
-      const response = await fetch('/cart.js', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+      // Simple confetti burst for 1 second
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        zIndex: 10000,
       });
-      if (!response.ok) throw new Error('Failed to fetch cart data');
-      return await response.json();
-    } catch (err) {
-      console.error('Error fetching cart data:', err);
-      return null;
-    }
-  }
 
-  function getOfferIcon(offer) {
-    const icon = offer.badgeImageUrl;
-    if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
-      return `<img src="${icon}" alt="Offer Icon" style="width: 25px; position: relative; top: 5px;">`;
-    }
-    if (offer.rewardType === 'discount') return '💰';
-    if (offer.rewardType === 'shipping') return '🚚';
-    if (offer.rewardType === 'gift') return '🎁';
-    return '⭐';
-  }
-
-  function calculateProgress(offers, cartData) {
-    const isQuantity = offers[0]?.goalType === 'quantity';
-    const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-
-    const maxGoal = Math.max(
-      ...offers.map((o) =>
-        o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-      )
-    );
-
-    const progress = (current / maxGoal) * 100;
-    return Math.min(progress, 100);
-  }
-
-  // ✅ Check if cart requirement is complete
-  function isCartComplete(offers, cartData) {
-    if (!offers || !offers.length) return false;
-    
-    const maxGoal = Math.max(
-      ...offers.map((o) =>
-        o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-      )
-    );
-    
-    const isQuantity = offers[0]?.goalType === 'quantity';
-    const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-    
-    return current >= maxGoal;
-  }
-
-  function renderRewardProducts(container, Gifts, cartData) {
-    if (!Gifts || !Gifts.length) return;
-
-    const cartHasGift = cartData.items.some((item) =>
-      Gifts.some((gift) => String(gift.variantId) === String(item.variant_id))
-    );
-
-    const pro_gift = document.querySelector('cart-drawer-items');
-    if (!pro_gift) return;
-
-    let gift_price = pro_gift.querySelector('.gift_box');
-    if (!gift_price) {
-      gift_price = document.createElement('div');
-      gift_price.className = 'gift_box';
-      pro_gift.appendChild(gift_price);
+      // Stop after 1 second
+      setTimeout(() => {
+        confetti.reset();
+      }, 1000);
     }
 
-    if (cartHasGift) {
-      gift_price.style.display = 'none';
-      gift_price.innerHTML = '';
-      return;
+    async function fetchCartData() {
+      try {
+        const response = await fetch('/cart.js', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error('Failed to fetch cart data');
+        return await response.json();
+      } catch (err) {
+        console.error('Error fetching cart data:', err);
+        return null;
+      }
     }
 
-    gift_price.style.display = 'block';
+    // Enhanced cart refresh function
+    async function refreshCartDrawer() {
+      try {
+        const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+        if (!drawer) return;
 
-    let gridHtml = `
+        // Try multiple methods to refresh the cart drawer
+        if (drawer.refresh) {
+          drawer.refresh();
+        } else if (drawer.requestUpdate) {
+          drawer.requestUpdate();
+        } else if (drawer.updateCart) {
+          drawer.updateCart();
+        }
+
+        // Force re-render by triggering cart events
+        document.dispatchEvent(new CustomEvent('cart:refresh'));
+        document.dispatchEvent(new CustomEvent('cart-drawer:refresh'));
+
+        // Update cart count if element exists
+        const cartCount = document.querySelector('.cart-count-bubble');
+        if (cartCount) {
+          const cartData = await fetchCartData();
+          if (cartData) {
+            cartCount.textContent = cartData.item_count;
+          }
+        }
+
+        // Enhanced fallback: Force reload cart items if automatic refresh fails
+        setTimeout(async () => {
+          const cartItems = drawer.querySelector('cart-drawer-items') || drawer.querySelector('.cart-drawer-items');
+          if (cartItems) {
+            try {
+              const response = await fetch('/cart.js');
+              if (response.ok) {
+                const cartData = await response.json();
+
+                // Try multiple methods to update cart items
+                cartItems.dispatchEvent(
+                  new CustomEvent('cart:items-updated', {
+                    detail: { cartData },
+                  })
+                );
+
+                // Force cart drawer to re-render
+                if (drawer.requestUpdate) {
+                  drawer.requestUpdate();
+                }
+
+                // Trigger Shopify's native cart update
+                document.dispatchEvent(
+                  new CustomEvent('cart:updated', {
+                    detail: { cartData },
+                  })
+                );
+
+                // Force cart drawer refresh
+                if (drawer.refresh) {
+                  drawer.refresh();
+                }
+              }
+            } catch (err) {
+              console.error('Fallback cart refresh failed:', err);
+            }
+          }
+        }, 300);
+
+        // Additional fallback for stubborn themes
+        setTimeout(async () => {
+          try {
+            // Force cart drawer to close and reopen to refresh
+            const cartToggle =
+              document.querySelector('[data-cart-drawer-toggle]') ||
+              document.querySelector('.cart-drawer-toggle') ||
+              document.querySelector('[aria-controls="cart-drawer"]');
+
+            if (cartToggle) {
+              // Close drawer
+              cartToggle.click();
+
+              // Wait a bit then reopen
+              setTimeout(() => {
+                cartToggle.click();
+              }, 100);
+            }
+          } catch (err) {
+            console.error('Cart toggle fallback failed:', err);
+          }
+        }, 1000);
+      } catch (err) {
+        console.error('Error refreshing cart drawer:', err);
+      }
+    }
+
+    // Force cart drawer refresh by manipulating DOM
+    async function forceCartDrawerRefresh() {
+      try {
+        const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+        if (!drawer) return;
+
+        // Get current cart data
+        const cartData = await fetchCartData();
+        if (!cartData) return;
+
+        // Find cart items container
+        const cartItems =
+          drawer.querySelector('cart-drawer-items') ||
+          drawer.querySelector('.cart-drawer-items') ||
+          drawer.querySelector('.cart-items');
+
+        if (cartItems) {
+          // Create a temporary marker to preserve our upsell content
+          const upsellContainer = drawer.querySelector('.upsell-container');
+          const upsellHTML = upsellContainer ? upsellContainer.outerHTML : '';
+
+          // Force re-render by temporarily hiding and showing
+          cartItems.style.display = 'none';
+
+          setTimeout(() => {
+            cartItems.style.display = '';
+
+            // Restore upsell content if it was removed
+            if (upsellHTML && !drawer.querySelector('.upsell-container')) {
+              const header = drawer.querySelector('.drawer__header');
+              if (header) {
+                header.insertAdjacentHTML('beforeend', upsellHTML);
+              }
+            }
+
+            // Trigger update
+            updateProgressBar();
+          }, 100);
+        }
+      } catch (err) {
+        console.error('Error forcing cart drawer refresh:', err);
+      }
+    }
+
+    // Helper function to update cart count
+    async function updateCartCount() {
+      try {
+        const cartData = await fetchCartData();
+        if (!cartData) return;
+
+        // Update various cart count elements
+        const cartCountSelectors = [
+          '.cart-count-bubble',
+          '.cart-count',
+          '.cart-item-count',
+          '[data-cart-count]',
+          '.header__cart-count',
+        ];
+
+        cartCountSelectors.forEach((selector) => {
+          const element = document.querySelector(selector);
+          if (element) {
+            element.textContent = cartData.item_count;
+          }
+        });
+      } catch (err) {
+        console.error('Error updating cart count:', err);
+      }
+    }
+
+    // Helper function to trigger cart events
+    function triggerCartEvents() {
+      try {
+        // Dispatch multiple cart events
+        const events = [
+          'cart:updated',
+          'cart-drawer:updated',
+          'cart:refresh',
+          'cart-drawer:refresh',
+          'cart:items-updated',
+          'cart:change',
+        ];
+
+        events.forEach((eventName) => {
+          document.dispatchEvent(
+            new CustomEvent(eventName, {
+              detail: { source: 'gift-product-added' },
+            })
+          );
+        });
+
+        // Also try to trigger Shopify's native events
+        if (window.Shopify && window.Shopify.theme) {
+          document.dispatchEvent(new CustomEvent('shopify:cart:updated'));
+        }
+      } catch (err) {
+        console.error('Error triggering cart events:', err);
+      }
+    }
+
+    function getOfferIcon(offer) {
+      const icon = offer.badgeImageUrl;
+      if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
+        return `<img src="${icon}" alt="Offer Icon" style="width: 25px; position: relative; top: 5px;">`;
+      }
+      if (offer.rewardType === 'discount') return '💰';
+      if (offer.rewardType === 'shipping') return '🚚';
+      if (offer.rewardType === 'gift') return '🎁';
+      return '⭐';
+    }
+
+    function calculateProgress(offers, cartData) {
+      const isQuantity = offers[0]?.goalType === 'quantity';
+      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+
+      const maxGoal = Math.max(
+        ...offers.map((o) =>
+          o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
+        )
+      );
+
+      const progress = (current / maxGoal) * 100;
+      return Math.min(progress, 100);
+    }
+
+    // ✅ Check if cart requirement is complete
+    function isCartComplete(offers, cartData) {
+      if (!offers || !offers.length) return false;
+
+      const maxGoal = Math.max(
+        ...offers.map((o) =>
+          o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
+        )
+      );
+
+      const isQuantity = offers[0]?.goalType === 'quantity';
+      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+
+      return current >= maxGoal;
+    }
+
+    function renderRewardProducts(container, Gifts, cartData) {
+      if (!Gifts || !Gifts.length) return;
+
+      const cartHasGift = cartData.items.some((item) =>
+        Gifts.some((gift) => String(gift.variantId) === String(item.variant_id))
+      );
+
+      const pro_gift = document.querySelector('cart-drawer-items');
+      if (!pro_gift) return;
+
+      let gift_price = pro_gift.querySelector('.gift_box');
+      if (!gift_price) {
+        gift_price = document.createElement('div');
+        gift_price.className = 'gift_box';
+        pro_gift.appendChild(gift_price);
+      }
+
+      if (cartHasGift) {
+        gift_price.style.display = 'none';
+        gift_price.innerHTML = '';
+        return;
+      }
+
+      gift_price.style.display = 'block';
+
+      let gridHtml = `
       <div class="gift-section">
         <div class="gift-section-title">🎁 Gift Items</div>
         <div class="gift-items-container">
     `;
-    Gifts.forEach((prod) => {
-      gridHtml += `
+      Gifts.forEach((prod) => {
+        gridHtml += `
         <div class="gift-item">
           <div class="gift-item-image">
             <img src="${prod.media}" alt="${prod.title}">
@@ -130,237 +324,274 @@ document.addEventListener('DOMContentLoaded', async function () {
           </div>
         </div>
       `;
-    });
-
-    gridHtml += `</div></div>`;
-    gift_price.innerHTML = gridHtml;
-
-    gift_price.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
-      btn.addEventListener('click', async function () {
-        const variantId = this.getAttribute('data-variant');
-        this.disabled = true;
-        this.innerText = 'Adding...';
-        try {
-          await fetch('/cart/add.js', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: variantId, quantity: 1 }),
-          });
-          this.innerText = 'Added!';
-          document.dispatchEvent(new CustomEvent('cart:updated'));
-        } catch (err) {
-          console.error('Error adding reward product:', err);
-          this.disabled = false;
-          this.innerText = 'Select';
-        }
       });
-    });
-  }
 
-  function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
-    const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
-    const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+      gridHtml += `</div></div>`;
+      gift_price.innerHTML = gridHtml;
 
-    const borderRadius = barRadius === 'square' ? '0px' : '6px';
-    const barHeight = barStyle === 'thin' ? '7px' : '12px';
-    const topPosition = barStyle === 'thin' ? '42px' : '40px';
+      gift_price.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
+        btn.addEventListener('click', async function () {
+          const variantId = this.getAttribute('data-variant');
+          this.disabled = true;
+          this.innerText = 'Adding...';
+          try {
+            const response = await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: variantId, quantity: 1 }),
+            });
 
-    const progress = calculateProgress(offers, cartData);
-    const sortedOffers = offers.sort((a, b) =>
-      a.goalType === 'quantity'
-        ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
-        : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
-    );
+            if (!response.ok) {
+              throw new Error('Failed to add product to cart');
+            }
 
-    // ✅ Check if cart just became complete
-    const isComplete = isCartComplete(offers, cartData);
-    if (isComplete && !wasComplete) {
-      showQuickConfetti();
+            this.innerText = 'Added!';
+
+            // Multiple cart update strategies
+            await Promise.all([refreshCartDrawer(), updateCartCount(), triggerCartEvents()]);
+
+            // Force refresh as final fallback
+            setTimeout(() => {
+              forceCartDrawerRefresh();
+            }, 300);
+
+            // Update progress bar immediately
+            setTimeout(() => {
+              updateProgressBar();
+            }, 800);
+          } catch (err) {
+            console.error('Error adding reward product:', err);
+            this.disabled = false;
+            this.innerText = 'Select';
+          }
+        });
+      });
     }
-    wasComplete = isComplete;
 
-    let goalText = 'No offers available';
-    if (sortedOffers.length > 0) {
-      let activeOffer = null;
-      for (const offer of sortedOffers) {
-        const goalValue =
-          offer.goalType === 'quantity' ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
-        const currentValue =
-          offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-        if (currentValue < goalValue) {
+    function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
+      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+      const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
+
+      const borderRadius = barRadius === 'square' ? '0px' : '6px';
+      const barHeight = barStyle === 'thin' ? '7px' : '12px';
+      const topPosition = barStyle === 'thin' ? '42px' : '40px';
+
+      const progress = calculateProgress(offers, cartData);
+      const sortedOffers = offers.sort((a, b) =>
+        a.goalType === 'quantity'
+          ? parseFloat(a.goalQuantity || 0) - parseFloat(b.goalQuantity || 0)
+          : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
+      );
+
+      // ✅ Check if cart just became complete
+      const isComplete = isCartComplete(offers, cartData);
+      if (isComplete && !wasComplete) {
+        showQuickConfetti();
+      }
+      wasComplete = isComplete;
+
+      let goalText = 'No offers available';
+      if (sortedOffers.length > 0) {
+        let activeOffer = null;
+        for (const offer of sortedOffers) {
+          const goalValue =
+            offer.goalType === 'quantity' ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
+          const currentValue =
+            offer.goalType === 'quantity' ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+          if (currentValue < goalValue) {
+            activeOffer = offer;
+            break;
+          }
           activeOffer = offer;
-          break;
         }
-        activeOffer = offer;
+
+        if (activeOffer) {
+          const isGoalReached =
+            activeOffer.goalType === 'quantity'
+              ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
+              : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
+
+          const reward =
+            activeOffer.rewardValue ||
+            activeOffer.rewardText ||
+            activeOffer.discountValue ||
+            activeOffer.discountCode ||
+            '';
+
+          let rawGoalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
+
+          // ✅ Replace {{reward}} dynamically with reward value
+          goalText = rawGoalText.replace(/\{\{\s*reward\s*\}\}/g, reward);
+        }
       }
 
-      if (activeOffer) {
-        const isGoalReached =
-          activeOffer.goalType === 'quantity'
-            ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
-            : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
+      container.innerHTML = '';
 
-        const reward =
-          activeOffer.rewardValue ||
-          activeOffer.rewardText ||
-          activeOffer.discountValue ||
-          activeOffer.discountCode ||
-          '';
+      const goalTextElement = document.createElement('div');
+      goalTextElement.className = 'goal-text';
+      goalTextElement.innerText = goalText;
+      container.appendChild(goalTextElement);
 
-        let rawGoalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
+      let html = `<div class="multi_step_progress">`;
+      html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
+      html += `<div class="progress_line_fill" style="width:${progress}%; background:${
+        progress >= 100 ? goalCompleteColor : primaryColor
+      }; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
 
-        // ✅ Replace {{reward}} dynamically with reward value
-        goalText = rawGoalText.replace(/\{\{\s*reward\s*\}\}/g, reward);
-      }
-    }
+      const goals = sortedOffers.map((o) =>
+        o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
+      );
+      const maxGoal = Math.max(...goals);
 
-    container.innerHTML = '';
-
-    const goalTextElement = document.createElement('div');
-    goalTextElement.className = 'goal-text';
-    goalTextElement.innerText = goalText;
-    container.appendChild(goalTextElement);
-
-    let html = `<div class="multi_step_progress">`;
-    html += `<div class="progress_line_bg" style="background:${backgroundColor}; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
-    html += `<div class="progress_line_fill" style="width:${progress}%; background:${
-      progress >= 100 ? goalCompleteColor : primaryColor
-    }; border-radius:${borderRadius}; height:${barHeight}; top:${topPosition};"></div>`;
-
-    const goals = sortedOffers.map((o) =>
-      o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
-    );
-    const maxGoal = Math.max(...goals);
-
-    sortedOffers.forEach((offer) => {
-      const isQuantity = offer.goalType === 'quantity';
-      const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
-      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
-      const unlocked = current >= goal;
-      const circleStyle = `
+      sortedOffers.forEach((offer) => {
+        const isQuantity = offer.goalType === 'quantity';
+        const goal = isQuantity ? parseFloat(offer.goalQuantity || 0) : parseFloat(offer.goalAmount || 0);
+        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+        const unlocked = current >= goal;
+        const circleStyle = `
         background:${unlocked ? goalCompleteColor : '#ddd'}; 
         color:${unlocked ? '#fff' : '#000'};
       `;
 
-      html += `
+        html += `
         <div class="progress_step" data-goal="${goal}" style="left: ${(goal / maxGoal) * 100}%;">
           <div class="circle" style="${circleStyle}">${getOfferIcon(offer)}</div>
           <div class="step_goal">${goal}</div>
         </div>
       `;
 
-      if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
-        if (Gifts && Gifts.length) {
-          renderRewardProducts(container, Gifts, cartData);
+        if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
+          if (Gifts && Gifts.length) {
+            renderRewardProducts(container, Gifts, cartData);
+          }
         }
+      });
+
+      html += `</div>`;
+      container.innerHTML += html;
+    }
+
+    async function updateProgressBar() {
+      try {
+        const cartData = await fetchCartData();
+        if (!cartData) return;
+
+        if (!currentCampaignData) {
+          const response = await fetch(Api);
+          if (!response.ok) throw new Error('Failed to fetch upsell data');
+          const data = await response.json();
+          const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
+          if (!upsellTriggers.length) return;
+
+          const latestCampaign = upsellTriggers
+            .map((p) => p.campaign)
+            .filter(Boolean)
+            .pop();
+          if (!latestCampaign) return;
+
+          currentCampaignData = latestCampaign;
+          currentCustomization = latestCampaign.customization || [];
+        }
+
+        const Offers = currentCampaignData.offers || [];
+        const customization = currentCustomization;
+        const Gifts = currentCampaignData.rewardProducts || [];
+        const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+        if (!drawer) return;
+
+        let header = drawer.querySelector('.drawer__header');
+        if (!header) {
+          header = document.createElement('div');
+          header.className = 'drawer__header upsell-header';
+          drawer.insertBefore(header, drawer.firstChild);
+        }
+
+        let upsellContainer = header.querySelector('.upsell-container');
+        if (!upsellContainer) {
+          upsellContainer = document.createElement('div');
+          upsellContainer.className = 'upsell-container';
+          header.appendChild(upsellContainer);
+        }
+
+        if (currentCampaignData.type === 'add_to_unlock') {
+          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
+        }
+      } catch (err) {
+        console.error('Error updating progress bar:', err);
       }
-    });
+    }
 
-    html += `</div>`;
-    container.innerHTML += html;
-  }
-
-  async function updateProgressBar() {
-    try {
-      const cartData = await fetchCartData();
-      if (!cartData) return;
-
-      if (!currentCampaignData) {
-        const response = await fetch(Api);
-        if (!response.ok) throw new Error('Failed to fetch upsell data');
-        const data = await response.json();
-        const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
-        if (!upsellTriggers.length) return;
-
-        const latestCampaign = upsellTriggers.map((p) => p.campaign).filter(Boolean).pop();
-        if (!latestCampaign) return;
-
-        currentCampaignData = latestCampaign;
-        currentCustomization = latestCampaign.customization || [];
-      }
-
-      const Offers = currentCampaignData.offers || [];
-      const customization = currentCustomization;
-      const Gifts = currentCampaignData.rewardProducts || [];
+    function waitForDrawer(callback) {
       const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
-      if (!drawer) return;
-
-      let header = drawer.querySelector('.drawer__header');
-      if (!header) {
-        header = document.createElement('div');
-        header.className = 'drawer__header upsell-header';
-        drawer.insertBefore(header, drawer.firstChild);
-      }
-
-      let upsellContainer = header.querySelector('.upsell-container');
-      if (!upsellContainer) {
-        upsellContainer = document.createElement('div');
-        upsellContainer.className = 'upsell-container';
-        header.appendChild(upsellContainer);
-      }
-
-      if (currentCampaignData.type === 'add_to_unlock') {
-        renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
-      }
-    } catch (err) {
-      console.error('Error updating progress bar:', err);
-    }
-  }
-
-  function waitForDrawer(callback) {
-    const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
-    if (drawer) {
-      callback();
-      return;
-    }
-    const observer = new MutationObserver(() => {
-      if (document.querySelector('cart-drawer') || document.querySelector('.cart-drawer')) {
-        observer.disconnect();
+      if (drawer) {
         callback();
+        return;
       }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-
-  function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  }
-
-  function setupQuantityListener() {
-    const debouncedUpdate = debounce(updateProgressBar, 300);
-    document.addEventListener('input', (e) => {
-      if (e.target.classList.contains('quantity__input')) debouncedUpdate();
-    });
-    document.addEventListener('change', (e) => {
-      if (e.target.classList.contains('quantity__input')) debouncedUpdate();
-    });
-    document.addEventListener('cart:updated', updateProgressBar);
-    document.addEventListener('cart-drawer:updated', updateProgressBar);
-  }
-
-  // Load confetti library
-  function loadConfettiLibrary() {
-    if (typeof confetti === 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-      script.onload = () => console.log('Confetti library loaded');
-      document.head.appendChild(script);
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('cart-drawer') || document.querySelector('.cart-drawer')) {
+          observer.disconnect();
+          callback();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
     }
-  }
 
-  // Initialize
-  loadConfettiLibrary();
-  waitForDrawer(() => {
-    updateProgressBar();
-    document.addEventListener('cart-drawer:open', updateProgressBar);
-    setupQuantityListener();
-    setInterval(updateProgressBar, 5000);
+    function debounce(func, wait) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
+
+    function setupQuantityListener() {
+      const debouncedUpdate = debounce(updateProgressBar, 300);
+      document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('quantity__input')) debouncedUpdate();
+      });
+      document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('quantity__input')) debouncedUpdate();
+      });
+
+      // Enhanced cart event listeners
+      document.addEventListener('cart:updated', updateProgressBar);
+      document.addEventListener('cart-drawer:updated', updateProgressBar);
+      document.addEventListener('cart:refresh', updateProgressBar);
+      document.addEventListener('cart-drawer:refresh', updateProgressBar);
+
+      // Listen for Shopify's native cart events
+      document.addEventListener('cart:updated', refreshCartDrawer);
+      document.addEventListener('cart-drawer:updated', refreshCartDrawer);
+
+      // Additional event listeners for different themes
+      document.addEventListener('cart:items-updated', updateProgressBar);
+      document.addEventListener('cart:change', updateProgressBar);
+      document.addEventListener('shopify:cart:updated', updateProgressBar);
+
+      // Listen for cart drawer open/close events
+      document.addEventListener('cart-drawer:open', updateProgressBar);
+      document.addEventListener('cart-drawer:close', updateProgressBar);
+    }
+
+    // Load confetti library
+    function loadConfettiLibrary() {
+      if (typeof confetti === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+        script.onload = () => console.log('Confetti library loaded');
+        document.head.appendChild(script);
+      }
+    }
+
+    // Initialize
+    loadConfettiLibrary();
+    waitForDrawer(() => {
+      updateProgressBar();
+      document.addEventListener('cart-drawer:open', updateProgressBar);
+      setupQuantityListener();
+      setInterval(updateProgressBar, 5000);
+    });
   });
-});
 </script>
 
 <style>

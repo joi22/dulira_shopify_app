@@ -1,11 +1,34 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://recommendations-rounds-twin-hall.trycloudflare.com';
+  const App_Domain = 'https://historic-whale-exports-district.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
-  const varient = {{product.variants.first.id |  json}};
+  const variant = {{product.variants.first.id | json}};
   const cartdata = {{cart | json}};
+  
+  // Confetti function using canvas-confetti library
+  function createConfetti() {
+    const canvas = document.getElementById("confetti-canvas");
+    if (!canvas || typeof confetti === 'undefined') return;
+    
+    const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
+    
+    function randomInRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    
+    const end = Date.now() + 100;
+    (function frame() {
+      myConfetti({
+        angle: randomInRange(-100, -90),
+        spread: randomInRange(150, 150),
+        particleCount: randomInRange(10, 20),
+        origin: { y: 0.0 },
+      });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+  }
   
   
   // MAIN CONTAINER (only once)
@@ -15,9 +38,17 @@ document.addEventListener('DOMContentLoaded', async function () {
   // --- PROGRESS HANDLER ---
   async function progressBardynamic(campaign, offer) {
     const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
-    const cartResponse = await fetch(`/cart.js`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
-    const cart = await cartResponse.json();
-    const cartTotal = cart.total_price / 100;
+    let cartTotal = 0;
+    
+    try {
+      const cartResponse = await fetch(`/cart.js`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (!cartResponse.ok) throw new Error('Failed to fetch cart');
+      const cart = await cartResponse.json();
+      cartTotal = cart.total_price / 100;
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      return;
+    }
 
     let progressPercent = 10;
     let remaining = 1;
@@ -43,7 +74,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     const freeShippingBanner = document.querySelector(`#free-shipping-banner-${offer.id}`);
     const actionButton = document.querySelector(`#action-btn-${offer.id}`);
 
-    if (!progressBar) return;
+    if (!progressBar || !unlockText || !freeShippingBanner || !actionButton) {
+      console.warn('Required DOM elements not found for offer:', offer.id);
+      return;
+    }
 
     // ✅ Progress bar fill
     progressBar.style.width = `${progressPercent}%`;
@@ -68,26 +102,55 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // ✅ Goal Achieved
     if (progressPercent >= 100) {
-      unlockText.innerText = offer.goalTextAfter || '🎉 Goal achieved!';
+      // ✅ Fix smart variables replacement for achieved goal
+      const rewardDescription = offer.rewardType === 'discount' 
+        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '%' : '€'} Discount`
+        : offer.rewardType === 'shipping' 
+          ? 'Free Shipping'
+          : 'Free Gift';
+
+      const goal = offer.goalType === 'quantity' 
+        ? `${offer.goalquantity || 0} items`
+        : `€${offer.goalAmount || 0}`;
+
+      // Replace smart variables in goal achieved text
+      let goalAchievedText = offer.goalTextAfter || '🎉 You\'ve unlocked {{reward}}!';
+      goalAchievedText = goalAchievedText.replace('{{reward}}', rewardDescription);
+      goalAchievedText = goalAchievedText.replace('{{goal}}', goal);
+
+      unlockText.innerText = goalAchievedText;
       freeShippingBanner.style.display = 'block';
       actionButton.disabled = false;
+
+      // Trigger confetti animation
+      createConfetti();
 
       if (offer.rewardType === 'gift') {
         document.querySelectorAll(`.add-btn[data-offer-id="${offer.id}"]`).forEach(btn => btn.disabled = false);
       }
     } else {
-      const rewardLabel =
-        offer.rewardType === 'shipping'
-          ? 'free shipping'
-          : offer.rewardType === 'discount'
-          ? 'discount'
-          : 'gift';
+      // ✅ Fix smart variables replacement
+      const rewardDescription = offer.rewardType === 'discount' 
+        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '%' : '€'} Discount`
+        : offer.rewardType === 'shipping' 
+          ? 'Free Shipping'
+          : 'Free Gift';
 
-      const defaultGoalText = 'Add more to your cart to unlock a special offer!';
+      const amountLeft = offer.goalType === 'quantity' 
+        ? `${remaining} items`
+        : `€${remaining.toFixed(2)}`;
 
-      unlockText.innerText = `${offer.goalTextBefore || defaultGoalText} Add ${
-        offer.goalType === 'quantity' ? remaining + ' more items' : '€' + remaining.toFixed(2)
-      } to unlock ${rewardLabel}!`;
+      const goal = offer.goalType === 'quantity' 
+        ? `${offer.goalquantity || 0} items`
+        : `€${offer.goalAmount || 0}`;
+
+      // Replace smart variables in goal text
+      let goalText = offer.goalTextBefore || 'Add {{amount_left}} to unlock {{reward}}!';
+      goalText = goalText.replace('{{amount_left}}', amountLeft);
+      goalText = goalText.replace('{{reward}}', rewardDescription);
+      goalText = goalText.replace('{{goal}}', goal);
+
+      unlockText.innerText = goalText;
 
       freeShippingBanner.style.display = 'none';
       actionButton.disabled = true;
@@ -124,8 +187,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         <button class="add-btn" 
                 data-offer-id="${offer.id}" 
                 data-variant-id="${pro.variantId}" 
+                data-selected="false"
                 ${offer.rewardType === 'gift' ? 'disabled' : ''}>
-          ${offer.rewardType === 'gift' ? 'ADD FREE GIFT' : 'ADD'}
+          ${offer.rewardType === 'gift' ? 'SELECT FREE GIFT' : 'ADD'}
         </button>
       </div>`
       )
@@ -167,24 +231,49 @@ document.addEventListener('DOMContentLoaded', async function () {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
         const variantId = btn.dataset.variantId;
+        const isGift = offer.rewardType === 'gift';
 
-        btn.innerText = 'Adding...';
-        btn.disabled = true;
+        if (isGift) {
+          // ✅ Handle gift selection
+          const isSelected = btn.dataset.selected === 'true';
+          
+          if (isSelected) {
+            // Deselect gift
+            btn.dataset.selected = 'false';
+            btn.innerText = 'SELECT FREE GIFT';
+            btn.style.background = '#5c6ac4';
+          } else {
+            // Select gift (only one at a time)
+            card.querySelectorAll('.add-btn[data-offer-id="' + offer.id + '"]').forEach(otherBtn => {
+              otherBtn.dataset.selected = 'false';
+              otherBtn.innerText = 'SELECT FREE GIFT';
+              otherBtn.style.background = '#5c6ac4';
+            });
+            
+            btn.dataset.selected = 'true';
+            btn.innerText = 'SELECTED';
+            btn.style.background = '#28a745';
+          }
+        } else {
+          // ✅ Handle regular product addition
+          btn.innerText = 'Adding...';
+          btn.disabled = true;
 
-        try {
-          await fetch('/cart/add.js', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ id: variantId, quantity: 1 }),
-          });
+          try {
+            await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ id: variantId, quantity: 1 }),
+            });
 
-          btn.innerText = 'Added!';
-          document.dispatchEvent(new CustomEvent('cart:updated'));
-          await progressBardynamic(campaign, offer);
-        } catch (e) {
-          console.error('❌ Failed to add product:', e);
-          btn.innerText = 'ADD';
-          btn.disabled = false;
+            btn.innerText = 'Added!';
+            document.dispatchEvent(new CustomEvent('cart:updated'));
+            await progressBardynamic(campaign, offer);
+          } catch (e) {
+            console.error('❌ Failed to add product:', e);
+            btn.innerText = 'ADD';
+            btn.disabled = false;
+          }
         }
       });
     });
@@ -197,30 +286,54 @@ document.addEventListener('DOMContentLoaded', async function () {
       const currentOffer = campaign.offers.find(o => o.id == offer.id);
       if (!currentOffer) return;
 
-      if (currentOffer.rewardType === 'gift') {
-        // Add all free gifts automatically
-        const giftsToAdd = campaign.rewardProducts || [];
-        for (const gift of giftsToAdd) {
+      try {
+        actionButton.innerText = 'Processing...';
+        actionButton.disabled = true;
+
+        if (currentOffer.rewardType === 'gift') {
+          // ✅ Check if user has selected a gift product
+          const selectedGiftButton = card.querySelector('.add-btn[data-offer-id="' + offer.id + '"][data-selected="true"]');
+          
+          if (!selectedGiftButton) {
+            // ✅ Show message to select gift first
+            alert('Please select a free gift product first!');
+            actionButton.innerText = buttonLabel;
+            actionButton.disabled = false;
+            return;
+          }
+
+          // ✅ Add selected gift product to cart
+          const variantId = selectedGiftButton.dataset.variantId;
           await fetch('/cart/add.js', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ id: gift.variantId, quantity: gift.quantity || 1 }),
+            body: JSON.stringify({ id: variantId, quantity: 1 }),
           });
+
+        } else if (currentOffer.rewardType === 'discount') {
+          // ✅ Apply discount code (if available)
+          if (currentOffer.discountCode) {
+            // Redirect to checkout with discount applied
+            window.location.href = `/checkout?discount=${currentOffer.discountCode}`;
+            return;
+          }
+        } else if (currentOffer.rewardType === 'shipping') {
+          // ✅ Free shipping - just redirect to checkout
+          window.location.href = '/checkout';
+          return;
         }
-      } else {
-        // Example: add the current product variant
-        const qty = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
-        const data = { id: varient, quantity: qty };
 
-        await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(data),
-        });
+        // ✅ Redirect to checkout after processing
+        setTimeout(() => {
+          window.location.href = '/checkout';
+        }, 1000);
+
+      } catch (error) {
+        console.error('❌ Error processing offer:', error);
+        alert('Something went wrong. Please try again.');
+        actionButton.innerText = buttonLabel;
+        actionButton.disabled = false;
       }
-
-      // Redirect to checkout if needed
-      // window.location.href = '/checkout';
     });
 
   // ✅ Initial progress
@@ -260,7 +373,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
           if (latestCampaign.type === 'add_to_unlock' && placement.includes('Page')) {
             // Render only first offer (or loop if needed)
-            console.log(latestCampaign, Offers,"thsi To All Gat ")
+            console.log(latestCampaign, Offers, "This To All Get");
             for (const offer of Offers) {
               await renderOffer(latestCampaign, offer, gift_products, triggerProducts);
             }
@@ -555,6 +668,29 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 </style>
+
+<canvas
+  id="confetti-canvas"
+  style="
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    pointer-events:none;
+    z-index:2000;
+  "
+></canvas>
+
+<script>
+  (function () {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+    script.onload = () => {
+      // Confetti library is now loaded and available globally
+      console.log('Confetti library loaded successfully');
+    };
+    document.body.appendChild(script);
+  })();
+</script>
 
 <div class="main-dragon-container"></div>
 

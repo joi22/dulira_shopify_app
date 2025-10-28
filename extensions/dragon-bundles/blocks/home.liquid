@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://recommendations-rounds-twin-hall.trycloudflare.com';
+  const domain = 'https://historic-whale-exports-district.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
   let titleOffer = "Bundle Deals"
@@ -93,50 +93,71 @@ document.addEventListener('DOMContentLoaded', async function () {
           });
         }
 
-        // Build multiple cards, each containing 2 products
+        // Build modern product slider with dynamic API data
         const bigOfferCard = `
-        <div class="card-main">
-          ${cards.map((cardProducts, cardIndex) => `
-            <div class="big-offer-card">
-              <h1 >{{ block.settings.title_bundel | default: 'Bundle Deals' }}</h1>
-              <div class="products-container">
-                ${cardProducts.map((pro, productIndex) => {
-                  console.log("pooduct", pro)
-                  const title = pro.productTitle || '';
-                  const media = (Array.isArray(pro.media) && pro.media[0]?.src) ? pro.media[0].src : (pro.media || '');
-                  const price = parseFloat(pro.price) || 0;
-                  const bestPrice = price;
-                  
-                  // Price HTML
-                  const priceHtml = bestPrice < price
-                    ? `<div class="price-section">
-                         <span class="old-price">PKR ${price.toFixed(2)}</span>
-                         <strong class="discounted">PKR ${bestPrice.toFixed(2)}</strong>
-                       </div>`
-                    : `<div class="price-section">
-                         <strong class="current-price">PKR ${price.toFixed(2)}</strong>
-                       </div>`;
+        <div class="bundled-offers-container">
+          <h1 class="section-title">{{ block.settings.title_bundel | default: 'Bundle Deals' }}</h1>
+          
+          <div class="products-slider">
+            <div class="slider-container">
+              ${allProducts.map((pro, productIndex) => {
+                console.log("product", pro)
+                const title = pro.productTitle || '';
+                const media = (Array.isArray(pro.media) && pro.media[0]?.src) ? pro.media[0].src : (pro.media || '');
+                const price = parseFloat(pro.price) || 0;
+                
+                // Show discount details from API offers
+                let discountHtml = '';
+                if (Array.isArray(campaign.offers) && campaign.offers.length > 0) {
+                  campaign.offers.forEach((offer) => {
+                    const max_goal = offer.goalType === "quantity" ? offer.goalQuantity : offer.goalAmount;
+                    
+                    let rewardText = "";
+                    if (offer.rewardType === "discount") {
+                      rewardText = offer.discountType === "percentage"
+                        ? `${offer.discountCode}% Off`
+                        : `${offer.discountCode} Off`;
+                    } else if (offer.rewardType === "gift") {
+                      rewardText = "Free Product";
+                    } else if (offer.rewardType === "shipping") {
+                      rewardText = "Free Shipping";
+                    }
 
-                  // Only show product info without actions
-return `
-  <div class="small-product-card">
-    <div class="product-image">
-      <img src="${media}" alt="${escapeHtml(title)}">
-    </div>
-    <div class="product-info">
-      <h4 class="product-title">${escapeHtml(title)}</h4>
-      ${priceHtml}
-      <div class="goal-text">
-        ${offersHtml}
-      </div>
-    </div>
-  </div>
-`;
+                    let goalText = (offer.goalTextBefore || "").trim();
+                    goalText = goalText
+                      .replace(/\{\{\s*amount_left\s*\}\}/gi, max_goal || "")
+                      .replace(/\{\{\s*reward\s*\}\}/gi, rewardText || "");
 
-                }).join('')}
-              </div>
+                    discountHtml += `
+                      <div class="discount-offer">
+                        <small>${goalText}</small>
+                      </div>
+                    `;
+                  });
+                }
+
+                return `
+                  <div class="product-card" onclick="window.open('/products/${pro.handle || pro.id}', '_blank')" style="cursor: pointer;">
+                    <div class="product-image">
+                      <img src="${media}" alt="${escapeHtml(title)}">
+                    </div>
+                    <div class="product-info">
+                      <h4 class="product-title">${escapeHtml(title)}</h4>
+                      <div class="price-section">
+                        <strong class="current-price">€${price.toFixed(2)}</strong>
+                      </div>
+                      ${discountHtml}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
-          `).join('')}
+            
+            <div class="slider-controls">
+              <button class="slider-btn prev-btn" onclick="scrollSlider(-1)">‹</button>
+              <button class="slider-btn next-btn" onclick="scrollSlider(1)">›</button>
+            </div>
+          </div>
         </div>
         `;
         
@@ -162,6 +183,44 @@ return `
       .replace(/>/g, '&gt;');
   }
 
+  // Responsive slider functionality
+  let currentSlide = 0;
+  
+  // Get items per slide based on screen size
+  function getItemsPerSlide() {
+    if (window.innerWidth <= 480) return 1;
+    if (window.innerWidth <= 640) return 2;
+    if (window.innerWidth <= 1024) return 2;
+    return 3;
+  }
+  
+  // Make scrollSlider globally accessible
+  window.scrollSlider = function(direction) {
+    const slider = document.querySelector('.slider-container');
+    if (!slider) return;
+    
+    const totalProducts = document.querySelectorAll('.product-card').length;
+    const itemsPerSlide = getItemsPerSlide();
+    const maxSlides = Math.ceil(totalProducts / itemsPerSlide);
+    
+    currentSlide += direction;
+    
+    if (currentSlide < 0) currentSlide = maxSlides - 1;
+    if (currentSlide >= maxSlides) currentSlide = 0;
+    
+    const translateX = -currentSlide * (100 / itemsPerSlide);
+    slider.style.transform = `translateX(${translateX}%)`;
+  };
+  
+  // Reset slider on window resize
+  window.addEventListener('resize', function() {
+    currentSlide = 0;
+    const slider = document.querySelector('.slider-container');
+    if (slider) {
+      slider.style.transform = 'translateX(0%)';
+    }
+  });
+
   // close button
   const closeBtn = document.getElementById("close-offers");
   if (closeBtn) closeBtn.addEventListener("click", () => {
@@ -174,102 +233,70 @@ return `
 </script>
 
 <style>
-  /* FLEX LAYOUT FOR CARDS */
-.goal-text {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* space between each offer line */
-}
-
-.goal-text .offer-line {
-  background: #fff6dd;
-  border-radius: 8px;
-  padding: 8px 10px;
-  border: 1px solid #ffd54f;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(255, 213, 79, 0.2);
-  transition: background 0.2s ease;
-}
-
-.goal-text .offer-line:hover {
-  background: #ffefb0;
-}
-
-.goal-text .offer-line small {
-  font-size: 12px;
-  color: #333;
-  font-weight: 500;
-  line-height: 1.4;
-  display: block;
-}
-
-
-  .card-main {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    width: 100%;
+  /* Modern Bundled Offers UI */
+  .bundled-offers-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
+    background: #fff;
   }
 
-  .big-offer-card {
+  .section-title {
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .products-slider {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .slider-container {
+    display: flex;
+    transition: transform 0.3s ease;
+    gap: 20px;
+    padding: 10px;
+  }
+
+  .product-card {
+    flex: 0 0 calc(33.333% - 14px);
     background: #fff;
     border-radius: 12px;
+    padding: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    width: 300px;
-    min-height: 350px;
     border: 1px solid #e0e0e0;
-    flex-shrink: 0;
+    transition: all 0.2s ease;
+    cursor: pointer;
   }
 
-  .big-offer-card h1 {
-    font-size: 18px;
+  .product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-color: #e91e63;
+  }
+
+  .product-image {
     text-align: center;
     margin-bottom: 15px;
-    color: #333;
-    font-weight: 600;
-  }
-
-  .products-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 0;
-  }
-
-  .small-product-card {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    border: 1px solid #e9ecef;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .small-product-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .product-image img {
-    width: 70px;
-    height: 70px;
-    border-radius: 6px;
+    width: 100%;
+    border-radius: 8px;
     object-fit: cover;
-    margin-bottom: 8px;
   }
 
   .product-title {
-    font-size: 12px;
-    line-height: 1.3;
+    font-size: 14px;
+    font-weight: 600;
     color: #333;
-    margin-bottom: 8px;
-    height: 32px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    height: 40px;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -277,26 +304,277 @@ return `
   }
 
   .price-section {
-    margin-bottom: 0;
+    margin-bottom: 12px;
   }
 
   .current-price {
-    font-size: 13px;
-    font-weight: bold;
+    font-size: 16px;
+    font-weight: 700;
     color: #e91e63;
   }
 
   .old-price {
     text-decoration: line-through;
     color: #888;
-    font-size: 10px;
-    margin-right: 4px;
+    font-size: 14px;
+    margin-right: 8px;
   }
 
-  .discounted {
-    color: #e91e63;
-    font-weight: bold;
-    font-size: 13px;
+  .new-customer-tag {
+    background: #ff6b35;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .discount-offer {
+    background: #fff6dd;
+    border-radius: 8px;
+    padding: 8px 10px;
+    border: 1px solid #ffd54f;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(255, 213, 79, 0.2);
+    transition: background 0.2s ease;
+    margin-top: 8px;
+  }
+
+  .discount-offer:hover {
+    background: #ffefb0;
+  }
+
+  .discount-offer small {
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+    line-height: 1.4;
+    display: block;
+  }
+
+  .slider-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .slider-btn {
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slider-btn:hover {
+    background: #555;
+    transform: scale(1.1);
+  }
+
+  /* Responsive Design */
+
+  /* Large Tablets and Small Desktops */
+  @media (max-width: 1024px) {
+    .bundled-offers-container {
+      padding: 15px;
+    }
+
+    .product-card {
+      flex: 0 0 calc(33.333% - 10px);
+      padding: 15px;
+    }
+
+    .slider-container {
+      gap: 15px;
+    }
+
+    .product-image img {
+      height: 180px;
+    }
+
+    .section-title {
+      font-size: 22px;
+    }
+  }
+
+  /* Tablets */
+  @media (max-width: 768px) {
+    .bundled-offers-container {
+      padding: 12px;
+    }
+
+    .product-card {
+      flex: 0 0 calc(50% - 8px);
+      padding: 12px;
+    }
+
+    .slider-container {
+      gap: 12px;
+    }
+
+    .product-image img {
+      height: 160px;
+    }
+
+    .product-title {
+      font-size: 13px;
+      height: 36px;
+    }
+
+    .current-price {
+      font-size: 15px;
+    }
+
+    .discount-offer {
+      padding: 6px 8px;
+    }
+
+    .discount-offer small {
+      font-size: 11px;
+    }
+
+    .slider-btn {
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+  }
+
+  /* Mobile Landscape */
+  @media (max-width: 640px) {
+    .product-card {
+      flex: 0 0 calc(50% - 6px);
+      padding: 10px;
+    }
+
+    .slider-container {
+      gap: 10px;
+    }
+
+    .product-image img {
+      height: 140px;
+    }
+
+    .product-title {
+      font-size: 12px;
+      height: 32px;
+    }
+
+    .current-price {
+      font-size: 14px;
+    }
+
+    .slider-controls {
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .slider-btn {
+      width: 35px;
+      height: 35px;
+      font-size: 16px;
+    }
+  }
+
+  /* Mobile Portrait */
+  @media (max-width: 480px) {
+    .bundled-offers-container {
+      padding: 10px;
+    }
+
+    .product-card {
+      flex: 0 0 calc(100% - 4px);
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+
+    .slider-container {
+      gap: 8px;
+      flex-direction: column;
+    }
+
+    .product-image img {
+      height: 200px;
+    }
+
+    .product-title {
+      font-size: 14px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .current-price {
+      font-size: 16px;
+    }
+
+    .discount-offer {
+      padding: 8px 10px;
+      margin-top: 10px;
+    }
+
+    .discount-offer small {
+      font-size: 12px;
+    }
+
+    .slider-controls {
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .slider-btn {
+      width: 45px;
+      height: 45px;
+      font-size: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+  }
+
+  /* Very Small Mobile */
+  @media (max-width: 360px) {
+    .bundled-offers-container {
+      padding: 8px;
+    }
+
+    .product-card {
+      padding: 12px;
+    }
+
+    .product-image img {
+      height: 180px;
+    }
+
+    .product-title {
+      font-size: 13px;
+    }
+
+    .current-price {
+      font-size: 15px;
+    }
+
+    .section-title {
+      font-size: 16px;
+    }
   }
 </style>
 
@@ -312,119 +590,117 @@ return `
 </div>
 
 <style>
-   .wrapper {
-     display: flex;
-     flex-direction: column;
-     align-items: center;
-     justify-content: flex-start;
-     height: 100%;
-     width: 100%;
-     overflow-y: auto;
-   }
+     .wrapper {
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       justify-content: flex-start;
+       height: 100%;
+       width: 100%;
+       overflow-y: auto;
+     }
 
-   #offers_di {
-     display: flex;
-     justify-content: center;
-     align-items: center;
-     margin-bottom: 20px;
-     margin: 10px;
-   }
+     #offers_di {
+       display: flex;
+       justify-content: center;
+       align-items: center;
+       margin-bottom: 20px;
+       margin: 10px;
+     }
 
-   .gif {
-     width: 25px;
-     margin: 0px 5px;
-   }
+     .gif {
+       width: 25px;
+       margin: 0px 5px;
+     }
 
-   .offer-deatils {
-     display: flex;
-     justify-content: center;
-     background-color: #fff6dd;
-     align-items: center;
-     width: auto;
-     border-radius: 20px;
-     padding: 10px 20px;
-     border: 1px solid #ffd54f;
-   }
+     .offer-deatils {
+       display: flex;
+       justify-content: center;
+       background-color: #fff6dd;
+       align-items: center;
+       width: auto;
+       border-radius: 20px;
+       padding: 10px 20px;
+       border: 1px solid #ffd54f;
+     }
 
- /* Remove unwanted scrollbars */
-#offers-modal,
-.offers-modal-content,
-.wrapper,
-.card-main,
-.big-offer-card,
-.products-container {
-  overflow: hidden !important;
-}
+   /* Remove unwanted scrollbars */
+  #offers-modal,
+  .offers-modal-content,
+  .wrapper,
+  .card-main,
+  .big-offer-card,
+  .products-container {
+    overflow: hidden !important;
+  }
 
-/* Ensure layout fits cleanly */
-#offers-modal {
-  position: relative;
-  top: 0;
-  left: 0;
-  width: 80vw;
-  height: auto; /* was fixed 80vh — changed to auto to prevent overflow */
-  max-height: 90vh;
-  background: {{ block.settings.mode_back | default: '#fff' }};
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  z-index: 9999;
-  padding: 20px;
-  overflow-y: auto; /* only if modal content exceeds view */
-  scrollbar-width: none; /* hide Firefox scrollbar */
-}
+  /* Ensure layout fits cleanly */
+  #offers-modal {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 80vw;
+    height: auto; /* was fixed 80vh — changed to auto to prevent overflow */
+    background: {{ block.settings.mode_back | default: '#fff' }};
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    z-index: 9999;
+    padding: 20px;
+    overflow-y: auto; /* only if modal content exceeds view */
+    scrollbar-width: none; /* hide Firefox scrollbar */
+  }
 
-/* hide scrollbar for Chrome, Edge, Safari */
-#offers-modal::-webkit-scrollbar {
-  display: none;
-}
+  /* hide scrollbar for Chrome, Edge, Safari */
+  #offers-modal::-webkit-scrollbar {
+    display: none;
+  }
 
-.wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 1200px;
-  overflow: visible !important; /* prevent nested scrolls */
-}
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 1200px;
+    overflow: visible !important; /* prevent nested scrolls */
+  }
 
-.card-main {
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  overflow: visible;
-}
+  .card-main {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    overflow: visible;
+  }
 
-.products-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 0;
-  overflow: visible;
-}
+  .products-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 0;
+    overflow: visible;
+  }
 
-.big-offer-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 15px;
-  width: 300px;
-  min-height: 350px;
-  border: 1px solid #e0e0e0;
-  flex-shrink: 0;
-  overflow: visible; /* critical fix */
-}
-
+  .big-offer-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    width: 300px;
+    min-height: 350px;
+    border: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    overflow: visible; /* critical fix */
+  }
 </style>
 
 {% schema %}
 {
-  "name": "DragOn Bundles bar",
+  "name": "Homepage Bundles bar",
   "target": "section",
   "settings": [
     {
