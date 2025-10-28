@@ -17,17 +17,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-// function extractType(string: string) {
-//   let type;
-//   if (string.includes("jpg")) {
-//     type = "jpg";
-//   } else if (string.includes("jpeg")) {
-//     type = "jpeg";
-//   } else if (string.includes("png")) {
-//     type = "png";
-//   }
-//   return type;
-// }
+
 export const action = async ({ request }) => {
   const formData = await request.formData();
   const image = formData.get("image");
