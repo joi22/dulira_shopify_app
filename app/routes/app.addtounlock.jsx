@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import home_icon from "./_index/media/icon-home.png";
 import save from "./_index/media/save-1.jpg";
 import save2 from "./_index/media/save-2.png";
@@ -18,7 +18,6 @@ import {
   TextField,
   Divider,
   InlineStack,
-  RadioButton,
   Box,
   ResourceList,
   ResourceItem,
@@ -28,19 +27,10 @@ import {
   Text,
   Select,
   Banner,
-  Checkbox,
-  Icon,
   Modal,
-  Thumbnail,
+  RadioButton,
 } from "@shopify/polaris";
-import {
-  PlusIcon,
-  DeleteIcon,
-  ButtonIcon,
-  HomeIcon,
-  CartIcon,
-  ProductIcon,
-} from "@shopify/polaris-icons";
+import { PlusIcon, DeleteIcon } from "@shopify/polaris-icons";
 import { useFetcher, useLocation, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
@@ -294,17 +284,23 @@ export const action = async ({ request }) => {
       status: String(status?.active) || "false",
     },
   });
+
+  console.log("Created campaign:", {
+    id: upsellCampaign.id,
+    name: upsellCampaign.name,
+    type: upsellCampaign.type,
+  });
   const customiz = await prisma.customiz.create({
     data: {
       campaignId: upsellCampaign.id,
       barStyle: progressBarStyle.thickness || "thin",
       barRadius: progressBarStyle.cornerRadius || "square",
-      barColors: {
+      barColors: JSON.stringify({
         primaryColor: progressBarStyle.primaryColor || "#4CAF50",
         secondaryColor: progressBarStyle.secondaryColor || "#2196F3",
         goalCompleteColor: progressBarStyle.goalCompleteColor || "#FF9800",
         backgroundColor: progressBarStyle.backgroundColor || "#F5F5F5",
-      },
+      }),
     },
   });
 
@@ -357,8 +353,8 @@ export const action = async ({ request }) => {
         goalTextBefore: offer.goalTextBefore,
         goalTextAfter: offer.goalTextAfter,
 
-        // 👇 Ye line add karo
-        badgeImageUrl: offer.badgeImage || offer.image || null,
+        badgeImageUrl:
+          offer.badgeIconUrl || offer.badgeImage || offer.image || null,
       },
     });
 
@@ -467,7 +463,7 @@ export default function AddToUnlock() {
   const [upsellselectedItems, setUpsellselectedItems] = useState([]);
   const [selectedCollections, setSelectedCollections] = useState([]);
   const [collectionSearch, setCollectionSearch] = useState("");
-  const [placement, setPlacement] = useState([]);
+  const [placement, setPlacement] = useState("");
   const [formattedGoalText, setFormattedGoalText] = useState(
     "Spend $50 to unlock a free gift!",
   );
@@ -476,6 +472,11 @@ export default function AddToUnlock() {
   );
   const [showConfetti, setShowConfetti] = useState(false);
   const [showBadges, setShowBadges] = useState(true);
+
+  // Deal Type Modal States
+  const [showDealTypeModal, setShowDealTypeModal] = useState(true);
+  const [selectedDealType, setSelectedDealType] = useState(null);
+  const [showSubOptions, setShowSubOptions] = useState(false);
   const urlParams =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
@@ -483,8 +484,10 @@ export default function AddToUnlock() {
 
   // 'dealType' parameter ki value
   const dealType = urlParams.get("dealType");
+  const rewardTypeParam = urlParams.get("rewardType"); // Get reward type from URL
 
   console.log(dealType, "==== .... >> deal type ");
+  console.log(rewardTypeParam, "==== .... >> reward type ");
   const rewardModeOptions = [
     dealType !== "flame" && { label: "Fixed Deal", value: "fixed" },
     dealType !== "fixed" && {
@@ -508,9 +511,12 @@ export default function AddToUnlock() {
     backgroundColor: "#F5F5F5",
   });
   const [productSearch, setProductSearch] = useState("");
-  const [currentProgress, setCurrentProgress] = useState(1);
-  const [activePreview, setActivePreview] = useState("home"); // New state for tracking preview placement
-  const [isHomepageModalOpen, setIsHomepageModalOpen] = useState(false); // State for Homepage modal
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const [activePreview, setActivePreview] = useState("home");
+  const [completedGoals, setCompletedGoals] = useState([]);
+  const [shouldShowConfetti, setShouldShowConfetti] = useState(false);
+  const completedGoalsRef = useRef([]);
+  const confettiTriggeredRef = useRef([]);
 
   const filteredCollections = selectedCollections.filter(
     (c) =>
@@ -532,6 +538,65 @@ export default function AddToUnlock() {
   const removeCollection = (id) =>
     removeItem(id, setSelectedCollections, selectedCollections);
 
+  // Modal Handlers
+  const handleDealTypeSelect = (dealType) => {
+    if (dealType === "fixed") {
+      setSelectedDealType("fixed");
+      setShowSubOptions(true);
+    } else {
+      // Flame Match - directly apply
+      setShowDealTypeModal(false);
+      setSelectedDealType("flame");
+      // Update the first offer with flame match settings
+      setOffers([
+        {
+          id: Date.now() + Math.random(),
+          goalType: "quantity",
+          goalAmount: "50",
+          goalquantity: "1",
+          currency: "USD",
+          rewardMode: "flame",
+          rewardType: "gift",
+          discountCode: "10",
+          discountType: "percentage",
+          productPickType: "products",
+          buyProductPicker: [],
+          buyCollectionPicker: [],
+          rewardProducts: [],
+          rewardCollection: [],
+          goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
+          goalTextAfter: "🎉 You've unlocked {{reward}}!",
+        },
+      ]);
+    }
+  };
+
+  const handleRewardTypeSelect = (rewardType) => {
+    setShowDealTypeModal(false);
+    setShowSubOptions(false);
+    // Update the first offer with fixed deal and reward type
+    setOffers([
+      {
+        id: Date.now() + Math.random(),
+        goalType: "quantity",
+        goalAmount: "50",
+        goalquantity: "1",
+        currency: "USD",
+        rewardMode: "fixed",
+        rewardType: rewardType,
+        discountCode: "10",
+        discountType: "percentage",
+        productPickType: "products",
+        buyProductPicker: [],
+        buyCollectionPicker: [],
+        rewardProducts: [],
+        rewardCollection: [],
+        goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
+        goalTextAfter: "🎉 You've unlocked {{reward}}!",
+      },
+    ]);
+  };
+
   const [offers, setOffers] = useState([
     {
       id: Date.now() + Math.random(), // More unique ID
@@ -539,8 +604,8 @@ export default function AddToUnlock() {
       goalAmount: "50",
       goalquantity: "1",
       currency: "USD",
-      rewardMode: "fixed",
-      rewardType: "discount",
+      rewardMode: dealType || "fixed",
+      rewardType: rewardTypeParam || "discount", // Use rewardType from URL
       discountCode: "10",
       discountType: "percentage",
       productPickType: "products",
@@ -723,6 +788,120 @@ export default function AddToUnlock() {
     });
   }, [offers]);
 
+  // Detect goal completion and trigger confetti once per goal
+  // Confetti only shows when:
+  // 1. A NEW goal is completed (hasn't triggered confetti before)
+  // 2. The confetti switch is enabled
+  // 3. Progress actually changes (not just state changes)
+  useEffect(() => {
+    if (offers.length === 0) {
+      setShouldShowConfetti(false);
+      return;
+    }
+
+    const sortedOffers = [...offers].sort((a, b) =>
+      a.goalType === "quantity"
+        ? parseInt(a.goalquantity) - parseInt(b.goalquantity)
+        : parseFloat(a.goalAmount) - parseFloat(b.goalAmount),
+    );
+
+    let newCompletedGoals = [];
+
+    sortedOffers.forEach((offer) => {
+      const goalValue =
+        offer.goalType === "quantity"
+          ? parseInt(offer.goalquantity) || 0
+          : parseFloat(offer.goalAmount) || 0;
+      const isGoalReached = currentProgress >= goalValue;
+
+      if (isGoalReached) {
+        // Check if this goal was already completed using the ref
+        const wasAlreadyCompleted = completedGoalsRef.current.some(
+          (completed) => completed.id === offer.id,
+        );
+
+        if (wasAlreadyCompleted) {
+          // Goal was already completed, mark as still completed
+          const existing = completedGoalsRef.current.find(
+            (c) => c.id === offer.id,
+          );
+          newCompletedGoals.push(
+            existing || { id: offer.id, completedAt: Date.now() },
+          );
+        } else {
+          // New goal completed!
+          newCompletedGoals.push({ id: offer.id, completedAt: Date.now() });
+        }
+      }
+    });
+
+    // Check if there's a new goal completed
+    const hasNewGoalCompleted =
+      newCompletedGoals.length > completedGoalsRef.current.length;
+
+    // Find which goals are newly completed
+    let newlyCompletedGoalIds = [];
+    if (hasNewGoalCompleted) {
+      newlyCompletedGoalIds = newCompletedGoals
+        .filter(
+          (newGoal) =>
+            !completedGoalsRef.current.some(
+              (existing) => existing.id === newGoal.id,
+            ),
+        )
+        .map((goal) => goal.id);
+    }
+
+    // Update completed goals only if changed
+    const hasChanged =
+      newCompletedGoals.length !== completedGoalsRef.current.length ||
+      newCompletedGoals.some((newGoal, index) => {
+        const existing = completedGoalsRef.current[index];
+        return !existing || newGoal.id !== existing.id;
+      });
+
+    if (hasChanged) {
+      completedGoalsRef.current = newCompletedGoals;
+      setCompletedGoals(newCompletedGoals);
+    }
+
+    // Trigger confetti only if:
+    // 1. A new goal was completed AND
+    // 2. The confetti switch is enabled AND
+    // 3. We haven't already triggered confetti for this specific goal
+    const untriggeredGoals = newlyCompletedGoalIds.filter(
+      (id) => !confettiTriggeredRef.current.includes(id),
+    );
+
+    if (untriggeredGoals.length > 0 && status.showConfetti) {
+      console.log("🎉 New goal completed! Showing confetti");
+      console.log("Newly completed goal IDs:", untriggeredGoals);
+      console.log("Already triggered for:", confettiTriggeredRef.current);
+
+      // Mark these goals as having triggered confetti
+      confettiTriggeredRef.current = [
+        ...confettiTriggeredRef.current,
+        ...untriggeredGoals,
+      ];
+
+      setShouldShowConfetti(true);
+
+      // Reset confetti trigger after showing
+      const timer = setTimeout(() => {
+        setShouldShowConfetti(false);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentProgress, offers]);
+
+  // Clear confetti immediately when switch is turned off
+  useEffect(() => {
+    if (!status.showConfetti) {
+      setShouldShowConfetti(false);
+    }
+  }, [status.showConfetti]);
+
   const productpicker = async () => {
     try {
       if (typeof window === "undefined" || !window.shopify) {
@@ -870,13 +1049,74 @@ export default function AddToUnlock() {
     setStatus((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleBadgeIconChange = (offerId, event) => {
+  // Image upload function
+  const uploadImageToShopify = async (file) => {
+    try {
+      const formData = new FormData();
+      const fileName = `${Date.now()}-${file.name}`;
+
+      formData.append("image", file);
+      formData.append("fileName", fileName);
+      formData.append("originalSource", "");
+
+      console.log("Uploading image:", fileName);
+
+      const response = await fetch("/api/image-upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log("Upload response status:", response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Upload failed:", errorData);
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const data = await response.json();
+      console.log("Upload success, URL:", data.url);
+      return data.url; // Shopify-hosted URL
+    } catch (error) {
+      console.error("Image upload error:", error);
+      if (typeof shopify !== "undefined" && shopify.toast) {
+        shopify.toast.show("Failed to upload image. Please try again.", {
+          isError: true,
+        });
+      }
+      return null;
+    }
+  };
+
+  const handleBadgeIconChange = async (offerId, event) => {
     const file = event.target.files[0];
     if (file) {
       if (file.type.startsWith("image/")) {
-        updateOffer(offerId, "badgeIcon", file);
+        // Show loading indicator
+        if (typeof shopify !== "undefined" && shopify.toast) {
+          shopify.toast.show("Uploading image...", { isError: false });
+        }
+
+        // Upload to Shopify
+        const uploadedUrl = await uploadImageToShopify(file);
+
+        if (uploadedUrl) {
+          // Store the Shopify URL instead of the blob
+          updateOffer(offerId, "badgeIconUrl", uploadedUrl);
+          updateOffer(offerId, "badgeIconFile", null); // Clear the file blob
+          if (typeof shopify !== "undefined" && shopify.toast) {
+            shopify.toast.show("Image uploaded successfully!", {
+              isError: false,
+            });
+          }
+        } else {
+          // Fallback: store as blob if upload fails
+          updateOffer(offerId, "badgeIcon", file);
+        }
       } else {
-        shopify.toast.show("Please upload an image file.", { isError: true });
+        if (typeof shopify !== "undefined" && shopify.toast) {
+          shopify.toast.show("Please upload an image file.", { isError: true });
+        }
       }
     }
   };
@@ -918,6 +1158,30 @@ export default function AddToUnlock() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const campaignNames = searchParams.get("name") || "";
+  const campaignType = searchParams.get("type") || "";
+
+  // Log campaign data for debugging
+  useEffect(() => {
+    console.log("Campaign Data from URL:", {
+      campaignName: campaignNames,
+      campaignType: campaignType,
+      dealType: dealType,
+    });
+  }, [campaignNames, campaignType, dealType]);
+
+  // Set campaign name from URL params on mount
+  useEffect(() => {
+    if (campaignNames) {
+      setCampaignName(campaignNames);
+    }
+  }, [campaignNames]);
+
+  // Sync preview with placement selection
+  useEffect(() => {
+    if (placement) {
+      setActivePreview(placement);
+    }
+  }, [placement]);
 
   const handleSubmit = () => {
     console.log("Offers data:", offers);
@@ -1035,11 +1299,8 @@ export default function AddToUnlock() {
       );
       return;
     }
-    if (!placement || placement.length === 0) {
-      shopify.toast.show(
-        "At least one placement is required when selecting placement.",
-        { isError: true },
-      );
+    if (!placement) {
+      shopify.toast.show("Placement is required.", { isError: true });
       return;
     }
 
@@ -1070,7 +1331,7 @@ export default function AddToUnlock() {
     formData.append("showLockedGoals", showLockedGoals ? "on" : "off");
     formData.append("showBadgeIcons", showBadgeIcons ? "on" : "off");
     formData.append("progressBarStyle", JSON.stringify(progressBarStyle));
-    formData.append("placement", JSON.stringify(placement));
+    formData.append("placement", JSON.stringify([placement]));
 
     // Set loading state
     setMainBtnLoading(true);
@@ -1124,22 +1385,10 @@ export default function AddToUnlock() {
       sortedOffers.length > 0
         ? sortedOffers[sortedOffers.length - 1]
         : defaultGoal;
-    const progressPercentage =
-      maxGoal?.goalType === "quantity"
-        ? (currentProgress / (parseInt(maxGoal?.goalquantity) || 1)) * 100
-        : (currentProgress / (parseFloat(maxGoal?.goalAmount) || 1)) * 100;
 
-    // Function to get dynamic cart text based on current progress
-    const getDynamicCartText = () => {
-      if (sortedOffers.length === 0) {
-        // Show default text when no offers are configured
-        const isGoalReached = currentProgress >= 1;
-        return isGoalReached
-          ? "🎉 You've unlocked a reward!"
-          : `Add ${Math.max(1 - currentProgress, 0)} more item to unlock a reward!`;
-      }
-
-      let activeOffer = null;
+    // Find the active offer (next uncompleted goal)
+    let activeOffer = null;
+    if (sortedOffers.length > 0) {
       for (const offer of sortedOffers) {
         const goalValue =
           offer.goalType === "quantity"
@@ -1150,6 +1399,43 @@ export default function AddToUnlock() {
           break;
         }
         activeOffer = offer; // Keep track of the last completed offer
+      }
+    }
+
+    const progressPercentage = activeOffer
+      ? activeOffer.goalType === "quantity"
+        ? Math.min(
+            (currentProgress / (parseInt(activeOffer.goalquantity) || 1)) * 100,
+            100,
+          )
+        : Math.min(
+            (currentProgress / (parseFloat(activeOffer.goalAmount) || 1)) * 100,
+            100,
+          )
+      : currentProgress >= 100
+        ? 100
+        : (currentProgress / 1) * 100;
+
+    // Calculate progress percentage for each individual offer
+    const getOfferProgressPercentage = (offer) => {
+      const goalValue =
+        offer.goalType === "quantity"
+          ? parseInt(offer.goalquantity) || 1
+          : parseFloat(offer.goalAmount) || 1;
+      const percent = Math.min((currentProgress / goalValue) * 100, 100);
+      console.log(
+        `Offer ${offer.id}: currentProgress=${currentProgress}, goalValue=${goalValue}, percent=${percent}`,
+      );
+      return percent;
+    };
+
+    const getDynamicCartText = () => {
+      if (sortedOffers.length === 0) {
+        // Show default text when no offers are configured
+        const isGoalReached = currentProgress >= 1;
+        return isGoalReached
+          ? "🎉 You've unlocked a reward!"
+          : `Add ${Math.max(1 - currentProgress, 0)} more item to unlock a reward!`;
       }
 
       if (!activeOffer) return "No active offer";
@@ -1215,9 +1501,11 @@ export default function AddToUnlock() {
               ...offer,
               percentage: offerPercentage,
               isGoalReached,
-              icon: offer.badgeIcon
-                ? createObjectURL(offer.badgeIcon)
-                : icons[offer.rewardType] || "",
+              icon: offer.badgeIconUrl
+                ? offer.badgeIconUrl
+                : offer.badgeIcon
+                  ? createObjectURL(offer.badgeIcon)
+                  : icons[offer.rewardType] || "",
             };
           })
         : [
@@ -1259,22 +1547,8 @@ export default function AddToUnlock() {
             .replace("{{goal}}", goal);
     };
     let formattedPreGoalText = "No offers available";
-    if (sortedOffers.length > 0) {
-      let activeOffer = null;
-      for (const offer of sortedOffers) {
-        const goalValue =
-          offer.goalType === "quantity"
-            ? parseInt(offer.goalquantity) || 1
-            : parseFloat(offer.goalAmount) || 1;
-        if (currentProgress < goalValue) {
-          activeOffer = offer; // First uncompleted offer
-          break;
-        }
-        activeOffer = offer; // Keep track of the last completed offer
-      }
-      if (activeOffer) {
-        formattedPreGoalText = renderGoalText(activeOffer);
-      }
+    if (sortedOffers.length > 0 && activeOffer) {
+      formattedPreGoalText = renderGoalText(activeOffer);
     }
     const renderRewardContent = (offer) => {
       if (
@@ -1624,6 +1898,10 @@ export default function AddToUnlock() {
                         ? `APPLY DISCOUNT`
                         : "REDEEM FREE GIFT";
 
+                  // Calculate progress for this specific offer
+                  const offerProgressPercent =
+                    getOfferProgressPercentage(offer);
+
                   return (
                     <div key={offer.id} className="offer-card">
                       <div className="main-title">
@@ -1653,9 +1931,9 @@ export default function AddToUnlock() {
                           <div
                             className="progress"
                             style={{
-                              width: `${progressPercentage}%`,
+                              width: `${offerProgressPercent}%`,
                               background:
-                                progressPercentage >= 100
+                                offerProgressPercent >= 100
                                   ? progressBarStyle.goalCompleteColor
                                   : offer.percentage >= 40
                                     ? progressBarStyle.secondaryColor ||
@@ -2126,7 +2404,7 @@ ${
                 
 
                   <img 
-                    src="${offer.badgeIcon ? createObjectURL(offer.badgeIcon) : offer.icon}" 
+                    src="${offer.badgeIconUrl ? offer.badgeIconUrl : offer.badgeIcon ? createObjectURL(offer.badgeIcon) : offer.icon}" 
                     width="25px" 
                     alt="${offer.rewardType} Icon" 
                   />
@@ -2268,9 +2546,220 @@ ${
   };
   return (
     <Page title="Create Upsell Campaign" fullWidth padding="400">
+      {/* Deal Type Selection Modal */}
+      {showDealTypeModal && (
+        <Modal
+          open={showDealTypeModal}
+          onClose={() => setShowDealTypeModal(false)}
+          title="Select Deal Type"
+          primaryAction={{
+            content: "Back",
+            onAction: () => {
+              if (showSubOptions) {
+                setShowSubOptions(false);
+              } else {
+                navigate("/app/create_campaign");
+              }
+            },
+          }}
+        >
+          <Modal.Section>
+            <BlockStack gap="400">
+              {!showSubOptions ? (
+                <>
+                  <Text variant="bodyMd">
+                    Choose the type of deal you want to create
+                  </Text>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "20px",
+                      marginTop: "10px",
+                    }}
+                  >
+                    {/* Fixed Deal Card */}
+                    <div
+                      style={{
+                        background: "#fff",
+                        border: "2px solid #e1e1e1",
+                        borderRadius: "14px",
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        textAlign: "center",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleDealTypeSelect("fixed")}
+                    >
+                      <div
+                        style={{
+                          width: "70px",
+                          height: "70px",
+                          borderRadius: "10px",
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontSize: "30px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        🔒
+                      </div>
+                      <Text variant="headingSm">Fixed Deal</Text>
+                      <Text tone="subdued" variant="bodySm" alignment="center">
+                        Set fixed discounts and offers
+                      </Text>
+                      <Button
+                        fullWidth
+                        primary
+                        onClick={() => handleDealTypeSelect("fixed")}
+                        style={{ marginTop: "16px" }}
+                      >
+                        Select
+                      </Button>
+                    </div>
+
+                    {/* Flame Match Card */}
+                    <div
+                      style={{
+                        background: "#fff",
+                        border: "2px solid #e1e1e1",
+                        borderRadius: "14px",
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        textAlign: "center",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleDealTypeSelect("flame")}
+                    >
+                      <div
+                        style={{
+                          width: "70px",
+                          height: "70px",
+                          borderRadius: "10px",
+                          background:
+                            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontSize: "30px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        🔥
+                      </div>
+                      <Text variant="headingSm">Flame Match</Text>
+                      <Text tone="subdued" variant="bodySm" alignment="center">
+                        Dynamic matching and recommendations
+                      </Text>
+                      <Button
+                        fullWidth
+                        primary
+                        onClick={() => handleDealTypeSelect("flame")}
+                        style={{ marginTop: "16px" }}
+                      >
+                        Select
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Text variant="headingMd">Select Reward Type</Text>
+                  <Text variant="bodyMd" tone="subdued">
+                    Choose the reward type for Fixed Deal
+                  </Text>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "20px",
+                      marginTop: "10px",
+                    }}
+                  >
+                    {/* Discount Card */}
+                    <div
+                      style={{
+                        background: "#fff",
+                        border: "2px solid #5c6ac4",
+                        borderRadius: "14px",
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleRewardTypeSelect("discount")}
+                    >
+                      <div style={{ fontSize: "40px", marginBottom: "12px" }}>
+                        💰
+                      </div>
+                      <Text variant="headingSm">Discount</Text>
+                      <Text variant="bodySm">
+                        Apply a fixed discount percentage
+                      </Text>
+                      <Button
+                        fullWidth
+                        primary
+                        onClick={() => handleRewardTypeSelect("discount")}
+                        style={{ marginTop: "16px" }}
+                      >
+                        Select
+                      </Button>
+                    </div>
+
+                    {/* Free Shipping Card */}
+                    <div
+                      style={{
+                        background: "#fff",
+                        border: "2px solid #5c6ac4",
+                        borderRadius: "14px",
+                        padding: "20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => handleRewardTypeSelect("shipping")}
+                    >
+                      <div style={{ fontSize: "40px", marginBottom: "12px" }}>
+                        🚚
+                      </div>
+                      <Text variant="headingSm">Free Shipping</Text>
+                      <Text variant="bodySm">
+                        Offer free shipping to customers
+                      </Text>
+                      <Button
+                        fullWidth
+                        primary
+                        onClick={() => handleRewardTypeSelect("shipping")}
+                        style={{ marginTop: "16px" }}
+                      >
+                        Select
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </BlockStack>
+          </Modal.Section>
+        </Modal>
+      )}
+
       {/* Confetti Animation */}
-      {showConfetti && (
+      {shouldShowConfetti && status.showConfetti && (
         <div
+          key="confetti-container"
           style={{
             position: "fixed",
             top: 0,
@@ -2282,6 +2771,7 @@ ${
           }}
         >
           <canvas
+            key="confetti-canvas"
             id="main-confetti-canvas"
             style={{
               position: "fixed",
@@ -2297,11 +2787,13 @@ ${
             dangerouslySetInnerHTML={{
               __html: `
                 (function() {
+                  if (window.__confettiInitialized__) return;
                   const script = document.createElement('script');
                   script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js";
                   script.onload = () => {
                     const canvas = document.getElementById("main-confetti-canvas");
-                    if (canvas) {
+                    if (canvas && !window.__confettiRunning__) {
+                      window.__confettiRunning__ = true;
                       const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
                       function randomInRange(min, max) {
                         return Math.random() * (max - min) + min;
@@ -2315,10 +2807,12 @@ ${
                           origin: { y: 0.0 },
                         });
                         if (Date.now() < end) requestAnimationFrame(frame);
+                        else window.__confettiRunning__ = false;
                       })();
                     }
                   };
                   document.body.appendChild(script);
+                  window.__confettiInitialized__ = true;
                 })();
               `,
             }}
@@ -2515,7 +3009,7 @@ ${
                           <span className="switch-slider"></span>
                         </label>
                         <Text as="h4" variant="headingMd">
-                          Show showConfetti
+                          Show Confetti
                         </Text>
                       </InlineStack>
                       <InlineStack align="space-between">
@@ -2656,7 +3150,7 @@ ${
                           <Text variant="headingMd" as="h3">
                             Reward Type
                           </Text>
-                          <Box paddingBlockStart="100">
+                          {/* <Box paddingBlockStart="100">
                             <ChoiceList
                               title="Reward Mode"
                               choices={rewardModeOptions}
@@ -2675,13 +3169,12 @@ ${
                                 });
                               }}
                             />
-                          </Box>
+                          </Box> */}
 
                           {offer.rewardMode === "fixed" &&
                             dealType !== "flame" && (
                               <BlockStack gap="200">
                                 <ChoiceList
-                                  title="Reward Type"
                                   choices={[
                                     { label: "Discount", value: "discount" },
                                     {
@@ -2909,7 +3402,7 @@ ${
                               }
                               style={{ marginTop: "8px" }}
                             />
-                            {offer.badgeIcon && (
+                            {(offer.badgeIconUrl || offer.badgeIcon) && (
                               <Box paddingBlockStart="200">
                                 <Text fontWeight="semibold">
                                   Selected Badge Icon:
@@ -2920,9 +3413,11 @@ ${
                                 >
                                   <Image
                                     source={
-                                      offer.badgeIcon
-                                        ? createObjectURL(offer.badgeIcon)
-                                        : ""
+                                      offer.badgeIconUrl
+                                        ? offer.badgeIconUrl
+                                        : offer.badgeIcon
+                                          ? createObjectURL(offer.badgeIcon)
+                                          : ""
                                     }
                                     alt="Badge Icon Preview"
                                     width="50px"
@@ -2930,9 +3425,14 @@ ${
                                   <Button
                                     tone="critical"
                                     size="medium"
-                                    onClick={() =>
-                                      updateOffer(offer.id, "badgeIcon", null)
-                                    }
+                                    onClick={() => {
+                                      updateOffer(offer.id, "badgeIcon", null);
+                                      updateOffer(
+                                        offer.id,
+                                        "badgeIconUrl",
+                                        null,
+                                      );
+                                    }}
                                   >
                                     Remove
                                   </Button>
@@ -3204,36 +3704,64 @@ ${
                         { label: "Product Page", value: "Page" },
                         { label: "Cart Page", value: "cart" },
                       ]}
-                      selected={placement}
-                      allowMultiple
-                      onChange={setPlacement}
+                      selected={[placement]}
+                      onChange={(value) => setPlacement(value[0] || "")}
                     />
-                    <Divider borderColor="border" />
-                    <BlockStack gap="300">
-                      <Text>Preview Placement</Text>
-                      <InlineStack>
-                        <Button
-                          icon={HomeIcon}
-                          pressed={activePreview === "home"}
-                          onClick={() => {
-                            setActivePreview("home");
-                            setIsHomepageModalOpen(true);
-                          }}
-                        />
-                        <Button
-                          icon={ProductIcon}
-                          pressed={activePreview === "Page"}
-                          onClick={() => setActivePreview("Page")}
-                        />
-                        <Button
-                          icon={CartIcon}
-                          pressed={activePreview === "cart"}
-                          onClick={() => setActivePreview("cart")}
-                        />
-                      </InlineStack>
-                    </BlockStack>
                   </BlockStack>
                 </Card>
+
+                {/* <Card>
+                  <BlockStack gap="300">
+                    <Text as="h3" variant="headingSm">
+                      Test Progress
+                    </Text>
+                    <Text variant="bodySm" tone="subdued">
+                      Current Progress: {currentProgress}{" "}
+                      {offers.length > 0 && offers[0].goalType === "quantity"
+                        ? "items"
+                        : offers.length > 0 &&
+                            offers[0].goalType === "amount_cart"
+                          ? offers[0].currency
+                          : ""}
+                    </Text>
+                    <InlineStack gap="200">
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          setCurrentProgress((prev) => Math.max(0, prev - 1))
+                        }
+                      >
+                        - Decrease
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => setCurrentProgress((prev) => prev + 1)}
+                      >
+                        + Increase
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setCurrentProgress(0);
+                          setCompletedGoals([]);
+                          completedGoalsRef.current = [];
+                          confettiTriggeredRef.current = [];
+                          setShouldShowConfetti(false);
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </InlineStack>
+                    <Divider />
+                    <Text variant="bodySm" tone="subdued">
+                      Goal Status:{" "}
+                      {completedGoals.length > 0
+                        ? `${completedGoals.length} goal(s) completed`
+                        : "No goals completed yet"}
+                    </Text>
+                  </BlockStack>
+                </Card> */}
+
                 {renderPreview()}
               </BlockStack>
             </div>

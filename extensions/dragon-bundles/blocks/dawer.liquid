@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://guidance-weights-projectors-travelling.trycloudflare.com';
+    const App_Domain = 'https://rivers-servers-garden-blades.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -8,24 +8,8 @@
     let currentCampaignData = null;
     let currentCustomization = null;
     let wasComplete = false;
-
-    // ✅ Simple 1-Second Confetti Function
-    function showQuickConfetti() {
-      if (typeof confetti === 'undefined') return;
-
-      // Simple confetti burst for 1 second
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        zIndex: 10000,
-      });
-
-      // Stop after 1 second
-      setTimeout(() => {
-        confetti.reset();
-      }, 1000);
-    }
+    let cartObserver = null;
+    let currentGifts = null;
 
     async function fetchCartData() {
       try {
@@ -247,22 +231,34 @@
     }
 
     function calculateProgress(offers, cartData) {
-      const isQuantity = offers[0]?.goalType === 'quantity';
-      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+      if (!offers || offers.length === 0 || !cartData) return 0;
 
+      // Get the max goal from all offers
       const maxGoal = Math.max(
         ...offers.map((o) =>
           o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
         )
       );
 
-      const progress = (current / maxGoal) * 100;
+      // For quantity goal, use item_count
+      // For amount goal, use total_price divided by 100 (converts cents to dollars)
+      const firstOffer = offers[0];
+      let current = 0;
+
+      if (firstOffer.goalType === 'quantity') {
+        current = parseInt(cartData.item_count) || 0;
+      } else {
+        // total_price from Shopify cart.js is in cents
+        current = parseFloat(cartData.total_price) / 100 || 0;
+      }
+
+      const progress = maxGoal > 0 ? (current / maxGoal) * 100 : 0;
       return Math.min(progress, 100);
     }
 
     // ✅ Check if cart requirement is complete
     function isCartComplete(offers, cartData) {
-      if (!offers || !offers.length) return false;
+      if (!offers || !offers.length || !cartData) return false;
 
       const maxGoal = Math.max(
         ...offers.map((o) =>
@@ -270,27 +266,37 @@
         )
       );
 
-      const isQuantity = offers[0]?.goalType === 'quantity';
-      const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+      const firstOffer = offers[0];
+      let current = 0;
+
+      if (firstOffer.goalType === 'quantity') {
+        current = parseInt(cartData.item_count) || 0;
+      } else {
+        current = parseFloat(cartData.total_price) / 100 || 0;
+      }
 
       return current >= maxGoal;
     }
 
-    function renderRewardProducts(container, Gifts, cartData) {
+    function renderRewardProducts(drawer, Gifts, cartData) {
       if (!Gifts || !Gifts.length) return;
 
       const cartHasGift = cartData.items.some((item) =>
         Gifts.some((gift) => String(gift.variantId) === String(item.variant_id))
       );
 
-      const pro_gift = document.querySelector('cart-drawer-items');
-      if (!pro_gift) return;
+      if (!drawer) return;
 
-      let gift_price = pro_gift.querySelector('.gift_box');
+      // Find or create gift box container after cart items
+      const cartItems = drawer.querySelector('cart-drawer-items') || drawer.querySelector('.cart-drawer-items');
+      if (!cartItems) return;
+
+      let gift_price = drawer.querySelector('.gift_box');
       if (!gift_price) {
         gift_price = document.createElement('div');
         gift_price.className = 'gift_box';
-        pro_gift.appendChild(gift_price);
+        // Insert after cart items
+        cartItems.parentNode.insertBefore(gift_price, cartItems.nextSibling);
       }
 
       if (cartHasGift) {
@@ -332,6 +338,8 @@
       gift_price.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
         btn.addEventListener('click', async function () {
           const variantId = this.getAttribute('data-variant');
+          const currentGiftsRef = currentGifts || Gifts; // Use global gifts if available
+
           this.disabled = true;
           this.innerText = 'Adding...';
           try {
@@ -345,31 +353,71 @@
               throw new Error('Failed to add product to cart');
             }
 
-            this.innerText = 'Added!';
+            // Wait for cart to update
+            await new Promise((resolve) => setTimeout(resolve, 300));
 
-            // Multiple cart update strategies
+            // Fetch fresh cart data
+            const freshCartData = await fetchCartData();
+            if (freshCartData) {
+              // Get drawer reference
+              const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+              if (drawer && currentGiftsRef) {
+                // Update the gift section with fresh data
+                renderRewardProducts(drawer, currentGiftsRef, freshCartData);
+              }
+            }
+
+            // Update progress bar
+            await updateProgressBar();
+
+            // Trigger all cart refresh methods
             await Promise.all([refreshCartDrawer(), updateCartCount(), triggerCartEvents()]);
 
-            // Force refresh as final fallback
+            // Force refresh after small delay
             setTimeout(() => {
               forceCartDrawerRefresh();
-            }, 300);
+            }, 200);
 
-            // Update progress bar immediately
+            // Show success message and redirect to checkout
+            this.innerText = 'Added ✓';
+
+            // Redirect to checkout after a short delay
             setTimeout(() => {
-              updateProgressBar();
+              window.location.href = '/checkout';
             }, 800);
           } catch (err) {
             console.error('Error adding reward product:', err);
             this.disabled = false;
             this.innerText = 'Select';
+            alert('Failed to add gift to cart. Please try again.');
           }
         });
       });
     }
 
     function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
-      const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+      // Parse customization object - barColors is stored as JSON string
+      let barColors = {};
+      let barRadius = 'round';
+      let barStyle = 'normal';
+
+      if (customization) {
+        barRadius = customization.barRadius || 'round';
+        barStyle = customization.barStyle || 'normal';
+
+        // barColors is stored as JSON, so parse it
+        if (typeof customization.barColors === 'string') {
+          try {
+            barColors = JSON.parse(customization.barColors);
+          } catch (e) {
+            console.error('Error parsing barColors:', e);
+            barColors = {};
+          }
+        } else if (typeof customization.barColors === 'object') {
+          barColors = customization.barColors;
+        }
+      }
+
       const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
 
       const borderRadius = barRadius === 'square' ? '0px' : '6px';
@@ -385,9 +433,12 @@
 
       // ✅ Check if cart just became complete
       const isComplete = isCartComplete(offers, cartData);
-      if (isComplete && !wasComplete) {
-        showQuickConfetti();
+
+      // Trigger confetti when cart becomes complete
+      if (isComplete && !wasComplete && typeof confetti !== 'undefined') {
+        triggerConfetti();
       }
+
       wasComplete = isComplete;
 
       let goalText = 'No offers available';
@@ -411,16 +462,27 @@
               ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
               : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
 
-          const reward =
-            activeOffer.rewardValue ||
-            activeOffer.rewardText ||
-            activeOffer.discountValue ||
-            activeOffer.discountCode ||
-            '';
+          // Build reward text based on reward type
+          let reward = '';
+          if (activeOffer.rewardType === 'discount') {
+            const discountValue = activeOffer.discountCode || activeOffer.discountValue || 0;
+            const discountType = activeOffer.discountType || 'percentage';
+            reward = discountType === 'percentage' ? `${discountValue}% Off` : `$${discountValue} Off`;
+          } else if (activeOffer.rewardType === 'shipping') {
+            reward = 'Free Shipping';
+          } else if (activeOffer.rewardType === 'gift') {
+            reward = 'Free Gift';
+          } else if (activeOffer.rewardType === 'product') {
+            reward = 'Free Product';
+          } else {
+            reward = activeOffer.rewardValue || activeOffer.rewardText || '';
+          }
 
           let rawGoalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
+          if (!rawGoalText) {
+            rawGoalText = 'Unlock your reward!';
+          }
 
-          // ✅ Replace {{reward}} dynamically with reward value
           goalText = rawGoalText.replace(/\{\{\s*reward\s*\}\}/g, reward);
         }
       }
@@ -462,7 +524,11 @@
 
         if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
           if (Gifts && Gifts.length) {
-            renderRewardProducts(container, Gifts, cartData);
+            // Pass the drawer container to render gifts
+            const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+            if (drawer) {
+              renderRewardProducts(drawer, Gifts, cartData);
+            }
           }
         }
       });
@@ -490,14 +556,27 @@
           if (!latestCampaign) return;
 
           currentCampaignData = latestCampaign;
-          currentCustomization = latestCampaign.customization || [];
+          currentCustomization = latestCampaign.customization || null;
         }
 
         const Offers = currentCampaignData.offers || [];
         const customization = currentCustomization;
         const Gifts = currentCampaignData.rewardProducts || [];
+
+        // Store gifts globally for use in gift buttons
+        currentGifts = Gifts;
+
         const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
         if (!drawer) return;
+
+        // If no offers, empty the container but don't hide it completely
+        if (!Offers || Offers.length === 0) {
+          const upsellContainer = drawer.querySelector('.upsell-container');
+          if (upsellContainer) {
+            upsellContainer.innerHTML = ''; // Empty it, CSS will hide empty container
+          }
+          return;
+        }
 
         let header = drawer.querySelector('.drawer__header');
         if (!header) {
@@ -512,6 +591,8 @@
           upsellContainer.className = 'upsell-container';
           header.appendChild(upsellContainer);
         }
+
+        // Don't manipulate display, let CSS handle it
 
         if (currentCampaignData.type === 'add_to_unlock') {
           renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
@@ -542,6 +623,102 @@
         clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
       };
+    }
+
+    // ✅ Setup MutationObserver to watch for cart changes
+    function setupCartObserver(drawer) {
+      if (!drawer) return;
+
+      // Disconnect existing observer if any
+      if (cartObserver) {
+        cartObserver.disconnect();
+      }
+
+      const debouncedUpdate = debounce(updateProgressBar, 300);
+
+      // Create a new observer to watch for cart changes
+      cartObserver = new MutationObserver((mutations) => {
+        let shouldUpdate = false;
+
+        mutations.forEach((mutation) => {
+          // Check for added/removed cart items
+          if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+              if (
+                node.nodeType === 1 &&
+                (node.classList?.contains('cart-item') ||
+                  node.classList?.contains('quantity-input') ||
+                  node.classList?.contains('product') ||
+                  node.classList?.contains('cart-items') ||
+                  node.querySelector?.('.quantity__input'))
+              ) {
+                shouldUpdate = true;
+              }
+            });
+
+            mutation.removedNodes.forEach((node) => {
+              if (
+                node.nodeType === 1 &&
+                (node.classList?.contains('cart-item') ||
+                  node.classList?.contains('product') ||
+                  node.classList?.contains('cart-items'))
+              ) {
+                shouldUpdate = true;
+              }
+            });
+          }
+
+          // Check for quantity changes in inputs
+          if (
+            mutation.type === 'attributes' &&
+            mutation.attributeName === 'value' &&
+            mutation.target.classList?.contains('quantity__input')
+          ) {
+            shouldUpdate = true;
+          }
+
+          // Check for cart drawer inner content changes
+          if (mutation.type === 'childList') {
+            const target = mutation.target;
+            if (
+              target &&
+              (target.classList?.contains('cart-item') ||
+                target.classList?.contains('drawer__inner') ||
+                target.classList?.contains('cart-items') ||
+                target.tagName === 'CART-DRAWER-ITEMS')
+            ) {
+              shouldUpdate = true;
+            }
+          }
+
+          // Check for attribute changes that might indicate cart updates
+          if (mutation.type === 'attributes') {
+            if (
+              mutation.target.classList?.contains('cart-item') ||
+              mutation.target.classList?.contains('quantity__input') ||
+              mutation.target.classList?.contains('cart-count')
+            ) {
+              shouldUpdate = true;
+            }
+          }
+        });
+
+        if (shouldUpdate) {
+          console.log('Cart change detected via MutationObserver');
+          debouncedUpdate();
+        }
+      });
+
+      // Observe the cart drawer for changes
+      cartObserver.observe(drawer, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['value'],
+        characterData: true,
+      });
+
+      console.log('Cart MutationObserver setup complete');
     }
 
     function setupQuantityListener() {
@@ -583,12 +760,56 @@
       }
     }
 
+    // Trigger confetti animation when goal is completed
+    function triggerConfetti() {
+      if (typeof confetti === 'undefined') {
+        console.log('Confetti library not loaded yet');
+        return;
+      }
+
+      // Create multiple bursts for a more impressive effect
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      (function frame() {
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336'],
+        });
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336'],
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      })();
+    }
+
     // Initialize
     loadConfettiLibrary();
     waitForDrawer(() => {
+      const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+
+      if (drawer) {
+        // Setup MutationObserver to watch for cart changes
+        setupCartObserver(drawer);
+      }
+
       updateProgressBar();
       document.addEventListener('cart-drawer:open', updateProgressBar);
+
+      // Setup event listeners
       setupQuantityListener();
+
+      // Periodic update as fallback
       setInterval(updateProgressBar, 5000);
     });
   });
@@ -613,9 +834,16 @@
     background: white;
     padding: 20px;
     border-radius: 10px;
-    /* FIX: Ensure it doesn't interfere with scrolling */
+    /* FIX: Ensure it doesn't interfere with scrolling and stays above confetti */
     position: relative;
-    z-index: 2;
+    z-index: 1001;
+    /* FIX: Always keep progress bar visible */
+    display: block !important;
+  }
+
+  /* Hide progress bar only when empty */
+  .upsell-container:empty {
+    display: none !important;
   }
 
   .multi_step_progress {
@@ -784,6 +1012,8 @@
 
   .drawer__header.upsell-header {
     padding-bottom: 0;
+    /* Ensure progress bar is always visible */
+    display: block !important;
   }
 
   /* FIX: Ensure cart items section scrolls properly */

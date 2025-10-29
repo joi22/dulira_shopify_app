@@ -8,50 +8,6 @@
       let currentCampaignData = null;
       let wasComplete = false;
 
-      // ✅ Confetti Function for Cart Page
-      function showCartConfetti() {
-        if (typeof confetti === 'undefined') return;
-
-        // Multiple confetti bursts for celebration
-        const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
-
-        // First burst
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: colors,
-          zIndex: 10000,
-        });
-
-        // Second burst after delay
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 100,
-            origin: { y: 0.4 },
-            colors: colors,
-            zIndex: 10000,
-          });
-        }, 200);
-
-        // Third burst
-        setTimeout(() => {
-          confetti({
-            particleCount: 80,
-            spread: 50,
-            origin: { y: 0.8 },
-            colors: colors,
-            zIndex: 10000,
-          });
-        }, 400);
-
-        // Stop after 2 seconds
-        setTimeout(() => {
-          confetti.reset();
-        }, 2000);
-      }
-
       async function fetchCartData() {
         try {
           const response = await fetch('/cart.js', {
@@ -67,22 +23,34 @@
       }
 
       function calculateProgress(offers, cartData) {
-        const isQuantity = offers[0]?.goalType === 'quantity';
-        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+        if (!offers || offers.length === 0 || !cartData) return 0;
 
+        // Get the max goal from all offers
         const maxGoal = Math.max(
           ...offers.map((o) =>
             o.goalType === 'quantity' ? parseFloat(o.goalQuantity || 0) : parseFloat(o.goalAmount || 0)
           )
         );
 
-        const progress = (current / maxGoal) * 100;
+        // For quantity goal, use item_count
+        // For amount goal, use total_price divided by 100 (converts cents to dollars)
+        const firstOffer = offers[0];
+        let current = 0;
+
+        if (firstOffer.goalType === 'quantity') {
+          current = parseInt(cartData.item_count) || 0;
+        } else {
+          // total_price from Shopify cart.js is in cents
+          current = parseFloat(cartData.total_price) / 100 || 0;
+        }
+
+        const progress = maxGoal > 0 ? (current / maxGoal) * 100 : 0;
         return Math.min(progress, 100);
       }
 
       // ✅ Check if cart requirement is complete
       function isCartComplete(offers, cartData) {
-        if (!offers || !offers.length) return false;
+        if (!offers || !offers.length || !cartData) return false;
 
         const maxGoal = Math.max(
           ...offers.map((o) =>
@@ -90,14 +58,41 @@
           )
         );
 
-        const isQuantity = offers[0]?.goalType === 'quantity';
-        const current = isQuantity ? cartData.item_count || 0 : parseFloat(cartData.total_price) / 100;
+        const firstOffer = offers[0];
+        let current = 0;
+
+        if (firstOffer.goalType === 'quantity') {
+          current = parseInt(cartData.item_count) || 0;
+        } else {
+          current = parseFloat(cartData.total_price) / 100 || 0;
+        }
 
         return current >= maxGoal;
       }
 
       function renderCartProgressBar(container, offers, cartData, customization) {
-        const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization || {};
+        // Parse customization object - barColors is stored as JSON string
+        let barColors = {};
+        let barRadius = 'round';
+        let barStyle = 'normal';
+
+        if (customization) {
+          barRadius = customization.barRadius || 'round';
+          barStyle = customization.barStyle || 'normal';
+
+          // barColors is stored as JSON, so parse it
+          if (typeof customization.barColors === 'string') {
+            try {
+              barColors = JSON.parse(customization.barColors);
+            } catch (e) {
+              console.error('Error parsing barColors:', e);
+              barColors = {};
+            }
+          } else if (typeof customization.barColors === 'object') {
+            barColors = customization.barColors;
+          }
+        }
+
         const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800' } = barColors;
 
         const borderRadius = barRadius === 'square' ? '0px' : '6px';
@@ -110,11 +105,8 @@
             : parseFloat(a.goalAmount || 0) - parseFloat(b.goalAmount || 0)
         );
 
-        // ✅ Check if cart just became complete and show confetti
+        // ✅ Check if cart just became complete
         const isComplete = isCartComplete(offers, cartData);
-        if (isComplete && !wasComplete) {
-          showCartConfetti();
-        }
         wasComplete = isComplete;
 
         let goalText = 'No offers available';
@@ -138,14 +130,26 @@
                 ? cartData.item_count >= parseFloat(activeOffer.goalQuantity || 0)
                 : parseFloat(cartData.total_price) / 100 >= parseFloat(activeOffer.goalAmount || 0);
 
-            const reward =
-              activeOffer.rewardValue ||
-              activeOffer.rewardText ||
-              activeOffer.discountValue ||
-              activeOffer.discountCode ||
-              '';
+            // Build reward text based on reward type
+            let reward = '';
+            if (activeOffer.rewardType === 'discount') {
+              const discountValue = activeOffer.discountCode || activeOffer.discountValue || 0;
+              const discountType = activeOffer.discountType || 'percentage';
+              reward = discountType === 'percentage' ? `${discountValue}% Off` : `$${discountValue} Off`;
+            } else if (activeOffer.rewardType === 'shipping') {
+              reward = 'Free Shipping';
+            } else if (activeOffer.rewardType === 'gift') {
+              reward = 'Free Gift';
+            } else if (activeOffer.rewardType === 'product') {
+              reward = 'Free Product';
+            } else {
+              reward = activeOffer.rewardValue || activeOffer.rewardText || '';
+            }
 
             let rawGoalText = isGoalReached ? activeOffer.goalTextAfter : activeOffer.goalTextBefore;
+            if (!rawGoalText) {
+              rawGoalText = 'Unlock your reward!';
+            }
             goalText = rawGoalText.replace(/\{\{\s*reward\s*\}\}/g, reward);
           }
         }
@@ -227,7 +231,7 @@
           if (!latestCampaign) return;
 
           currentCampaignData = latestCampaign;
-          const customization = latestCampaign.customization || [];
+          const customization = latestCampaign.customization || null;
           const Offers = latestCampaign.offers || [];
 
           // Find or create progress container
@@ -264,18 +268,7 @@
         }
       }
 
-      // Load confetti library
-      function loadConfettiLibrary() {
-        if (typeof confetti === 'undefined') {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-          script.onload = () => console.log('Cart confetti library loaded');
-          document.head.appendChild(script);
-        }
-      }
-
       // Initialize
-      loadConfettiLibrary();
       updateCartProgress();
 
       // Listen for cart updates

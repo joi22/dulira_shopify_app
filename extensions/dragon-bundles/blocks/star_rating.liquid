@@ -1,35 +1,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://historic-whale-exports-district.trycloudflare.com';
+  const App_Domain = 'https://rivers-servers-garden-blades.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
   const variant = {{product.variants.first.id | json}};
   const cartdata = {{cart | json}};
-  
-  // Confetti function using canvas-confetti library
-  function createConfetti() {
-    const canvas = document.getElementById("confetti-canvas");
-    if (!canvas || typeof confetti === 'undefined') return;
-    
-    const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
-    
-    function randomInRange(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-    
-    const end = Date.now() + 100;
-    (function frame() {
-      myConfetti({
-        angle: randomInRange(-100, -90),
-        spread: randomInRange(150, 150),
-        particleCount: randomInRange(10, 20),
-        origin: { y: 0.0 },
-      });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    })();
-  }
-  
   
   // MAIN CONTAINER (only once)
   const main_container = document.createElement('div');
@@ -121,9 +97,6 @@ document.addEventListener('DOMContentLoaded', async function () {
       unlockText.innerText = goalAchievedText;
       freeShippingBanner.style.display = 'block';
       actionButton.disabled = false;
-
-      // Trigger confetti animation
-      createConfetti();
 
       if (offer.rewardType === 'gift') {
         document.querySelectorAll(`.add-btn[data-offer-id="${offer.id}"]`).forEach(btn => btn.disabled = false);
@@ -668,29 +641,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 </style>
-
-<canvas
-  id="confetti-canvas"
-  style="
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    pointer-events:none;
-    z-index:2000;
-  "
-></canvas>
-
-<script>
-  (function () {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-    script.onload = () => {
-      // Confetti library is now loaded and available globally
-      console.log('Confetti library loaded successfully');
-    };
-    document.body.appendChild(script);
-  })();
-</script>
 
 <div class="main-dragon-container"></div>
 

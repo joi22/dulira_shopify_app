@@ -315,7 +315,8 @@ const CampaignCard = ({ card, index, campaignName, onSelect }) => {
         flexDirection: "column",
         justifyContent: "space-between",
         minHeight: "210px",
-        width: "340px",
+        width: "100%",
+        maxWidth: "350px",
         boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         alignItems: "center",
         transition: "all 0.3s ease",
@@ -611,7 +612,10 @@ export default function UpsellEngine() {
   const [showDealTypeModal, setShowDealTypeModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
 
-  const handleChange = useCallback(() => setActive(!active), [active]);
+  const handleChange = useCallback(() => {
+    // Navigate to new campaign creation page with steps
+    navigate("/app/create_campaign");
+  }, [navigate]);
 
   const handeldelete = async (id) => {
     if (!id || !window.confirm(`Are you sure you want to delete this offer?`))
@@ -631,10 +635,16 @@ export default function UpsellEngine() {
 
   const handleDealTypeSelect = (dealType) => {
     setShowDealTypeModal(false);
-    // Navigate to URL with selected deal type
-    navigate(
-      `/app/${selectedCard.url}?type=${selectedCard.type}&name=${encodeURIComponent(campaignName)}&dealType=${dealType}`,
-    );
+    setActive(false); // Close the main modal
+    // Navigate to URL with selected deal type and campaign data
+    const params = new URLSearchParams({
+      type: selectedCard.type,
+      name: campaignName,
+      dealType: dealType,
+      campaignType: selectedCard.type,
+      campaignUrl: selectedCard.url || "addtounlock",
+    });
+    navigate(`/app/${selectedCard.url}?${params.toString()}`);
   };
 
   return (
@@ -646,7 +656,22 @@ export default function UpsellEngine() {
         onAction: handleChange,
       }}
     >
-      <style>{`.Polaris-Modal-Dialog__Modal { width: 90vw !important; height: 90vh !important; max-width: none !important; max-height: none !important; } .Polaris-Modal__Body { height: 90%; overflow-y: auto; }`}</style>
+      <style>{`
+        .Polaris-Modal-Dialog__Modal { 
+          width: 90vw !important; 
+          height: 90vh !important; 
+          max-width: none !important; 
+          max-height: none !important; 
+        } 
+        .Polaris-Modal__Body { 
+          height: 90%; 
+          overflow-y: auto; 
+          padding: 20px !important;
+        }
+        .Polaris-Modal-Section {
+          padding: 0 !important;
+        }
+      `}</style>
 
       <Layout sectioned>
         <Card>
@@ -804,69 +829,41 @@ export default function UpsellEngine() {
               </InlineStack>
             </BlockStack>
           ) : (
-            <div style={{ width: "100%", height: "100%" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "20px",
-                }}
-              >
-                <button
+            <BlockStack gap="400" style={{ padding: "20px 0" }}>
+              {/* Back Button and Header */}
+              <InlineStack align="space-between" blockAlign="center">
+                <Button
                   onClick={() => setSelectedCategory(null)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    fontSize: "26px",
-                    color: "#000",
-                    marginTop: "-4px",
-                    cursor: "pointer",
-                  }}
-                  title="Back"
+                  variant="plain"
+                  accessibilityLabel="Back to categories"
                 >
-                  ←
-                </button>
-                <h2
-                  style={{
-                    marginTop: "-20px",
-                    fontSize: "22px",
-                    fontWeight: 600,
-                    color: "#333",
-                    margin: 0,
-                  }}
-                >
-                  {selectedCategory.title} Features
-                </h2>
-              </div>
-
-              {/* Category Description */}
-              <div
-                style={{
-                  marginBottom: "20px",
-                  padding: "15px",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "8px",
-                  border: "1px solid #e9ecef",
-                }}
-              >
-                <Text variant="headingSm" fontWeight="semibold">
+                  ← Back to Categories
+                </Button>
+                <Text variant="headingMd" fontWeight="semibold">
                   {selectedCategory.title}
                 </Text>
-                <Text variant="bodyMd" tone="subdued">
-                  {selectedCategory.description}
-                </Text>
-              </div>
+              </InlineStack>
+
+              {/* Category Description */}
+              <Card sectioned>
+                <BlockStack gap="200">
+                  <Text variant="headingSm" fontWeight="semibold">
+                    {selectedCategory.title}
+                  </Text>
+                  <Text variant="bodyMd" tone="subdued">
+                    {selectedCategory.description}
+                  </Text>
+                </BlockStack>
+              </Card>
 
               {/* Filtered Features Grid */}
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "5px",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                  gap: "16px",
                   width: "100%",
-                  justifyContent: "center",
-                  alignItems: "start",
+                  padding: "10px 0",
                 }}
               >
                 {CAMPAIGN_CARDS.filter(
@@ -886,20 +883,16 @@ export default function UpsellEngine() {
               {CAMPAIGN_CARDS.filter(
                 (card) => card.category === selectedCategory.type,
               ).length === 0 && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "#666",
-                  }}
-                >
-                  <Text variant="bodyMd">
-                    No features available for {selectedCategory.title} category
-                    yet.
-                  </Text>
-                </div>
+                <Card sectioned>
+                  <BlockStack gap="200" align="center">
+                    <Text variant="bodyMd" tone="subdued">
+                      No features available for {selectedCategory.title}{" "}
+                      category yet.
+                    </Text>
+                  </BlockStack>
+                </Card>
               )}
-            </div>
+            </BlockStack>
           )}
         </Modal.Section>
       </Modal>

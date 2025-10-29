@@ -1,20 +1,20 @@
 import { json } from "@remix-run/node";
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
 import { LATEST_API_VERSION } from "@shopify/shopify-app-remix/server";
-import { authenticate } from "../shopify.server"
+import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request)
-  const { shop } = session
+  const { session } = await authenticate.admin(request);
+  const { shop } = session;
   const formData = await request.formData();
 
   if (!shop) {
-    return json({ success: false, message: "Unauthorized" }, { status: 401 })
+    return json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
   if (!session) {
-    return json({ success: false, message: "Unauthorized" }, { status: 401 })
+    return json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
   const { accessToken } = session;
@@ -24,7 +24,9 @@ export const action = async ({ request }) => {
   let imageUrl;
   let imgPath;
   let fileName;
-  const domain = session.app_url;
+  // Get the domain from request URL
+  const requestUrl = new URL(request.url);
+  const domain = `${requestUrl.protocol}//${requestUrl.host}`;
   try {
     if (!originalSource && image instanceof Blob) {
       fileName = formData.get("fileName");
@@ -34,12 +36,11 @@ export const action = async ({ request }) => {
 
       const uploadImage = await fetch(`${domain}/api/upload`, {
         method: "POST",
-        body: formData,
+        body: newFormData,
       });
       const uploadRes = await uploadImage.json();
       // if (uploadRes.ok) {
       // console.log("Upload Response", uploadRes);
-
 
       imageUrl = `${domain}/${uploadRes?.url}`;
       imgPath = uploadRes?.url;
@@ -91,7 +92,7 @@ export const action = async ({ request }) => {
     if (!currentUploadedId) {
       throw new Error(
         "Upload failed: " +
-        JSON.stringify(fileCreate?.fileErrors || fileCreate?.userErrors),
+          JSON.stringify(fileCreate?.fileErrors || fileCreate?.userErrors),
       );
     }
 
@@ -128,9 +129,13 @@ export const action = async ({ request }) => {
 
     const finalImageUrl = imageJson.data?.node?.preview?.image?.url;
     // console.log({ finalImageUrl });
-    if (!originalSource) {
+    if (!originalSource && imgPath) {
       const fileToDelete = path.join(process.cwd(), "public", imgPath);
-      await fs.unlinkSync(fileToDelete);
+      try {
+        await fs.unlink(fileToDelete);
+      } catch (err) {
+        console.log("Failed to delete temp file:", err);
+      }
     }
 
     return json(
@@ -139,9 +144,13 @@ export const action = async ({ request }) => {
     );
   } catch (error) {
     console.log(error);
-    if (!originalSource) {
+    if (!originalSource && imgPath) {
       const fileToDelete = path.join(process.cwd(), "public", imgPath);
-      await fs.unlinkSync(fileToDelete);
+      try {
+        await fs.unlink(fileToDelete);
+      } catch (err) {
+        console.log("Failed to delete temp file:", err);
+      }
     }
     return json(
       { error: "Unexpected error" },

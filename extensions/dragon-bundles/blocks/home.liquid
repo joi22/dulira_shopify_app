@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://historic-whale-exports-district.trycloudflare.com';
+  const domain = 'https://roulette-ceremony-attempting-principal.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
   let titleOffer = "Bundle Deals"
@@ -30,18 +30,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.warn('No #offers-list element found in DOM.');
         return;
       }
-      
-      let discounts = document.getElementById('offers_di');
-      if (!discounts) {
-        // create and prepend to modal content if not present
-        discounts = document.createElement('div');
-        discounts.id = 'offers_di';
-        const modalContent = document.querySelector('.offers-modal-content') || model_render.parentElement;
-        if (modalContent) modalContent.insertBefore(discounts, model_render);
-      }
 
       model_render.innerHTML = ""; // clear old products
-      discounts.innerHTML = "";    // clear old offer details
 
       if (campaign.type === "add_to_unlock" && Array.isArray(campaign.triggerProducts)) {
         // All products from campaign
@@ -162,9 +152,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         `;
         
         model_render.insertAdjacentHTML("beforeend", bigOfferCard);
-
-        // Show modal
-        document.getElementById("offers-modal").style.display = "flex";
       }
 
     } catch (err) {
@@ -221,13 +208,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   });
 
-  // close button
-  const closeBtn = document.getElementById("close-offers");
-  if (closeBtn) closeBtn.addEventListener("click", () => {
-    const modal = document.getElementById("offers-modal");
-    if (modal) modal.style.display = "none";
-  });
-
   add_to_unlock();
 });
 </script>
@@ -238,7 +218,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
-    background: #fff;
+    background: {{ block.settings.section_background | default: '#fff' }};
   }
 
   .section-title {
@@ -576,144 +556,127 @@ document.addEventListener('DOMContentLoaded', async function () {
       font-size: 16px;
     }
   }
+
+  /* Section Container Styles */
+  .home-bundles-section {
+    width: 100%;
+    background: {{ block.settings.section_background | default: '#fff' }};
+    padding: {{ block.settings.section_padding_top }}px {{ block.settings.section_padding_sides }}px {{ block.settings.section_padding_bottom }}px;
+    margin: {{ block.settings.section_margin_top }}px 0 {{ block.settings.section_margin_bottom }}px;
+  }
+
+  .section-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  #offers-list {
+    width: 100%;
+  }
+
+  .gif {
+    width: 25px;
+    margin: 0px 5px;
+  }
+
+  .offer-deatils {
+    display: flex;
+    justify-content: center;
+    background-color: #fff6dd;
+    align-items: center;
+    width: auto;
+    border-radius: 20px;
+    padding: 10px 20px;
+    border: 1px solid #ffd54f;
+  }
 </style>
 
-<div id="offers-modal" style="display:none;">
-  <div class="offers-modal-content">
-    <div class="wrapper">
-      <div id="offers_di"></div>
-      <div id="offers-list">
-        <h1>Hello</h1>
-      </div>
+<div class="home-bundles-section">
+  <div class="section-wrapper">
+    <div id="offers-list">
+      <!-- Products will be loaded here -->
     </div>
   </div>
 </div>
 
-<style>
-     .wrapper {
-       display: flex;
-       flex-direction: column;
-       align-items: center;
-       justify-content: flex-start;
-       height: 100%;
-       width: 100%;
-       overflow-y: auto;
-     }
-
-     #offers_di {
-       display: flex;
-       justify-content: center;
-       align-items: center;
-       margin-bottom: 20px;
-       margin: 10px;
-     }
-
-     .gif {
-       width: 25px;
-       margin: 0px 5px;
-     }
-
-     .offer-deatils {
-       display: flex;
-       justify-content: center;
-       background-color: #fff6dd;
-       align-items: center;
-       width: auto;
-       border-radius: 20px;
-       padding: 10px 20px;
-       border: 1px solid #ffd54f;
-     }
-
-   /* Remove unwanted scrollbars */
-  #offers-modal,
-  .offers-modal-content,
-  .wrapper,
-  .card-main,
-  .big-offer-card,
-  .products-container {
-    overflow: hidden !important;
-  }
-
-  /* Ensure layout fits cleanly */
-  #offers-modal {
-    position: relative;
-    top: 0;
-    left: 0;
-    width: 80vw;
-    height: auto; /* was fixed 80vh — changed to auto to prevent overflow */
-    background: {{ block.settings.mode_back | default: '#fff' }};
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    z-index: 9999;
-    padding: 20px;
-    overflow-y: auto; /* only if modal content exceeds view */
-    scrollbar-width: none; /* hide Firefox scrollbar */
-  }
-
-  /* hide scrollbar for Chrome, Edge, Safari */
-  #offers-modal::-webkit-scrollbar {
-    display: none;
-  }
-
-  .wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    max-width: 1200px;
-    overflow: visible !important; /* prevent nested scrolls */
-  }
-
-  .card-main {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    overflow: visible;
-  }
-
-  .products-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 0;
-    overflow: visible;
-  }
-
-  .big-offer-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    width: 300px;
-    min-height: 350px;
-    border: 1px solid #e0e0e0;
-    flex-shrink: 0;
-    overflow: visible; /* critical fix */
-  }
-</style>
-
 {% schema %}
 {
-  "name": "Homepage Bundles bar",
+  "name": "Homepage Bundles Section",
   "target": "section",
   "settings": [
     {
       "type": "text",
       "id": "title_bundel",
-      "label": "Model heading",
+      "label": "Section Title",
       "default": "Bundle Deals"
     },
     {
+      "type": "header",
+      "content": "Section Background"
+    },
+    {
       "type": "color",
-      "id": "mode_back",
-      "label": "Model Background color",
-      "default": "#fff"
+      "id": "section_background",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "header",
+      "content": "Section Padding (top, sides, bottom)"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_top",
+      "label": "Padding Top",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_sides",
+      "label": "Padding Sides",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "section_padding_bottom",
+      "label": "Padding Bottom",
+      "min": 0,
+      "max": 100,
+      "default": 40,
+      "unit": "px"
+    },
+    {
+      "type": "header",
+      "content": "Section Margins (top, bottom)"
+    },
+    {
+      "type": "range",
+      "id": "section_margin_top",
+      "label": "Margin Top",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "section_margin_bottom",
+      "label": "Margin Bottom",
+      "min": 0,
+      "max": 100,
+      "default": 20,
+      "unit": "px"
     }
   ]
 }

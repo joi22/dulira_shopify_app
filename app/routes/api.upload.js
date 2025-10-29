@@ -21,33 +21,24 @@ const upload = multer({ storage });
 export const action = async ({ request }) => {
   const formData = await request.formData();
   const image = formData.get("image");
-  const fileName = formData.get("fileName");
+  const fileName = formData.get("fileName") || `${Date.now()}-image.png`;
+
   if (!image) {
     return json({ error: "No image file found in form data" }, { status: 400 });
   }
+
+  if (!fileName) {
+    return json({ error: "No file name provided" }, { status: 400 });
+  }
+
   const buffer = await image.arrayBuffer();
-  //   const imageType = extractType(image.type);
-  return new Promise((resolve, reject) => {
-    const mockResponse = {
-      status: (code) => ({
-        json: (data) => reject(json(data, { status: code })),
-      }),
-    };
-    upload.single("image")(request, mockResponse, (err) => {
-      if (err) {
-        console.log("Error saving file", err);
-        reject(json({ error: "File upload failed" }, { status: 500 }));
-      } else {
-        const filePath = path.join(uploadDir, fileName);
-        fs.writeFile(filePath, Buffer.from(buffer))
-          .then(() => {
-            resolve(json({ url: `/uploads/${path.basename(filePath)}` }));
-          })
-          .catch((err) => {
-            console.log("Error saving file", err);
-            reject(json({ error: "Failed to save file" }, { status: 500 }));
-          });
-      }
-    });
-  });
+
+  try {
+    const filePath = path.join(uploadDir, fileName);
+    await fs.writeFile(filePath, Buffer.from(buffer));
+    return json({ url: `/uploads/${path.basename(filePath)}` });
+  } catch (err) {
+    console.log("Error saving file", err);
+    return json({ error: "Failed to save file" }, { status: 500 });
+  }
 };
