@@ -188,6 +188,13 @@ body {
     margin-top: 1.5rem;
 }
 
+.image-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .qr-container {
     display: flex;
     align-items: center;
@@ -224,7 +231,7 @@ body {
 }
 
 .qr-info button {
-background-color: #01CB76;
+    background-color: #01CB76;
     color: white;
     border: none;
     padding: 0.5rem 1rem;
@@ -233,7 +240,7 @@ background-color: #01CB76;
     width: 300px;
     font-size: 17px;
     cursor: pointer;
-    transition: background-color 0.3s;    
+    transition: background-color 0.3s;
 }
 
 .qr-info p {
@@ -535,106 +542,172 @@ background-color: #01CB76;
     }
 }
 
-.image-wrapper {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+
 
 .user-image {
-  width: 30%;
-  height: auto;
-  border-radius: 20px;
-  transition: filter 0.4s ease;
+    width: 30%;
+    height: auto;
+    border-radius: 20px;
+    transition: filter 0.4s ease;
 }
 
 .blurred {
-  filter: blur(15px);
+    filter: blur(15px);
 }
 
 .center-button {
-  position: absolute;
-  padding: 10px 20px;
-  background-color: #111;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background 0.3s;
+    position: absolute;
+    padding: 10px 20px;
+    background-color: #111;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
 }
 
 .center-button:hover {
-  background-color: #333;
+    background-color: #333;
 }
+
 /* Modal Styling */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
 }
 
 .modal {
-  width: 326px;
-  height: 294px;
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  position: relative;
-  text-align: center;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    width: 326px;
+    height: 294px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .modal-close {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 22px;
-  cursor: pointer;
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
 }
 
 .modal-image {
-  width: 80px;
-  margin-bottom: 10px;
-  margin-top: 10px;
+    width: 80px;
+    margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 .modal-text {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 10px;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 10px;
 }
 
 .modal-input {
-  width: 90%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  outline: none;
+    width: 90%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    outline: none;
 }
 
 .modal-continue {
-  width: 90%;
-  padding: 10px;
-  background-color: #01cb76;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
+    width: 90%;
+    padding: 10px;
+    background-color: #01cb76;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .modal-continue:hover {
-  background-color: #00b368;
+    background-color: #00b368;
+}
+
+/* Add these styles to your existing App.css */
+
+/* Step 3 Action Buttons */
+.step3-actions {
+    width: 250px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.step3-actions button  {
+    margin-top: 20px;
+}
+.image-wrapper-3{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+
+}
+
+.action-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    min-width: 140px;
+}
+
+.buy-btn {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+.buy-btn:hover {
+    background-color: #333333;
+    transform: translateY(-2px);
+}
+
+.share-btn {
+    background-color: #ffffff;
+    color: #000000;
+    border: 2px solid #000000;
+}
+
+.share-btn:hover {
+    background-color: #000000;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+
+
+/* Responsive design for Step 3 buttons */
+@media (max-width: 768px) {
+    .step3-actions {
+        flex-direction: column;
+        width: 80%;
+        bottom: 1rem;
+    }
+
+    .action-btn {
+        min-width: auto;
+        width: 100%;
+    }
 }

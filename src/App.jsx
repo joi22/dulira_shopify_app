@@ -6,6 +6,7 @@ function App() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isBlurred, setIsBlurred] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1); // 1: Upload, 2: Preview, 3: Final Step
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -14,12 +15,14 @@ function App() {
       setUserImage(imageUrl);
       setIsPreviewMode(true);
       setIsBlurred(true); // start blurred
+      setCurrentStep(2); // Move to step 2 (Preview)
     }
   };
 
   const handleUntier = () => {
     setIsPreviewMode(false);
     setUserImage(null);
+    setCurrentStep(1); // Back to step 1
   };
 
   const handleUnblurClick = () => {
@@ -29,14 +32,25 @@ function App() {
   const handleModalContinue = () => {
     setShowModal(false);
     setIsBlurred(false); // unblur after user continues
+    setCurrentStep(3); // Move to step 3
   };
 
   const handleModalClose = () => {
     setShowModal(false);
   };
 
-  if (!isPreviewMode) {
-    // Upload Page
+  const handleBuyLook = () => {
+    alert("Redirecting to purchase page...");
+    // Add your buy logic here
+  };
+
+  const handleShareLook = () => {
+    alert("Sharing this look...");
+    // Add your share logic here
+  };
+
+  if (currentStep === 1) {
+    // Step 1: Upload Page
     return (
       <div className="app">
         <main className="main-content">
@@ -83,7 +97,80 @@ function App() {
     );
   }
 
-  // Preview Page
+  if (currentStep === 2) {
+    // Step 2: Preview Page (Blurred)
+    return (
+      <div className="app preview-mode">
+        <header className="header">
+          <h1 className="logo">DUKIRA</h1>
+        </header>
+
+        <main className="preview-container">
+          <div className="preview-header">
+            <h2>Try-On Preview</h2>
+            <p className="preview-subtitle">
+              Preview your outfit in real-time and adjust as you like.
+            </p>
+          </div>
+
+          <div className="preview-content">
+            <div className="image-preview">
+              <div className="outfit-display">
+                <div className="model-placeholder">
+                  {userImage && (
+                    <div className="image-wrapper">
+                      <img
+                        src={userImage}
+                        alt="User Upload"
+                        className={`user-image ${isBlurred ? "blurred" : ""}`}
+                      />
+
+                      {isBlurred && (
+                        <button className="center-button" onClick={handleUnblurClick}>
+                          Click Here to Unblur
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="untier-section">
+              <button className="untier-btn" onClick={handleUntier}>
+                Click Here to Untier
+              </button>
+            </div>
+          </div>
+        </main>
+
+        {/* Modal Popup */}
+        {showModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <button className="modal-close" onClick={handleModalClose}>
+                ×
+              </button>
+              <img src="./media/2p.png" alt="email" className="modal-image" />
+              <p className="modal-text">
+                Enter your email to enhance your work efficiency by joining us today.
+              </p>
+              <input
+                type="email"
+                placeholder="Enter Your Email"
+                className="modal-input"
+              />
+              <button className="modal-continue" onClick={handleModalContinue}>
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Step 3: Final Step (Unblurred with action buttons)
   return (
     <div className="app preview-mode">
       <header className="header">
@@ -103,24 +190,22 @@ function App() {
             <div className="outfit-display">
               <div className="model-placeholder">
                 {userImage && (
-                  <div className="image-wrapper">
+                  <div className="image-wrapper-3">
                     <img
                       src={userImage}
                       alt="User Upload"
-                      className={`user-image ${isBlurred ? "blurred" : ""}`}
+                      className="user-image"
                     />
-
-                    {isBlurred && (
-                      <button className="center-button" onClick={handleUnblurClick}>
-                        Click Here to Unblur
+                    
+                    {/* Step 3 Action Buttons */}
+                    <div className="step3-actions">
+                      <button className="action-btn buy-btn" onClick={handleBuyLook}>
+                        Buy this look
                       </button>
-                    )}
-
-                    {!isBlurred && (
-                      <button className="center-button" onClick={() => setIsBlurred(true)}>
-                        Click Here to Blur Again
+                      <button className="action-btn share-btn" onClick={handleShareLook}>
+                        Share this look
                       </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -134,29 +219,6 @@ function App() {
           </div>
         </div>
       </main>
-
-      {/* Modal Popup */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <button className="modal-close" onClick={handleModalClose}>
-              ×
-            </button>
-            <img src="./media/2p.png" alt="email" className="modal-image" />
-            <p className="modal-text">
-              Enter your email to enhance your work efficiency by joining us today.
-            </p>
-            <input
-              type="email"
-              placeholder="Enter Your Email"
-              className="modal-input"
-            />
-            <button className="modal-continue" onClick={handleModalContinue}>
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
