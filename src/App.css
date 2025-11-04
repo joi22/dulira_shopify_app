@@ -40,3 +40,631 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Try-On Trigger Button */
+.try-on-trigger-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin: 50px auto;
+}
+
+.try-on-trigger-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Try-On Modal Overlay */
+.try-on-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* Try-On Modal */
+.try-on-modal {
+  background: white;
+  border: 2px solid #0066cc;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.try-on-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #333;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.try-on-modal-close:hover {
+  color: #000;
+}
+
+.try-on-modal-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #000;
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+.try-on-modal-subtitle {
+  font-size: 16px;
+  color: #000;
+  margin: 0 0 30px 0;
+  text-align: center;
+}
+
+/* Drag and Drop Area */
+.drag-drop-area {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 40px 20px;
+  margin: 30px 0;
+  background: #fafafa;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.drag-drop-area:hover {
+  border-color: #0066cc;
+  background: #f0f8ff;
+}
+
+.drag-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.upload-icon {
+  margin-bottom: 10px;
+}
+
+.drag-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #00a86b;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.or-text {
+  font-size: 14px;
+  color: #000;
+  margin: 5px 0;
+}
+
+.upload-btn {
+  background: #000;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.upload-btn:hover {
+  background: #333;
+  transform: translateY(-1px);
+}
+
+/* QR Section */
+.qr-section {
+  margin-top: 30px;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+}
+
+.qr-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-scan-btn {
+  background: #00a86b;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.2s, transform 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.qr-scan-btn:hover {
+  background: #008a5a;
+  transform: translateY(-1px);
+}
+
+.qr-info p {
+  font-size: 14px;
+  color: #000;
+  margin: 5px 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Preview Mode Styles */
+.preview-mode {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.header {
+  background: white;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+.preview-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.preview-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.preview-header h2 {
+  font-size: 32px;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.preview-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.image-preview {
+  width: 100%;
+  max-width: 800px;
+}
+
+.outfit-display {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.model-placeholder {
+  width: 100%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-wrapper,
+.image-wrapper-3 {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-image {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.user-image.blurred {
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.center-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.center-button:hover {
+  background: #0052a3;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.untier-section {
+  margin-top: 20px;
+}
+
+.untier-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.untier-btn:hover {
+  background: #ff5252;
+  transform: translateY(-2px);
+}
+
+/* Step 3 Action Buttons */
+.step3-actions {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 15px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.buy-btn {
+  background: #0066cc;
+  color: white;
+}
+
+.buy-btn:hover {
+  background: #0052a3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}
+
+.share-btn {
+  background: #00a86b;
+  color: white;
+}
+
+.share-btn:hover {
+  background: #008a5a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 168, 107, 0.3);
+}
+
+/* Email Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #333;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-image {
+  max-width: 200px;
+  margin: 20px auto;
+  display: block;
+}
+
+.modal-text {
+  font-size: 16px;
+  color: #333;
+  margin: 20px 0;
+  line-height: 1.6;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  margin: 20px 0;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.modal-continue {
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.modal-continue:hover {
+  background: #0052a3;
+}
+
+/* QR Scanner Modal Overlay */
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+/* QR Scanner Modal */
+.qr-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.qr-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #333;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.qr-modal-close:hover {
+  background: #000;
+  transform: scale(1.1);
+}
+
+/* QR Code Container */
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0 30px 0;
+}
+
+.qr-code-placeholder {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-image {
+  width: 200px;
+  height: 200px;
+  display: block;
+  margin: 0 auto;
+}
+
+.qr-code-placeholder svg {
+  display: block;
+  margin: 0 auto;
+}
+
+/* QR Modal Title */
+.qr-modal-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+  margin: 0 0 15px 0;
+  text-align: center;
+}
+
+/* QR Modal Instructions */
+.qr-modal-instruction {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 25px 0;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* QR Modal Separator */
+.qr-modal-separator {
+  margin: 25px 0;
+}
+
+.qr-or-text {
+  font-size: 16px;
+  color: #333;
+  margin: 0;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* QR Modal Upload Text */
+.qr-modal-upload-text {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+/* QR Browse Button */
+.qr-browse-btn {
+  background: #00a86b;
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-block;
+  transition: background 0.2s, transform 0.2s;
+  width: 100%;
+  max-width: 300px;
+  text-align: center;
+}
+
+.qr-browse-btn:hover {
+  background: #008a5a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 168, 107, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .try-on-modal {
+    padding: 30px 20px;
+  }
+
+  .try-on-modal-title {
+    font-size: 24px;
+  }
+
+  .step3-actions {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .qr-modal {
+    padding: 30px 20px;
+  }
+
+  .qr-modal-title {
+    font-size: 18px;
+  }
+
+  .qr-code-placeholder svg {
+    width: 150px;
+    height: 150px;
+  }
+}
