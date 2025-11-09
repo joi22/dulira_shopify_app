@@ -1,670 +1,1226 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* -------------------------------------------------
+   Layout helpers
+   ------------------------------------------------- */
+.app { min-height: 100vh; }
+.main-content { padding: 4rem 1rem; text-align: center; }
+.preview-mode { background: #f5f5f5; min-height: 100vh; }
+.header { background: #fff; padding: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+.logo { font-size: 2rem; font-weight: bold; color: #333; margin: 0; }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-/* Try-On Trigger Button */
+/* -------------------------------------------------
+   Try-On Trigger Button (Step 1)
+   ------------------------------------------------- */
 .try-on-trigger-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  color: #fff;
   border: none;
   padding: 15px 30px;
   font-size: 18px;
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  margin: 50px auto;
+  transition: transform .2s, box-shadow .2s;
 }
-
 .try-on-trigger-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
 }
 
-/* Try-On Modal Overlay */
+/* -------------------------------------------------
+   Try-On Modal – Overlay & Container
+   ------------------------------------------------- */
 .try-on-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0,0,0,.5);
   backdrop-filter: blur(5px);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 1rem;
 }
-
-/* Try-On Modal */
 .try-on-modal {
-  background: white;
-  border: 2px solid #0066cc;
+  background: #fff;
   border-radius: 12px;
-  padding: 40px;
-  max-width: 600px;
+  padding: 2.5rem;
+  max-width: 700px;
   width: 100%;
   position: relative;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0,0,0,.2);
 }
 
+/* Close button (top-right) */
 .try-on-modal-close {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
-  border: none;
-  font-size: 32px;
-  color: #333;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
+  top: 15px; right: 15px;
+  background: none; border: none;
+  font-size: 32px; color: #333;
+  cursor: pointer; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
 }
+.try-on-modal-close:hover { color: #000; }
 
-.try-on-modal-close:hover {
-  color: #000;
-}
-
+/* Titles */
 .try-on-modal-title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #000;
-  margin: 0 0 10px 0;
-  text-align: center;
+  font-size: 28px; font-weight: bold; color: #000;
+  text-align: center; margin-bottom: .5rem;
 }
-
 .try-on-modal-subtitle {
-  font-size: 16px;
-  color: #000;
-  margin: 0 0 30px 0;
-  text-align: center;
+  font-size: 16px; color: #000;
+  text-align: center; margin-bottom: 2rem;
 }
 
-/* Drag and Drop Area */
+/* -------------------------------------------------
+   Drag & Drop Area
+   ------------------------------------------------- */
 .drag-drop-area {
   border: 2px dashed #ccc;
   border-radius: 8px;
-  padding: 40px 20px;
-  margin: 30px 0;
+  padding: 2.5rem 1.5rem;
   background: #fafafa;
-  transition: border-color 0.3s, background 0.3s;
+  transition: border-color .3s, background .3s;
 }
-
 .drag-drop-area:hover {
   border-color: #0066cc;
   background: #f0f8ff;
 }
-
 .drag-drop-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
 }
-
-.upload-icon {
-  margin-bottom: 10px;
-}
-
+.upload-icon img { width: 150px; }
 .drag-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: #00a86b;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 16px; font-weight: 600; color: #00a86b;
+  text-transform: uppercase; letter-spacing: 1px;
 }
-
-.or-text {
-  font-size: 14px;
-  color: #000;
-  margin: 5px 0;
-}
-
+.or-text { font-size: 14px; color: #000; }
 .upload-btn {
-  background: #000;
-  color: white;
-  border: none;
-  padding: 12px 30px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  background: #000; color: #fff;
+  border: none; padding: 12px 30px;
+  font-size: 14px; font-weight: 600;
+  border-radius: 6px; cursor: pointer;
+  transition: background .2s, transform .2s;
 }
-
 .upload-btn:hover {
-  background: #333;
-  transform: translateY(-1px);
+  background: #333; transform: translateY(-1px);
 }
 
-/* QR Section */
-.qr-section {
-  margin-top: 30px;
-}
-
-.qr-container {
-  display: flex;
-  justify-content: center;
-}
-
-.qr-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
+/* -------------------------------------------------
+   QR Section inside the modal
+   ------------------------------------------------- */
+.qr-section { margin-top: 2rem; }
+.qr-container { display: flex; justify-content: center; }
+.qr-info { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
 .qr-scan-btn {
-  background: #00a86b;
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
+  background: #00a86b; color: #fff;
+  border: none; padding: 15px 30px;
+  font-size: 16px; font-weight: 600;
+  border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: .5rem;
+  transition: background .2s, transform .2s;
+}
+.qr-scan-btn:hover {
+  background: #008a5a; transform: translateY(-1px);
+}
+.qr-info p {
+  font-size: 14px; color: #000; text-align: center; line-height: 1.5;
+}
+
+/* -------------------------------------------------
+   QR Modal (opened from QR button)
+   ------------------------------------------------- */
+.qr-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; padding: 1rem;
+}
+.qr-modal {
+  background: #fff; border-radius: 12px;
+  padding: 2.5rem; max-width: 500px; width: 100%;
+  text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.4);
+}
+.qr-modal-close {
+  position: absolute; top: 15px; right: 15px;
+  background: #333; color: #fff; border: none;
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 24px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.qr-modal-close:hover { background: #000; transform: scale(1.1); }
+
+.qr-code-container { margin: 1.5rem 0; }
+.qr-code-placeholder { padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.qr-code-image, .qr-code-svg { width: 200px; height: 200px; display: block; margin: 0 auto; }
+
+.qr-modal-title { font-size: 20px; font-weight: bold; margin: .5rem 0 1rem; }
+.qr-modal-instruction { font-size: 14px; color: #333; margin-bottom: 1.5rem; line-height: 1.6; }
+.qr-modal-separator { margin: 1.5rem 0; }
+.qr-or-text { font-size: 16px; font-weight: 500; color: #333; }
+.qr-modal-upload-text { font-size: 14px; color: #333; margin-bottom: 1rem; }
+.qr-browse-btn {
+  background: #00a86b; color: #fff;
+  border: none; padding: 15px 40px;
+  font-size: 16px; font-weight: 600;
+  border-radius: 8px; cursor: pointer;
+  display: inline-block; width: 100%; max-width: 300px;
+  transition: background .2s, transform .2s;
+}
+.qr-browse-btn:hover {
+  background: #008a5a; transform: translateY(-2px);
+}
+
+/* -------------------------------------------------
+   Preview Screen (blurred / unblurred)
+   ------------------------------------------------- */
+.preview-container { max-width: 1200px; margin: 0 auto; padding: 2.5rem 1rem; }
+.preview-header { text-align: center; margin-bottom: 2.5rem; }
+.preview-header h2 { font-size: 32px; color: #333; margin-bottom: .5rem; }
+.preview-subtitle { font-size: 16px; color: #666; }
+
+.preview-content { display: flex; flex-direction: column; align-items: center; gap: 2rem; }
+.image-preview { width: 100%; max-width: 800px; }
+.outfit-display { background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.model-placeholder { min-height: 500px; display: flex; align-items: center; justify-content: center; }
+
+.image-wrapper { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; }
+.user-image { max-width: 100%; max-height: 600px; border-radius: 8px; object-fit: contain; }
+.user-image.blurred { filter: blur(20px); pointer-events: none; }
+
+.center-button {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #333; color: #fff;
+  border: none; padding: 15px 30px;
+  font-size: 16px; font-weight: 600;
+  border-radius: 8px; cursor: pointer;
+  z-index: 10; transition: background .2s, transform .2s;
+}
+.center-button:hover { background: #000; transform: translate(-50%, -50%) scale(1.05); }
+.try-on-modal-image{
+  max-width: 200px;
+}
+.untier-section { margin-top: 1.5rem; }
+.untier-btn {
+  background: #ff6b6b; color: #fff;
+  border: none; padding: 12px 30px;
+  font-size: 16px; font-weight: 600;
+  border-radius: 8px; cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.untier-btn:hover { background: #ff5252; transform: translateY(-2px); }
+
+/* -------------------------------------------------
+   Email Modal (Step 3)
+   ------------------------------------------------- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; padding: 1rem;
+}
+.modal {
+  background: #fff; border-radius: 12px;
+  padding: 2.5rem; max-width: 500px; width: 100%;
+  text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+}
+.modal-close { 
+  position: absolute; top: 15px; right: 15px;
+  background: none; border: none; font-size: 32px;
+  color: #333; cursor: pointer;
+}
+.modal-image { max-width: 200px; margin: 1.5rem auto; display: block; }
+.modal-text { font-size: 16px; color: #333; margin: 1.5rem 0; line-height: 1.6; }
+.modal-input {
+  width: 100%; padding: 12px; font-size: 16px;
+  border: 2px solid #ddd; border-radius: 6px;
+  margin: 1.5rem 0; box-sizing: border-box;
+}
+.modal-input:focus { outline: none; border-color: #0066cc; }
+.modal-continue {
+  background: #0066cc; color: #fff;
+  border: none; padding: 12px 40px;
+  font-size: 16px; font-weight: 600;
+  border-radius: 6px; cursor: pointer;
+  width: 100%; transition: background .2s;
+}
+.modal-continue:hover { background: #0052a3; }
+
+/* -------------------------------------------------
+   Header (Step 2 & 3)
+   ------------------------------------------------- */
+.header {
+  background: #fff;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: background 0.2s, transform 0.2s;
-  width: 100%;
-  justify-content: center;
+  justify-content: space-between;
+  position: relative;
 }
 
-.qr-scan-btn:hover {
-  background: #008a5a;
-  transform: translateY(-1px);
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.qr-info p {
-  font-size: 14px;
-  color: #000;
-  margin: 5px 0;
-  text-align: center;
-  line-height: 1.5;
-}
-
-/* Preview Mode Styles */
-.preview-mode {
-  min-height: 100vh;
-  background: #f5f5f5;
-}
-
-.header {
-  background: white;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.logo-icon {
+  width: 30px;
+  height: 30px;
+  background: #00a86b;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .logo {
-  font-size: 32px;
+  font-size: 1.5rem;
   font-weight: bold;
-  color: #333;
+  color: #00a86b;
   margin: 0;
 }
 
-.preview-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
-}
-
-.preview-header {
+.header-center {
+  flex: 1;
   text-align: center;
-  margin-bottom: 40px;
 }
 
-.preview-header h2 {
-  font-size: 32px;
+.header-title {
+  font-size: 28px;
+  font-weight: bold;
   color: #333;
-  margin: 0 0 10px 0;
+  margin: 0 0 0.25rem 0;
 }
 
-.preview-subtitle {
-  font-size: 16px;
+.header-subtitle {
+  font-size: 14px;
   color: #666;
   margin: 0;
 }
 
-.preview-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 30px;
-}
-
-.image-preview {
-  width: 100%;
-  max-width: 800px;
-}
-
-.outfit-display {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.model-placeholder {
-  width: 100%;
-  min-height: 500px;
+.header-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
 }
 
-.image-wrapper,
-.image-wrapper-3 {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-image {
-  max-width: 100%;
-  max-height: 600px;
+.header-action-btn {
+  background: #f0f0f0;
+  border: none;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
-  object-fit: contain;
-}
-
-.user-image.blurred {
-  filter: blur(20px);
-  pointer-events: none;
-}
-
-.center-button {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #0066cc;
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  z-index: 10;
-  transition: background 0.2s, transform 0.2s;
-}
-
-.center-button:hover {
-  background: #0052a3;
-  transform: translate(-50%, -50%) scale(1.05);
-}
-
-.untier-section {
-  margin-top: 20px;
-}
-
-.untier-btn {
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  padding: 12px 30px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-}
-
-.untier-btn:hover {
-  background: #ff5252;
-  transform: translateY(-2px);
-}
-
-/* Step 3 Action Buttons */
-.step3-actions {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 30px;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 15px 40px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.buy-btn {
-  background: #0066cc;
-  color: white;
-}
-
-.buy-btn:hover {
-  background: #0052a3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-}
-
-.share-btn {
-  background: #00a86b;
-  color: white;
-}
-
-.share-btn:hover {
-  background: #008a5a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 168, 107, 0.3);
-}
-
-/* Email Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  padding: 20px;
-}
-
-.modal {
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  max-width: 500px;
-  width: 100%;
-  position: relative;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-.modal-close {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
-  border: none;
-  font-size: 32px;
-  color: #333;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  width: 30px;
-  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.modal-image {
-  max-width: 200px;
-  margin: 20px auto;
-  display: block;
-}
-
-.modal-text {
-  font-size: 16px;
-  color: #333;
-  margin: 20px 0;
-  line-height: 1.6;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  margin: 20px 0;
-  box-sizing: border-box;
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: #0066cc;
-}
-
-.modal-continue {
-  background: #0066cc;
-  color: white;
-  border: none;
-  padding: 12px 40px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 6px;
   cursor: pointer;
   transition: background 0.2s;
-  width: 100%;
 }
 
-.modal-continue:hover {
-  background: #0052a3;
+.header-action-btn:hover {
+  background: #e0e0e0;
 }
 
-/* QR Scanner Modal Overlay */
-.qr-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  padding: 20px;
+.download-btn {
+  color: #00a86b;
 }
 
-/* QR Scanner Modal */
-.qr-modal {
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  max-width: 500px;
-  width: 100%;
-  position: relative;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+.hanger-btn {
+  color: #666;
 }
 
-.qr-modal-close {
-  position: absolute;
-  top: 15px;
-  right: 15px;
+.header-close-btn {
   background: #333;
+  color: #fff;
   border: none;
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  color: white;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-  padding: 0;
-  transition: background 0.2s, transform 0.2s;
+  transition: background 0.2s;
 }
 
-.qr-modal-close:hover {
+.header-close-btn:hover {
   background: #000;
-  transform: scale(1.1);
 }
 
-/* QR Code Container */
-.qr-code-container {
+/* -------------------------------------------------
+   Action Buttons (Step 3)
+   ------------------------------------------------- */
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+.buy-look-btn,
+.share-look-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.buy-look-btn {
+  background: #00a86b;
+  color: #fff;
+}
+
+.buy-look-btn:hover {
+  background: #008a5a;
+  transform: translateY(-2px);
+}
+
+.share-look-btn {
+  background: #000;
+  color: #fff;
+}
+
+.share-look-btn:hover {
+  background: #333;
+  transform: translateY(-2px);
+}
+
+.try-on-instruction {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-top: 1rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* -------------------------------------------------
+   Email Modal (Step 2)
+   ------------------------------------------------- */
+.modal-illustration {
   display: flex;
   justify-content: center;
-  align-items: center;
-  margin: 20px 0 30px 0;
+  margin: 1.5rem 0;
 }
 
-.qr-code-placeholder {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.qr-code-image {
-  width: 200px;
-  height: 200px;
-  display: block;
-  margin: 0 auto;
-}
-
-.qr-code-placeholder svg {
-  display: block;
-  margin: 0 auto;
-}
-
-/* QR Modal Title */
-.qr-modal-title {
-  font-size: 20px;
+.modal-hey-text {
+  font-size: 32px;
   font-weight: bold;
   color: #000;
-  margin: 0 0 15px 0;
-  text-align: center;
+  margin: 1rem 0;
 }
 
-/* QR Modal Instructions */
-.qr-modal-instruction {
-  font-size: 14px;
+.modal {
+  position: relative;
+}
+
+/* -------------------------------------------------
+   Register/Login Modal (Step 4)
+   ------------------------------------------------- */
+.register-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 1rem;
+}
+
+.register-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 1000px;
+  width: 100%;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  position: relative;
+}
+
+.register-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #fff;
   color: #333;
-  margin: 0 0 25px 0;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+
+.register-left-panel {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  padding: 3rem 2.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-left-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0 0 0.5rem 0;
+}
+
+.register-left-brand {
+  color: #00a86b;
+  font-size: 42px;
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+}
+
+.register-left-tagline {
+  color: #fff;
+  font-size: 14px;
+  margin: 0 0 2rem 0;
+  opacity: 0.9;
+}
+
+.register-3d-elements {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sphere {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0, 168, 107, 0.3);
+  border: 2px solid rgba(0, 168, 107, 0.5);
+}
+
+.sphere-1 {
+  width: 120px;
+  height: 120px;
+  top: 20%;
+  left: 10%;
+}
+
+.sphere-2 {
+  width: 100px;
+  height: 100px;
+  bottom: 15%;
+  right: 15%;
+}
+
+.cube {
+  position: absolute;
+  background: #00a86b;
+  border-radius: 4px;
+}
+
+.cube-1 {
+  width: 140px;
+  height: 140px;
+  bottom: 30%;
+  left: 20%;
+  z-index: 2;
+}
+
+.cube-2 {
+  width: 100px;
+  height: 100px;
+  bottom: 20%;
+  left: 30%;
+  z-index: 1;
+}
+
+.speech-bubble {
+  position: absolute;
+  top: 40%;
+  left: 15%;
+  z-index: 3;
+}
+
+.bubble-dot {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  margin-bottom: -4px;
+  margin-left: 20px;
+}
+
+.bubble-content {
+  background: #90EE90;
+  color: #000;
+  padding: 10px 15px;
+  border-radius: 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+
+.register-right-panel {
+  background: #fff;
+  padding: 3rem 2.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.register-logo-small {
+  margin-bottom: 1.5rem;
+}
+
+.register-form-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #000;
+  margin: 0 0 0.5rem 0;
+}
+
+.register-form-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 2rem 0;
+}
+
+.register-toggle {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  border-color: #00a86b;
+  background: #00a86b;
+  color: #fff;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.register-input {
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.register-input:focus {
+  outline: none;
+  border-color: #00a86b;
+}
+
+.register-submit-btn {
+  background: #00a86b;
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background 0.2s;
+}
+
+.register-submit-btn:hover {
+  background: #008a5a;
+}
+
+/* -------------------------------------------------
+   Payment Modal (Step 5)
+   ------------------------------------------------- */
+.payment-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 1rem;
+}
+
+.payment-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  position: relative;
+}
+
+.payment-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #333;
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payment-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #000;
   text-align: center;
+  margin: 0 0 1rem 0;
+}
+
+.payment-subtitle {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 2rem 0;
   line-height: 1.6;
 }
 
-/* QR Modal Separator */
-.qr-modal-separator {
-  margin: 25px 0;
+.payment-wallet-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
-.qr-or-text {
-  font-size: 16px;
-  color: #333;
-  margin: 0;
-  font-weight: 500;
-  text-align: center;
-}
-
-/* QR Modal Upload Text */
-.qr-modal-upload-text {
-  font-size: 14px;
-  color: #333;
-  margin: 0 0 20px 0;
-  text-align: center;
-}
-
-/* QR Browse Button */
-.qr-browse-btn {
-  background: #00a86b;
-  color: white;
+.wallet-btn {
+  flex: 1;
+  background: #000;
+  color: #fff;
   border: none;
-  padding: 15px 40px;
+  padding: 15px;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
-  border-radius: 8px;
   cursor: pointer;
-  display: inline-block;
-  transition: background 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+}
+
+.wallet-btn:hover {
+  background: #333;
+}
+
+.wallet-logo {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.payment-separator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2rem 0 1rem 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.card-logos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card-logo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.payment-input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
   width: 100%;
-  max-width: 300px;
-  text-align: center;
+  box-sizing: border-box;
 }
 
-.qr-browse-btn:hover {
+.payment-input:focus {
+  outline: none;
+  border-color: #00a86b;
+}
+
+.payment-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.payment-input-small {
+  flex: 1;
+}
+
+.payment-continue-btn {
+  background: #00a86b;
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background 0.2s;
+}
+
+.payment-continue-btn:hover {
   background: #008a5a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 168, 107, 0.3);
 }
 
-/* Responsive Design */
+/* -------------------------------------------------
+   Save Look Modal (Step 6)
+   ------------------------------------------------- */
+.save-look-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 1rem;
+}
+
+.save-look-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 900px;
+  width: 100%;
+  padding: 2.5rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  position: relative;
+}
+
+.save-look-back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #00a86b;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.save-look-back-btn:hover {
+  background: #f0f0f0;
+}
+
+.save-look-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #333;
+  color: #fff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-look-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+  margin: 0 0 0.5rem 0;
+}
+
+.save-look-subtitle {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 0 0 2rem 0;
+}
+
+.save-look-content {
+  display: flex;
+  gap: 2rem;
+}
+
+.save-look-image-section {
+  flex: 1;
+}
+
+.save-look-image {
+  width: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+  max-height: 500px;
+}
+
+.save-look-form-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.save-look-form-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 1.5rem 0;
+}
+
+.save-look-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.save-look-input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.save-look-input:focus {
+  outline: none;
+  border-color: #00a86b;
+}
+
+.save-look-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 14px;
+  color: #666;
+  margin: 1rem 0;
+}
+
+.save-look-checkbox-input {
+  margin-top: 2px;
+}
+
+.read-more-link {
+  color: #00a86b;
+  text-decoration: none;
+}
+
+.save-look-submit-btn {
+  background: #00a86b;
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background 0.2s;
+}
+
+.save-look-submit-btn:hover {
+  background: #008a5a;
+}
+
+/* -------------------------------------------------
+   Your Look Page (Step 7)
+   ------------------------------------------------- */
+.your-look-page {
+  background: #f5f5f5;
+}
+
+.your-look-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.your-look-sidebar {
+  background: #00a86b;
+  width: 250px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 3rem;
+}
+
+.sidebar-logo-text {
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nav-item.active {
+  background: rgba(255,255,255,.2);
+  border-left: 3px solid #fff;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,.1);
+}
+
+.nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+.your-look-main {
+  flex: 1;
+  padding: 2.5rem;
+  position: relative;
+}
+
+.your-look-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #333;
+  color: #fff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.your-look-title {
+  font-size: 36px;
+  font-weight: bold;
+  color: #00a86b;
+  margin: 0 0 0.5rem 0;
+}
+
+.your-look-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 2rem 0;
+}
+
+.your-look-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.look-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  position: relative;
+}
+
+.look-card-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.look-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.look-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.look-card-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+  margin: 0 0 0.5rem 0;
+}
+
+.look-card-meta {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 1rem 0;
+}
+
+.look-card-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.look-action-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn,
+.edit-btn {
+  background: #000;
+  color: #fff;
+}
+
+.view-btn:hover,
+.edit-btn:hover {
+  background: #333;
+}
+
+.buy-btn {
+  background: #00a86b;
+  color: #fff;
+}
+
+.buy-btn:hover {
+  background: #008a5a;
+}
+
+.look-share-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #000;
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.look-share-btn:hover {
+  background: #333;
+}
+
+/* -------------------------------------------------
+   Responsive tweaks
+   ------------------------------------------------- */
 @media (max-width: 768px) {
-  .try-on-modal {
-    padding: 30px 20px;
-  }
-
-  .try-on-modal-title {
-    font-size: 24px;
-  }
-
-  .step3-actions {
+  .try-on-modal,
+  .qr-modal,
+  .modal { padding: 2rem 1.5rem; }
+  .try-on-modal-title { font-size: 24px; }
+  .qr-code-placeholder svg { width: 150px; height: 150px; }
+  
+  .register-modal {
     flex-direction: column;
   }
-
-  .action-btn {
+  
+  .register-left-panel {
+    min-height: 300px;
+  }
+  
+  .save-look-content {
+    flex-direction: column;
+  }
+  
+  .your-look-container {
+    flex-direction: column;
+  }
+  
+  .your-look-sidebar {
     width: 100%;
   }
-
-  .qr-modal {
-    padding: 30px 20px;
+  
+  .header {
+    flex-wrap: wrap;
   }
-
-  .qr-modal-title {
-    font-size: 18px;
-  }
-
-  .qr-code-placeholder svg {
-    width: 150px;
-    height: 150px;
+  
+  .header-center {
+    order: 3;
+    width: 100%;
+    margin-top: 1rem;
   }
 }
