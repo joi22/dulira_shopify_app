@@ -10,7 +10,7 @@ function App() {
   const [qrImageError, setQrImageError] = useState(false);
   const [email, setEmail] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     username: "",
@@ -131,36 +131,41 @@ function App() {
               <button
                 className="try-on-modal-close"
                 onClick={() => setShowTryOnModal(false)}
+                aria-label="Close try-on modal"
               >
                 ×
               </button>
 
-              <h3 className="try-on-modal-title">Try-On This look</h3>
-              <p className="try-on-modal-subtitle">
-                See how this product looks on you.
-              </p>
+              <div className="try-on-modal-heading">
+                <h3 className="try-on-modal-title">Try-On This look</h3>
+                <p className="try-on-modal-subtitle">
+                  See how this product looks on you.
+                </p>
+              </div>
 
               <div
                 className="drag-drop-area"
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
               >
-                <div className="drag-drop-content">
-                  <div className="upload-icon">
-                    <img width="150px" src="./media/1p.png" alt="upload" />
-                  </div>
-                  <p className="drag-text">DRAG OR DROP YOUR IDEA</p>
-                  <p className="or-text">or</p>
+                <div className="drag-drop-inner">
+                  <div className="drag-drop-content">
+                    <div className="upload-icon">
+                      <img width="170" src="./media/1p.png" alt="upload" />
+                    </div>
+                    <p className="drag-text">DRAG OR DROP YOUR IDEA</p>
+                    <p className="or-text">or</p>
 
-                  <label className="upload-btn">
-                    Browse files
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={handleImageUpload}
-                    />
-                  </label>
+                    <label className="upload-btn">
+                      Browse files
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={handleImageUpload}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -174,7 +179,14 @@ function App() {
                         setShowQRModal(true);
                       }}
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
                         <rect x="14" y="14" width="7" height="7"></rect>
@@ -235,39 +247,189 @@ function App() {
                       <rect x="10" y="10" width="50" height="50" fill="black" />
                       <rect x="15" y="15" width="40" height="40" fill="white" />
                       <rect x="20" y="20" width="30" height="30" fill="black" />
-                      <rect x="140" y="10" width="50" height="50" fill="black" />
-                      <rect x="145" y="15" width="40" height="40" fill="white" />
-                      <rect x="150" y="20" width="30" height="30" fill="black" />
-                      <rect x="10" y="140" width="50" height="50" fill="black" />
-                      <rect x="15" y="145" width="40" height="40" fill="white" />
-                      <rect x="20" y="150" width="30" height="30" fill="black" />
+                      <rect
+                        x="140"
+                        y="10"
+                        width="50"
+                        height="50"
+                        fill="black"
+                      />
+                      <rect
+                        x="145"
+                        y="15"
+                        width="40"
+                        height="40"
+                        fill="white"
+                      />
+                      <rect
+                        x="150"
+                        y="20"
+                        width="30"
+                        height="30"
+                        fill="black"
+                      />
+                      <rect
+                        x="10"
+                        y="140"
+                        width="50"
+                        height="50"
+                        fill="black"
+                      />
+                      <rect
+                        x="15"
+                        y="145"
+                        width="40"
+                        height="40"
+                        fill="white"
+                      />
+                      <rect
+                        x="20"
+                        y="150"
+                        width="30"
+                        height="30"
+                        fill="black"
+                      />
                       <rect x="70" y="10" width="10" height="10" fill="black" />
                       <rect x="90" y="10" width="10" height="10" fill="black" />
-                      <rect x="110" y="10" width="10" height="10" fill="black" />
+                      <rect
+                        x="110"
+                        y="10"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
                       <rect x="10" y="70" width="10" height="10" fill="black" />
                       <rect x="30" y="70" width="10" height="10" fill="black" />
                       <rect x="50" y="70" width="10" height="10" fill="black" />
                       <rect x="70" y="70" width="50" height="50" fill="black" />
                       <rect x="80" y="80" width="30" height="30" fill="white" />
                       <rect x="90" y="90" width="10" height="10" fill="black" />
-                      <rect x="130" y="70" width="10" height="10" fill="black" />
-                      <rect x="150" y="70" width="10" height="10" fill="black" />
-                      <rect x="170" y="70" width="10" height="10" fill="black" />
-                      <rect x="70" y="130" width="10" height="10" fill="black" />
-                      <rect x="90" y="130" width="10" height="10" fill="black" />
-                      <rect x="110" y="130" width="10" height="10" fill="black" />
-                      <rect x="130" y="130" width="10" height="10" fill="black" />
-                      <rect x="150" y="130" width="10" height="10" fill="black" />
-                      <rect x="170" y="130" width="10" height="10" fill="black" />
-                      <rect x="10" y="170" width="10" height="10" fill="black" />
-                      <rect x="30" y="170" width="10" height="10" fill="black" />
-                      <rect x="50" y="170" width="10" height="10" fill="black" />
-                      <rect x="70" y="170" width="10" height="10" fill="black" />
-                      <rect x="90" y="170" width="10" height="10" fill="black" />
-                      <rect x="110" y="170" width="10" height="10" fill="black" />
-                      <rect x="130" y="170" width="10" height="10" fill="black" />
-                      <rect x="150" y="170" width="10" height="10" fill="black" />
-                      <rect x="170" y="170" width="10" height="10" fill="black" />
+                      <rect
+                        x="130"
+                        y="70"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="150"
+                        y="70"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="170"
+                        y="70"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="70"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="90"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="110"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="130"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="150"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="170"
+                        y="130"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="10"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="30"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="50"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="70"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="90"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="110"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="130"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="150"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
+                      <rect
+                        x="170"
+                        y="170"
+                        width="10"
+                        height="10"
+                        fill="black"
+                      />
                     </svg>
                   )}
                 </div>
@@ -308,83 +470,97 @@ function App() {
   // Step 2: Blurred Preview
   if (currentStep === 2) {
     return (
-      <div className="app preview-mode">
-        <header className="header">
-          <button className="header-close-btn" onClick={handleBackToHome}>×</button>
-          <div className="header-logo">
-            <span className="logo-icon">●</span>
-            <h1 className="logo">DUKIRA</h1>
-          </div>
-          <div className="header-center">
-            <h2 className="header-title">Try-On Preview</h2>
-            <p className="header-subtitle">
-              Preview your outfit in real-time and adjust as you like.
-            </p>
-          </div>
-        </header>
+      <div className="app">
+        <div className="preview-modal-overlay" onClick={handleBackToHome}>
+          <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-modal-brand">
+              <img
+                src="./media/logo.png"
+                alt="Dukira logo"
+                className="preview-brand-mark"
+              />
+              <span className="preview-brand-name">DUKIRA</span>
+            </div>
 
-        <main className="preview-container">
-          <div className="preview-content">
-            <div className="image-preview">
-              <div className="outfit-display">
-                <div className="model-placeholder">
-                  {userImage && (
-                    <div className="image-wrapper">
-                      <img
-                        src={userImage}
-                        alt="User Upload"
-                        className="user-image blurred"
-                      />
-                      {isBlurred && (
-                        <button
-                          className="center-button"
-                          onClick={handleUnblurClick}
-                        >
-                          Click Here to Unblur
-                        </button>
-                      )}
-                    </div>
+            <button
+              className="preview-modal-close"
+              onClick={handleBackToHome}
+              aria-label="Close preview modal"
+            >
+              ×
+            </button>
+
+            <div className="preview-modal-heading">
+              <h2>Try-On Preview</h2>
+              <p>Preview your outfit in real-time and adjust as you like.</p>
+            </div>
+
+            <div className="preview-modal-body">
+              {userImage && (
+                <div className="preview-image-frame">
+                  <img
+                    src={userImage}
+                    alt="User Upload"
+                    className="preview-image blurred"
+                  />
+                  {isBlurred && (
+                    <button
+                      className="preview-unblur-btn"
+                      onClick={handleUnblurClick}
+                    >
+                      Click here to Unblur
+                    </button>
                   )}
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-        </main>
 
-        {/* Email Modal */}
-        {showEmailModal && (
-          <div className="modal-overlay" onClick={handleEmailModalClose}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <button className="modal-close" onClick={handleEmailModalClose}>
-                ×
-              </button>
-              <div className="modal-illustration">
-                <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-                  <rect x="20" y="30" width="80" height="60" rx="4" fill="#90EE90" />
-                  <polygon points="20,30 60,60 100,30" fill="#90EE90" />
-                  <polygon points="30,40 60,65 90,40" fill="white" />
-                  <circle cx="60" cy="50" r="15" fill="white" />
-                  <polygon points="55,50 60,45 65,50 60,55" fill="#90EE90" />
-                </svg>
+            {showEmailModal && (
+              <div
+                className="preview-email-overlay"
+                onClick={handleEmailModalClose}
+              >
+                <div
+                  className="preview-email-modal"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="preview-email-close"
+                    onClick={handleEmailModalClose}
+                    aria-label="Close email modal"
+                  >
+                    ×
+                  </button>
+
+                  <div className="preview-email-illustration">
+                    <img src="./media/email.png" alt="Email Illustration" />
+                  </div>
+
+                  <h3>HEY YOU!</h3>
+                  <p>
+                    Enter your email to enhance your work efficiency by joining
+                    us today.
+                  </p>
+
+                  <input
+                    type="email"
+                    placeholder="Enter Your Email"
+                    className="preview-email-input"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+
+                  <button
+                    className="preview-email-continue"
+                    onClick={handleEmailModalContinue}
+                  >
+                    Continue
+                  </button>
+                </div>
               </div>
-              <h2 className="modal-hey-text">HEY YOU!</h2>
-              <p className="modal-text">
-                Enter your email to enhance your work efficiency by joining us
-                today.
-              </p>
-              <input
-                type="email"
-                placeholder="Enter Your Email"
-                className="modal-input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button className="modal-continue" onClick={handleEmailModalContinue}>
-                Continue
-              </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   }
@@ -392,68 +568,96 @@ function App() {
   // Step 3: Unblurred Preview with Actions
   if (currentStep === 3) {
     return (
-      <div className="app preview-mode">
-        <header className="header">
-          <div className="header-logo">
-            <span className="logo-icon">●</span>
-            <h1 className="logo">DUKIRA</h1>
-          </div>
-          <div className="header-center">
-            <h2 className="header-title">Try-On Preview</h2>
-            <p className="header-subtitle">
-              Preview your outfit in real-time and adjust as you like.
-            </p>
-          </div>
-          <div className="header-actions">
-            <button
-              className="header-action-btn download-btn"
-              onClick={() => handleActionButton("download")}
-              title="Download"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </button>
-            <button
-              className="header-action-btn hanger-btn"
-              onClick={() => handleActionButton("hanger")}
-              title="Manage Items"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1-2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                <path d="M6 14h12"></path>
-              </svg>
-            </button>
-            <button className="header-close-btn" onClick={handleBackToHome}>×</button>
-          </div>
-        </header>
-
-        <main className="preview-container">
-          <div className="preview-content">
-            <div className="image-preview">
-              <div className="outfit-display">
-                <div className="model-placeholder">
-                  {userImage && (
-                    <div className="image-wrapper">
-                      <img
-                        src={userImage}
-                        alt="User Upload"
-                        className="user-image"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+      <div className="app">
+        <div className="preview-modal-overlay" onClick={handleBackToHome}>
+          <div
+            className="preview-modal preview-modal-step3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="preview-modal-brand">
+              <img
+                src="./media/logo.png"
+                alt="Dukira logo"
+                className="preview-brand-mark"
+              />
+              <span className="preview-brand-name">DUKIRA</span>
             </div>
 
-            <div className="action-buttons-container">
+            <div className="preview-modal-actions">
+              <button
+                className="preview-action-icon preview-action-icon--download"
+                onClick={() => handleActionButton("download")}
+                aria-label="Download look"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </button>
+              <button
+                className="preview-action-icon preview-action-icon--hanger"
+                onClick={() => handleActionButton("hanger")}
+                aria-label="Manage items"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1-2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <path d="M6 14h12"></path>
+                </svg>
+              </button>
+              <button
+                className="preview-modal-close"
+                onClick={handleBackToHome}
+                aria-label="Close preview"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="preview-modal-heading">
+              <h2>Try-On Preview</h2>
+              <p>Preview your outfit in real-time and adjust as you like.</p>
+            </div>
+
+            <div className="preview-modal-body preview-modal-body-actions">
+              {userImage && (
+                <div className="preview-image-frame preview-image-frame-clear">
+                  <img
+                    src={userImage}
+                    alt="User Upload"
+                    className="preview-image"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="action-buttons-container preview-action-buttons">
               <button
                 className="buy-look-btn"
                 onClick={() => handleActionButton("buy")}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                   <line x1="3" y1="6" x2="21" y2="6"></line>
                   <path d="M16 10a4 4 0 0 1-8 0"></path>
@@ -464,7 +668,14 @@ function App() {
                 className="share-look-btn"
                 onClick={() => handleActionButton("share")}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="18" cy="5" r="3"></circle>
                   <circle cx="6" cy="12" r="3"></circle>
                   <circle cx="18" cy="19" r="3"></circle>
@@ -480,7 +691,7 @@ function App() {
               to try to the cart, then tap the cart to try them on all at once.
             </p>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -491,12 +702,16 @@ function App() {
       <div className="app">
         <div className="register-modal-overlay">
           <div className="register-modal">
-            <button className="register-modal-close" onClick={handleBackToHome}>×</button>
-            
+            <button className="register-modal-close" onClick={handleBackToHome}>
+              ×
+            </button>
+
             <div className="register-left-panel">
               <h2 className="register-left-title">Get Start With</h2>
               <h1 className="register-left-brand">DUKIRA</h1>
-              <p className="register-left-tagline">Experience true to life fitting powered by DUKIRA</p>
+              <p className="register-left-tagline">
+                Experience true to life fitting powered by DUKIRA
+              </p>
               <div className="register-3d-elements">
                 <div className="sphere sphere-1"></div>
                 <div className="cube cube-1"></div>
@@ -514,8 +729,10 @@ function App() {
                 <span className="logo-icon">●</span>
               </div>
               <h2 className="register-form-title">Create an account</h2>
-              <p className="register-form-subtitle">Create Dukira account to see your look!</p>
-              
+              <p className="register-form-subtitle">
+                Create Dukira account to see your look!
+              </p>
+
               <div className="register-toggle">
                 <button
                   className={`toggle-btn ${!isLoginMode ? "active" : ""}`}
@@ -532,13 +749,21 @@ function App() {
               </div>
 
               {!isLoginMode ? (
-                <form className="register-form" onSubmit={(e) => { e.preventDefault(); handleRegisterLogin(); }}>
+                <form
+                  className="register-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleRegisterLogin();
+                  }}
+                >
                   <input
                     type="text"
                     placeholder="Username"
                     className="register-input"
                     value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, username: e.target.value })
+                    }
                     required
                   />
                   <input
@@ -546,7 +771,9 @@ function App() {
                     placeholder="Email"
                     className="register-input"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     required
                   />
                   <input
@@ -554,7 +781,9 @@ function App() {
                     placeholder="Password"
                     className="register-input"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                     required
                   />
                   <input
@@ -562,7 +791,12 @@ function App() {
                     placeholder="Confirm Password"
                     className="register-input"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                     required
                   />
                   <button type="submit" className="register-submit-btn">
@@ -570,13 +804,21 @@ function App() {
                   </button>
                 </form>
               ) : (
-                <form className="register-form" onSubmit={(e) => { e.preventDefault(); handleRegisterLogin(); }}>
+                <form
+                  className="register-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleRegisterLogin();
+                  }}
+                >
                   <input
                     type="email"
                     placeholder="Email"
                     className="register-input"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     required
                   />
                   <input
@@ -584,7 +826,9 @@ function App() {
                     placeholder="Password"
                     className="register-input"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                     required
                   />
                   <button type="submit" className="register-submit-btn">
@@ -605,11 +849,14 @@ function App() {
       <div className="app">
         <div className="payment-modal-overlay">
           <div className="payment-modal">
-            <button className="payment-modal-close" onClick={handleBackToHome}>×</button>
-            
+            <button className="payment-modal-close" onClick={handleBackToHome}>
+              ×
+            </button>
+
             <h2 className="payment-title">Add Payment Method</h2>
             <p className="payment-subtitle">
-              $0 to add. Your payment method is just being saved; we'll only charge for future use of this feature.
+              $0 to add. Your payment method is just being saved; we'll only
+              charge for future use of this feature.
             </p>
 
             <div className="payment-wallet-buttons">
@@ -631,13 +878,21 @@ function App() {
               </div>
             </div>
 
-            <form className="payment-form" onSubmit={(e) => { e.preventDefault(); handlePaymentContinue(); }}>
+            <form
+              className="payment-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handlePaymentContinue();
+              }}
+            >
               <input
                 type="text"
                 placeholder="Card Numbrt"
                 className="payment-input"
                 value={formData.cardNumber}
-                onChange={(e) => setFormData({...formData, cardNumber: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, cardNumber: e.target.value })
+                }
                 maxLength="16"
                 required
               />
@@ -646,7 +901,9 @@ function App() {
                 placeholder="Card Name"
                 className="payment-input"
                 value={formData.cardName}
-                onChange={(e) => setFormData({...formData, cardName: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, cardName: e.target.value })
+                }
                 required
               />
               <div className="payment-row">
@@ -655,7 +912,9 @@ function App() {
                   placeholder="Expiry date"
                   className="payment-input payment-input-small"
                   value={formData.expiryDate}
-                  onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expiryDate: e.target.value })
+                  }
                   maxLength="5"
                   required
                 />
@@ -664,7 +923,9 @@ function App() {
                   placeholder="CVC"
                   className="payment-input payment-input-small"
                   value={formData.cvc}
-                  onChange={(e) => setFormData({...formData, cvc: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cvc: e.target.value })
+                  }
                   maxLength="3"
                   required
                 />
@@ -685,18 +946,29 @@ function App() {
       <div className="app preview-mode">
         <div className="save-look-modal-overlay">
           <div className="save-look-modal">
-            <button className="save-look-back-btn" onClick={() => setCurrentStep(3)}>
+            <button
+              className="save-look-back-btn"
+              onClick={() => setCurrentStep(3)}
+            >
               ←
             </button>
-            <button className="save-look-close-btn" onClick={handleBackToHome}>×</button>
-            
+            <button className="save-look-close-btn" onClick={handleBackToHome}>
+              ×
+            </button>
+
             <h2 className="save-look-title">Save This Look</h2>
-            <p className="save-look-subtitle">Make sure it's your perfect fit before you save</p>
+            <p className="save-look-subtitle">
+              Make sure it's your perfect fit before you save
+            </p>
 
             <div className="save-look-content">
               <div className="save-look-image-section">
                 {userImage && (
-                  <img src={userImage} alt="Your Look" className="save-look-image" />
+                  <img
+                    src={userImage}
+                    alt="Your Look"
+                    className="save-look-image"
+                  />
                 )}
               </div>
 
@@ -704,13 +976,24 @@ function App() {
                 <h3 className="save-look-form-title">
                   Enter your look name and password to Save Your Look!
                 </h3>
-                <form className="save-look-form" onSubmit={(e) => { e.preventDefault(); handleSaveLook(); }}>
+                <form
+                  className="save-look-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSaveLook();
+                  }}
+                >
                   <input
                     type="text"
                     placeholder="Preferred Name"
                     className="save-look-input"
                     value={formData.preferredName}
-                    onChange={(e) => setFormData({...formData, preferredName: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        preferredName: e.target.value,
+                      })
+                    }
                     required
                   />
                   <input
@@ -718,7 +1001,9 @@ function App() {
                     placeholder="Password (4-digit code)"
                     className="save-look-input"
                     value={formData.savePassword}
-                    onChange={(e) => setFormData({...formData, savePassword: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, savePassword: e.target.value })
+                    }
                     maxLength="4"
                     required
                   />
@@ -727,7 +1012,13 @@ function App() {
                       type="checkbox"
                       className="save-look-checkbox-input"
                     />
-                    <span>Checking this box will verify your account and save your info for future use. <a href="#" className="read-more-link">Read more</a></span>
+                    <span>
+                      Checking this box will verify your account and save your
+                      info for future use.{" "}
+                      <a href="#" className="read-more-link">
+                        Read more
+                      </a>
+                    </span>
                   </label>
                   <button type="submit" className="save-look-submit-btn">
                     Save & Continue
@@ -748,20 +1039,20 @@ function App() {
         id: "#2899",
         name: "Glamour Glasses",
         date: "9 July 2025",
-        image: userImage || "https://via.placeholder.com/200"
+        image: userImage || "https://via.placeholder.com/200",
       },
       {
         id: "#2900",
         name: "Classic White Shirt",
         date: "10 July 2025",
-        image: "https://via.placeholder.com/200"
+        image: "https://via.placeholder.com/200",
       },
       {
         id: "#2901",
         name: "Blue Denim Jeans",
         date: "11 July 2025",
-        image: "https://via.placeholder.com/200"
-      }
+        image: "https://via.placeholder.com/200",
+      },
     ];
 
     return (
@@ -774,20 +1065,41 @@ function App() {
             </div>
             <nav className="sidebar-nav">
               <div className="nav-item active">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M4 7h16M4 12h16M4 17h16"></path>
                 </svg>
                 <span>Your Look</span>
               </div>
               <div className="nav-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                   <line x1="1" y1="10" x2="23" y2="10"></line>
                 </svg>
                 <span>Payment</span>
               </div>
               <div className="nav-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
                 </svg>
@@ -797,10 +1109,14 @@ function App() {
           </div>
 
           <div className="your-look-main">
-            <button className="your-look-close-btn" onClick={handleBackToHome}>×</button>
-            
+            <button className="your-look-close-btn" onClick={handleBackToHome}>
+              ×
+            </button>
+
             <h1 className="your-look-title">Your Look</h1>
-            <p className="your-look-subtitle">Like your own fitting room, anytime you shop.</p>
+            <p className="your-look-subtitle">
+              Like your own fitting room, anytime you shop.
+            </p>
 
             <div className="your-look-list">
               {savedLooks.map((look, index) => (
@@ -810,7 +1126,9 @@ function App() {
                   </div>
                   <div className="look-card-content">
                     <h3 className="look-card-name">{look.name}</h3>
-                    <p className="look-card-meta">{look.date} • {look.id}</p>
+                    <p className="look-card-meta">
+                      {look.date} • {look.id}
+                    </p>
                     <div className="look-card-actions">
                       <button className="look-action-btn view-btn">View</button>
                       <button className="look-action-btn edit-btn">Edit</button>
@@ -818,7 +1136,14 @@ function App() {
                     </div>
                   </div>
                   <button className="look-share-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <circle cx="18" cy="5" r="3"></circle>
                       <circle cx="6" cy="12" r="3"></circle>
                       <circle cx="18" cy="19" r="3"></circle>
