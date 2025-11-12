@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "426c7c2c34c89c3232fcc27a19b89cda"
+name = "my-new-app"
+handle = "my-new-app-1257"
+application_url = "https://bikes-owners-samoa-philippines.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = ["https://bikes-owners-samoa-philippines.trycloudflare.com/auth/callback", "https://bikes-owners-samoa-philippines.trycloudflare.com/auth/shopify/callback", "https://bikes-owners-samoa-philippines.trycloudflare.com/api/auth/callback"]
+
+[pos]
+embedded = false

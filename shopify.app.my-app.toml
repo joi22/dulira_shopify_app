@@ -1,0 +1,23 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "e39b88065f981f499f57bce2b536674d"
+name = "my-app"
+application_url = "https://example.com/"
+embedded = true
+handle = "my-app-1554"
+
+[webhooks]
+api_version = "2025-01"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
