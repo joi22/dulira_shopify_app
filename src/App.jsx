@@ -4,12 +4,22 @@ import "./App.css";
 function App() {
   const [currentStep, setCurrentStep] = useState(1);
   const [userImage, setUserImage] = useState(null);
+  const [userImageFile, setUserImageFile] = useState(null); // Store the actual file for API
   const [isBlurred, setIsBlurred] = useState(true);
   const [showTryOnModal, setShowTryOnModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrImageError, setQrImageError] = useState(false);
   const [email, setEmail] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
+  
+  // Try-on API states
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [showGeneratedImageModal, setShowGeneratedImageModal] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState(null);
+  
+  // Get product image URL from global variable
+  const productImageUrl = window.productImageUrl || "";
 
   // Form states
   const [formData, setFormData] = useState({
@@ -31,6 +41,7 @@ function App() {
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setUserImage(imageUrl);
+      setUserImageFile(file); // Store the file for API call
       setIsBlurred(true);
       setCurrentStep(2);
       setShowTryOnModal(false);
@@ -44,6 +55,7 @@ function App() {
     if (file && file.type.startsWith("image/")) {
       const imageUrl = URL.createObjectURL(file);
       setUserImage(imageUrl);
+      setUserImageFile(file); // Store the file for API call
       setIsBlurred(true);
       setCurrentStep(2);
       setShowTryOnModal(false);
@@ -58,8 +70,53 @@ function App() {
     setShowEmailModal(true);
   };
 
-  const handleEmailModalContinue = () => {
-    if (email.trim()) {
+  const handleEmailModalContinue = async () => {
+    if (email.trim() && userImageFile && productImageUrl) {
+      setShowEmailModal(false);
+      setIsGenerating(true);
+      setGenerationError(null);
+      
+      try {
+        // Call the try-on API
+        const formData = new FormData();
+        formData.append('productImageUrl', productImageUrl);
+        formData.append('personImage', userImageFile);
+        
+        // API URL - adjust this to match your Next.js API endpoint
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/tryon';
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || data.details || 'Failed to generate try-on image');
+        }
+        
+        if (data.generatedImageBase64) {
+          // Convert base64 to image URL
+          const imageUrl = `data:image/png;base64,${data.generatedImageBase64}`;
+          setGeneratedImage(imageUrl);
+          setShowGeneratedImageModal(true);
+          setIsBlurred(false);
+          setCurrentStep(3);
+        } else {
+          throw new Error('No image data received from API');
+        }
+      } catch (error) {
+        console.error('Error generating try-on image:', error);
+        setGenerationError(error.message || 'Failed to generate try-on image. Please try again.');
+        // Still proceed to step 3 even if API fails
+        setIsBlurred(false);
+        setCurrentStep(3);
+      } finally {
+        setIsGenerating(false);
+      }
+    } else if (email.trim()) {
+      // If no file or product URL, just proceed normally
       setShowEmailModal(false);
       setIsBlurred(false);
       setCurrentStep(3);
@@ -90,8 +147,13 @@ function App() {
   const handleBackToHome = () => {
     setCurrentStep(1);
     setUserImage(null);
+    setUserImageFile(null);
+    setGeneratedImage(null);
+    setShowGeneratedImageModal(false);
     setEmail("");
     setIsBlurred(true);
+    setIsGenerating(false);
+    setGenerationError(null);
     setFormData({
       username: "",
       email: "",
@@ -548,13 +610,142 @@ function App() {
                     className="preview-email-input"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isGenerating}
                   />
 
                   <button
                     className="preview-email-continue"
                     onClick={handleEmailModalContinue}
+                    disabled={isGenerating}
                   >
-                    Continue
+                    {isGenerating ? 'Generating...' : 'Continue'}
+                  </button>
+                  
+                  {generationError && (
+                    <p style={{ color: 'red', marginTop: '10px', fontSize: '14px' }}>
+                      {generationError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Loading Modal - Shows while generating try-on image */}
+            {isGenerating && (
+              <div
+                className="preview-email-overlay"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  zIndex: 9999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <div
+                  className="preview-email-modal"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    textAlign: 'center',
+                    padding: '40px',
+                    maxWidth: '400px'
+                  }}
+                >
+                  <div style={{
+                    marginBottom: '20px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      width: '60px',
+                      height: '60px',
+                      border: '4px solid #f3f3f3',
+                      borderTop: '4px solid #007bff',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                  </div>
+                  
+                  <h3 style={{
+                    marginBottom: '10px',
+                    fontSize: '24px',
+                    fontWeight: '600',
+                    color: '#333'
+                  }}>
+                    Generating Your Try-On
+                  </h3>
+                  
+                  <p style={{
+                    color: '#666',
+                    fontSize: '16px',
+                    marginBottom: '20px'
+                  }}>
+                    Please wait while we create your virtual try-on image...
+                  </p>
+                  
+                  <div style={{
+                    display: 'inline-block',
+                    padding: '8px 16px',
+                    backgroundColor: '#f0f0f0',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    color: '#666'
+                  }}>
+                    This may take a few moments
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Generated Try-On Image Modal */}
+            {showGeneratedImageModal && generatedImage && (
+              <div
+                className="preview-email-overlay"
+                onClick={() => setShowGeneratedImageModal(false)}
+              >
+                <div
+                  className="preview-email-modal"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxWidth: '90%', maxHeight: '90%' }}
+                >
+                  <button
+                    className="preview-email-close"
+                    onClick={() => setShowGeneratedImageModal(false)}
+                    aria-label="Close generated image modal"
+                  >
+                    ×
+                  </button>
+
+                  <div className="preview-modal-heading" style={{ marginBottom: '20px' }}>
+                    <h3>Your Virtual Try-On Result</h3>
+                    <p>Here's how the product looks on you!</p>
+                  </div>
+
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    marginBottom: '20px'
+                  }}>
+                    <img
+                      src={generatedImage}
+                      alt="Generated Try-On"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '70vh',
+                        objectFit: 'contain',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    className="preview-email-continue"
+                    onClick={() => setShowGeneratedImageModal(false)}
+                  >
+                    Close
                   </button>
                 </div>
               </div>
@@ -634,7 +825,15 @@ function App() {
             </div>
 
             <div className="preview-modal-body preview-modal-body-actions">
-              {userImage && (
+              {generatedImage ? (
+                <div className="preview-image-frame preview-image-frame-clear">
+                  <img
+                    src={generatedImage}
+                    alt="Generated Try-On"
+                    className="preview-image"
+                  />
+                </div>
+              ) : userImage ? (
                 <div className="preview-image-frame preview-image-frame-clear">
                   <img
                     src={userImage}
@@ -642,8 +841,32 @@ function App() {
                     className="preview-image"
                   />
                 </div>
-              )}
+              ) : null}
             </div>
+
+            {generatedImage && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginBottom: '20px',
+                padding: '10px'
+              }}>
+                <button
+                  onClick={() => setShowGeneratedImageModal(true)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '500'
+                  }}
+                >
+                  View Full Try-On Result
+                </button>
+              </div>
+            )}
 
             <div className="action-buttons-container preview-action-buttons">
               <button
@@ -692,6 +915,127 @@ function App() {
             </p>
           </div>
         </div>
+
+        {/* Loading Modal in Step 3 - Shows while generating try-on image */}
+        {isGenerating && (
+          <div
+            className="preview-email-overlay"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <div
+              className="preview-email-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                textAlign: 'center',
+                padding: '40px',
+                maxWidth: '400px'
+              }}
+            >
+              <div style={{
+                marginBottom: '20px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  border: '4px solid #f3f3f3',
+                  borderTop: '4px solid #007bff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              </div>
+              
+              <h3 style={{
+                marginBottom: '10px',
+                fontSize: '24px',
+                fontWeight: '600',
+                color: '#333'
+              }}>
+                Generating Your Try-On
+              </h3>
+              
+              <p style={{
+                color: '#666',
+                fontSize: '16px',
+                marginBottom: '20px'
+              }}>
+                Please wait while we create your virtual try-on image...
+              </p>
+              
+              <div style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                backgroundColor: '#f0f0f0',
+                borderRadius: '20px',
+                fontSize: '14px',
+                color: '#666'
+              }}>
+                This may take a few moments
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Generated Try-On Image Modal in Step 3 */}
+        {showGeneratedImageModal && generatedImage && (
+          <div
+            className="preview-email-overlay"
+            onClick={() => setShowGeneratedImageModal(false)}
+          >
+            <div
+              className="preview-email-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '90%', maxHeight: '90%' }}
+            >
+              <button
+                className="preview-email-close"
+                onClick={() => setShowGeneratedImageModal(false)}
+                aria-label="Close generated image modal"
+              >
+                ×
+              </button>
+
+              <div className="preview-modal-heading" style={{ marginBottom: '20px' }}>
+                <h3>Your Virtual Try-On Result</h3>
+                <p>Here's how the product looks on you!</p>
+              </div>
+
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <img
+                  src={generatedImage}
+                  alt="Generated Try-On"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </div>
+
+              <button
+                className="preview-email-continue"
+                onClick={() => setShowGeneratedImageModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
