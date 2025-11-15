@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
     // Convert product image URL to base64 (preserve quality)
     const productImageData = await urlToBase64WithMimeType(productImageUrl);
     const productImageBase64 = productImageData.base64;
-    const productMimeType = productImageData.mimeType;
+    const productMimeType = normalizeMimeType(productImageData.mimeType);
 
     // Convert person image to base64 (preserve original quality)
     const personBuffer = await personImage.arrayBuffer();
     const personImageBase64 = Buffer.from(personBuffer).toString('base64');
-    // Use original MIME type to preserve quality
-    const personMimeType = personImage.type || 'image/jpeg';
+    // Use original MIME type to preserve quality, normalize jpg to jpeg
+    const personMimeType = normalizeMimeType(personImage.type || 'image/jpeg');
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -109,13 +109,46 @@ Analyze the product image and the person's image, and generate a realistic virtu
   }
 }
 
+// Helper: normalize MIME type (convert image/jpg to image/jpeg)
+function normalizeMimeType(mimeType: string): string {
+  // Convert image/jpg to image/jpeg (Gemini API requirement)
+  if (mimeType === 'image/jpg') {
+    return 'image/jpeg';
+  }
+  return mimeType;
+}
+
 // Helper: convert image URL to base64 with MIME type detection (preserves quality)
 async function urlToBase64WithMimeType(url: string): Promise<{ base64: string; mimeType: string }> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+  // Prepare headers for external CDN requests
+  const headers: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'image/*,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+  
+  // Try to add Referer header, but don't fail if URL parsing fails
+  try {
+    const urlObj = new URL(url);
+    headers['Referer'] = urlObj.origin;
+  } catch (e) {
+    // If URL parsing fails, continue without Referer header
+  }
+  
+  // Fetch with proper headers to avoid CORS/blocking issues with external CDNs
+  const response = await fetch(url, { headers });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+  }
   
   // Get MIME type from Content-Type header or detect from URL extension
   let mimeType = response.headers.get('content-type') || '';
+  
+  // Remove any charset or other parameters from MIME type (e.g., "image/jpeg; charset=utf-8" -> "image/jpeg")
+  if (mimeType.includes(';')) {
+    mimeType = mimeType.split(';')[0].trim();
+  }
   
   // If no MIME type in header, detect from URL extension
   if (!mimeType || !mimeType.startsWith('image/')) {
