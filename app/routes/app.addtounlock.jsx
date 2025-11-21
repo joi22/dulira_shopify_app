@@ -515,7 +515,7 @@ export default function AddToUnlock() {
     backgroundColor: "#F5F5F5",
   });
   const [productSearch, setProductSearch] = useState("");
-  const [currentProgress, setCurrentProgress] = useState(0);
+  const [currentProgress, setCurrentProgress] = useState(1);
   const [activePreview, setActivePreview] = useState("home");
   const [completedGoals, setCompletedGoals] = useState([]);
   const [shouldShowConfetti, setShouldShowConfetti] = useState(false);
@@ -1505,7 +1505,7 @@ export default function AddToUnlock() {
           activeOffer = offer; // First uncompleted offer
           break;
         }
-        activeOffer = offer; // Keep track of the last completed offer
+        activeOffer = offer; 
       }
     }
 
@@ -1513,7 +1513,7 @@ export default function AddToUnlock() {
       ? activeOffer.goalType === "quantity"
         ? Math.min(
             (currentProgress / (parseInt(activeOffer.goalquantity) || 1)) * 100,
-            100,
+
           )
         : Math.min(
             (currentProgress / (parseFloat(activeOffer.goalAmount) || 1)) * 100,
@@ -1523,7 +1523,8 @@ export default function AddToUnlock() {
         ? 100
         : (currentProgress / 1) * 100;
 
-    // Calculate progress percentage for each individual offer
+        console.log("=========>>>><<<",activeOffer.goalquantity,"-----------------",currentProgress);
+
     const getOfferProgressPercentage = (offer) => {
       const goalValue =
         offer.goalType === "quantity"
@@ -1756,6 +1757,22 @@ export default function AddToUnlock() {
       }
       return <Text>No trigger products/collections selected</Text>;
     };
+
+    // Only show preview if placement is selected
+    if (!placement) {
+      return (
+        <Card>
+          <BlockStack gap="200">
+            <Text variant="headingMd" fontWeight="bold">
+              Preview
+            </Text>
+            <Banner tone="info">
+              <Text>Please select a placement above to see the preview.</Text>
+            </Banner>
+          </BlockStack>
+        </Card>
+      );
+    }
 
     if (activePreview === "home") {
       return (
@@ -2743,11 +2760,20 @@ ${
                   <Text as="p">
                     Choose which products will trigger the upsell offer.
                   </Text>
+                  {!placement && (
+                    <Banner tone="info">
+                      <Text>
+                        Please select a placement above before choosing trigger
+                        products.
+                      </Text>
+                    </Banner>
+                  )}
                   <InlineStack gap="200">
                     <RadioButton
                       label="All products"
                       checked={selectedTriggerType === "all"}
                       name="triggerType"
+                      disabled={!placement}
                       onChange={() => {
                         setSelectedTriggerType("all");
                         setUpsell_allproduct(true);
@@ -2757,12 +2783,14 @@ ${
                       label="Specific products"
                       checked={selectedTriggerType === "products"}
                       name="triggerType"
+                      disabled={!placement}
                       onChange={() => setSelectedTriggerType("products")}
                     />
                     <RadioButton
                       label="Specific collections"
                       checked={selectedTriggerType === "collections"}
                       name="triggerType"
+                      disabled={!placement}
                       onChange={() => setSelectedTriggerType("collections")}
                     />
                   </InlineStack>
@@ -2776,6 +2804,7 @@ ${
                           <Button
                             onClick={productpicker}
                             size="medium"
+                            disabled={!placement}
                             accessibilityLabel="Browse products for upsell"
                           >
                             Browse Products
@@ -2835,6 +2864,7 @@ ${
                           <Button
                             onClick={collectionPicker}
                             size="medium"
+                            disabled={!placement}
                             accessibilityLabel="Browse collections for upsell"
                           >
                             Browse Collections
@@ -3107,7 +3137,7 @@ ${
                       <Card sectioned>
                         <BlockStack gap="300">
                           <Text variant="headingMd" as="h3">
-                            Reward Setup
+                            Reward Product
                           </Text>
                           {offer.rewardType === "discount" && (
                             <BlockStack gap="300">
@@ -3142,6 +3172,87 @@ ${
                                   updateOffer(offer.id, "discountType", value)
                                 }
                               />
+                              {/* Reward Product Picker for Fixed Deal Discount */}
+                              {(() => {
+                                const currentDealType =
+                                  dealType || offer.rewardMode;
+                                const isFixedDeal =
+                                  currentDealType === "fixed" ||
+                                  offer.rewardMode === "fixed";
+
+                                if (isFixedDeal) {
+                                  return (
+                                    <BlockStack gap="300">
+                                      <Banner tone="info">
+                                        <Text fontWeight="medium">
+                                          Fixed Deal: Only 1 product in the
+                                          chosen reward category (fixed deal).
+                                        </Text>
+                                        <Text tone="subdued" variant="bodySm">
+                                          Selected:{" "}
+                                          {offer.rewardProducts.length}/1
+                                        </Text>
+                                        {offer.rewardProducts.length === 0 && (
+                                          <Text
+                                            tone="subdued"
+                                            variant="bodySm"
+                                            style={{ marginTop: "8px" }}
+                                          >
+                                            If no reward product is selected,
+                                            the discount will apply to trigger
+                                            products.
+                                          </Text>
+                                        )}
+                                      </Banner>
+                                      <Button
+                                        onClick={() => rewardPicker(offer.id)}
+                                        variant="primary"
+                                        size="medium"
+                                        disabled={
+                                          offer.rewardProducts.length >= 1
+                                        }
+                                      >
+                                        {offer.rewardProducts.length >= 1
+                                          ? "1 Product Selected (Max Reached)"
+                                          : "Select Reward Product (Optional)"}
+                                      </Button>
+                                      {offer.rewardProducts.length > 0 && (
+                                        <Box paddingBlockStart="200">
+                                          <Text fontWeight="semibold">
+                                            Selected Reward Product:
+                                          </Text>
+                                          <BlockStack gap="100">
+                                            {offer.rewardProducts.map(
+                                              (item) => (
+                                                <InlineStack
+                                                  key={item.id}
+                                                  align="space-between"
+                                                  blockAlign="center"
+                                                >
+                                                  <Text>{item.title}</Text>
+                                                  <Button
+                                                    tone="critical"
+                                                    size="medium"
+                                                    onClick={() =>
+                                                      removeRewardProduct(
+                                                        offer.id,
+                                                        item.id,
+                                                      )
+                                                    }
+                                                  >
+                                                    Remove
+                                                  </Button>
+                                                </InlineStack>
+                                              ),
+                                            )}
+                                          </BlockStack>
+                                        </Box>
+                                      )}
+                                    </BlockStack>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </BlockStack>
                           )}
                           {offer.rewardType === "shipping" && (
@@ -3150,6 +3261,87 @@ ${
                                 Free shipping will be automatically applied
                                 Selected Tigger Products{" "}
                               </Banner>
+                              {/* Reward Product Picker for Fixed Deal Shipping */}
+                              {(() => {
+                                const currentDealType =
+                                  dealType || offer.rewardMode;
+                                const isFixedDeal =
+                                  currentDealType === "fixed" ||
+                                  offer.rewardMode === "fixed";
+
+                                if (isFixedDeal) {
+                                  return (
+                                    <BlockStack gap="300">
+                                      <Banner tone="info">
+                                        <Text fontWeight="medium">
+                                          Fixed Deal: Only 1 product in the
+                                          chosen reward category (fixed deal).
+                                        </Text>
+                                        <Text tone="subdued" variant="bodySm">
+                                          Selected:{" "}
+                                          {offer.rewardProducts.length}/1
+                                        </Text>
+                                        {offer.rewardProducts.length === 0 && (
+                                          <Text
+                                            tone="subdued"
+                                            variant="bodySm"
+                                            style={{ marginTop: "8px" }}
+                                          >
+                                            If no reward product is selected,
+                                            free shipping will apply to trigger
+                                            products.
+                                          </Text>
+                                        )}
+                                      </Banner>
+                                      <Button
+                                        onClick={() => rewardPicker(offer.id)}
+                                        variant="primary"
+                                        size="medium"
+                                        disabled={
+                                          offer.rewardProducts.length >= 1
+                                        }
+                                      >
+                                        {offer.rewardProducts.length >= 1
+                                          ? "1 Product Selected (Max Reached)"
+                                          : "Select Reward Product (Optional)"}
+                                      </Button>
+                                      {offer.rewardProducts.length > 0 && (
+                                        <Box paddingBlockStart="200">
+                                          <Text fontWeight="semibold">
+                                            Selected Reward Product:
+                                          </Text>
+                                          <BlockStack gap="100">
+                                            {offer.rewardProducts.map(
+                                              (item) => (
+                                                <InlineStack
+                                                  key={item.id}
+                                                  align="space-between"
+                                                  blockAlign="center"
+                                                >
+                                                  <Text>{item.title}</Text>
+                                                  <Button
+                                                    tone="critical"
+                                                    size="medium"
+                                                    onClick={() =>
+                                                      removeRewardProduct(
+                                                        offer.id,
+                                                        item.id,
+                                                      )
+                                                    }
+                                                  >
+                                                    Remove
+                                                  </Button>
+                                                </InlineStack>
+                                              ),
+                                            )}
+                                          </BlockStack>
+                                        </Box>
+                                      )}
+                                    </BlockStack>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </BlockStack>
                           )}
                           {offer.rewardType === "gift" && (
@@ -3177,6 +3369,17 @@ ${
                                           Selected:{" "}
                                           {offer.rewardProducts.length}/1
                                         </Text>
+                                        {offer.rewardProducts.length === 0 && (
+                                          <Text
+                                            tone="subdued"
+                                            variant="bodySm"
+                                            style={{ marginTop: "8px" }}
+                                          >
+                                            If no reward product is selected,
+                                            the free gift will apply to trigger
+                                            products.
+                                          </Text>
+                                        )}
                                       </Banner>
                                     )}
                                     {isFlameMatch && (
@@ -3336,11 +3539,6 @@ ${
                   </Card>
                 ))}
               </BlockStack>
-              <Card>
-                <BlockStack>
-                  <Button>Rewad procuts applay discount</Button>
-                </BlockStack>
-              </Card>
               <Card sectioned>
                 <BlockStack gap="300">
                   <Text variant="headingMd" as="h3">
@@ -3387,24 +3585,24 @@ ${
                   />
                   <style>
                     {`
-  input[type="color"]::-webkit-color-swatch-wrapper {
-    padding: 0;
-    border-radius: 3px;
-  }
-  input[type="color"]::-webkit-color-swatch {
-    border: none;
-    border-radius: 3px;
-  }
-  input[type="color"] {
-    border: none;
-    border-radius: 3px;
-    padding: 0;
-    cursor: pointer;
-    appearance: none;
-    outline: none;
-    box-shadow: 0 0 0 1px #d1d5db; /* light premium grey border */
-  }
-`}
+                    input[type="color"]::-webkit-color-swatch-wrapper {
+                      padding: 0;
+                      border-radius: 3px;
+                    }
+                    input[type="color"]::-webkit-color-swatch {
+                      border: none;
+                      border-radius: 3px;
+                    }
+                    input[type="color"] {
+                      border: none;
+                      border-radius: 3px;
+                      padding: 0;
+                      cursor: pointer;
+                      appearance: none;
+                      outline: none;
+                      box-shadow: 0 0 0 1px #d1d5db; /* light premium grey border */
+                    }
+                  `}
                   </style>
 
                   <InlineStack gap="200">
@@ -3575,6 +3773,9 @@ ${
                   </InlineStack>
                 </BlockStack>
               </Card>
+              <Button variant="secondary" onClick={handleSave}>
+                {mainBtnLoading ? "Saving..." : "Save"}
+              </Button>
             </BlockStack>
           </Layout.Section>
 
