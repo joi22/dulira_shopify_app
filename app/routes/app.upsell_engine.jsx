@@ -476,131 +476,6 @@ const CampaignCard = ({ card, index, campaignName, onSelect }) => {
   );
 };
 
-const DealTypeModal = ({
-  open,
-  onClose,
-  onSelect,
-  campaignName,
-  selectedCard,
-}) => {
-  return (
-    <Modal open={open} onClose={onClose} title="Select Deal Type" small>
-      <Modal.Section>
-        <BlockStack gap="400">
-          <Text variant="bodyMd">
-            Choose the type of deal you want to create for{" "}
-            <strong>"{campaignName}"</strong>
-          </Text>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-              marginTop: "10px",
-            }}
-          >
-            {/* Fixed Deal Card */}
-            <div
-              style={{
-                background: "#fff",
-                border: "2px solid #e1e1e1",
-                borderRadius: "14px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-between",
-                textAlign: "center",
-                transition: "all 0.3s ease",
-                cursor: "pointer",
-              }}
-              onClick={() => onSelect("fixed")}
-            >
-              <div
-                style={{
-                  width: "70px",
-                  height: "70px",
-                  borderRadius: "10px",
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontSize: "30px",
-                  marginBottom: "12px",
-                }}
-              >
-                🔒
-              </div>
-              <Text variant="headingSm">Fixed Deal</Text>
-              <Text tone="subdued" variant="bodySm" alignment="center">
-                Set fixed discounts and offers
-              </Text>
-              <Button
-                fullWidth
-                primary
-                onClick={() => onSelect("fixed")}
-                style={{ marginTop: "16px" }}
-              >
-                Select
-              </Button>
-            </div>
-
-            {/* Flame Match Card */}
-            <div
-              style={{
-                background: "#fff",
-                border: "2px solid #e1e1e1",
-                borderRadius: "14px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-between",
-                textAlign: "center",
-                transition: "all 0.3s ease",
-                cursor: "pointer",
-              }}
-              onClick={() => onSelect("flame")}
-            >
-              <div
-                style={{
-                  width: "70px",
-                  height: "70px",
-                  borderRadius: "10px",
-                  background:
-                    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontSize: "30px",
-                  marginBottom: "12px",
-                }}
-              >
-                🔥
-              </div>
-              <Text variant="headingSm">Flame Match</Text>
-              <Text tone="subdued" variant="bodySm" alignment="center">
-                Dynamic matching and recommendations
-              </Text>
-              <Button
-                fullWidth
-                primary
-                onClick={() => onSelect("flame")}
-                style={{ marginTop: "16px" }}
-              >
-                Select
-              </Button>
-            </div>
-          </div>
-        </BlockStack>
-      </Modal.Section>
-    </Modal>
-  );
-};
 
 export default function UpsellEngine() {
   const navigate = useNavigate();
@@ -613,7 +488,7 @@ export default function UpsellEngine() {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const handleChange = useCallback(() => {
-    // Navigate to new campaign creation page with steps
+    
     navigate("/app/create_campaign");
   }, [navigate]);
 
@@ -628,24 +503,6 @@ export default function UpsellEngine() {
     });
   };
 
-  const handleCardSelect = (card) => {
-    setSelectedCard(card);
-    setShowDealTypeModal(true);
-  };
-
-  const handleDealTypeSelect = (dealType) => {
-    setShowDealTypeModal(false);
-    setActive(false); // Close the main modal
-    // Navigate to URL with selected deal type and campaign data
-    const params = new URLSearchParams({
-      type: selectedCard.type,
-      name: campaignName,
-      dealType: dealType,
-      campaignType: selectedCard.type,
-      campaignUrl: selectedCard.url || "addtounlock",
-    });
-    navigate(`/app/${selectedCard.url}?${params.toString()}`);
-  };
 
   return (
     <Page
@@ -693,7 +550,7 @@ export default function UpsellEngine() {
                 { title: "Campaign" },
                 { title: "Type" },
                 { title: "Placement" },
-                { title: "Reward Mode" },
+                { title: "Offer Type" },
                 { title: "Reward Type" },
                 { title: "Created At" },
                 { title: "Actions" },
@@ -761,150 +618,6 @@ export default function UpsellEngine() {
           )}
         </Card>
       </Layout>
-
-      {/* Main Campaign Selection Modal */}
-      <Modal
-        open={active}
-        onClose={handleChange}
-        title="Choose a Campaign"
-        large
-        style={{
-          width: "90%",
-          height: "90%",
-          maxWidth: "none",
-          maxHeight: "none",
-          padding: 0,
-          margin: 0,
-        }}
-      >
-        <Modal.Section>
-          {!selectedCategory ? (
-            <BlockStack gap="300">
-              <Text variant="headingMd">Step 1: Name Your Upsell Campaign</Text>
-              <TextField
-                label="Campaign Name"
-                value={campaignName}
-                onChange={setCampaignName}
-                placeholder="e.g., Summer Free Gift Offer"
-                requiredIndicator
-                error={!campaignName ? "Campaign name is required" : ""}
-              />
-              <Divider />
-              <Text variant="headingMd">Step 2: Choose Category</Text>
-              <InlineStack
-                wrap
-                align="center"
-                gap="300"
-                style={{ justifyContent: "center" }}
-              >
-                {CATEGORIES.map((cat) => (
-                  <Box
-                    width="150px"
-                    minHeight="150px"
-                    key={cat.type}
-                    onClick={() => setSelectedCategory(cat)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Card>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "10px",
-                        }}
-                      >
-                        <cat.icon width="50px" />
-                        <Text variant="headingSm" alignment="center">
-                          {cat.title}
-                        </Text>
-                        <Text as="p" variant="bodyXs" alignment="center">
-                          {cat.description}
-                        </Text>
-                      </div>
-                    </Card>
-                  </Box>
-                ))}
-              </InlineStack>
-            </BlockStack>
-          ) : (
-            <BlockStack gap="400" style={{ padding: "20px 0" }}>
-              {/* Back Button and Header */}
-              <InlineStack align="space-between" blockAlign="center">
-                <Button
-                  onClick={() => setSelectedCategory(null)}
-                  variant="plain"
-                  accessibilityLabel="Back to categories"
-                >
-                  ← Back to Categories
-                </Button>
-                <Text variant="headingMd" fontWeight="semibold">
-                  {selectedCategory.title}
-                </Text>
-              </InlineStack>
-
-              {/* Category Description */}
-              <Card sectioned>
-                <BlockStack gap="200">
-                  <Text variant="headingSm" fontWeight="semibold">
-                    {selectedCategory.title}
-                  </Text>
-                  <Text variant="bodyMd" tone="subdued">
-                    {selectedCategory.description}
-                  </Text>
-                </BlockStack>
-              </Card>
-
-              {/* Filtered Features Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                  gap: "16px",
-                  width: "100%",
-                  padding: "10px 0",
-                }}
-              >
-                {CAMPAIGN_CARDS.filter(
-                  (card) => card.category === selectedCategory.type,
-                ).map((card, index) => (
-                  <CampaignCard
-                    key={card.id}
-                    card={card}
-                    index={index}
-                    campaignName={campaignName}
-                    onSelect={handleCardSelect}
-                  />
-                ))}
-              </div>
-
-              {/* Show message if no features found for category */}
-              {CAMPAIGN_CARDS.filter(
-                (card) => card.category === selectedCategory.type,
-              ).length === 0 && (
-                <Card sectioned>
-                  <BlockStack gap="200" align="center">
-                    <Text variant="bodyMd" tone="subdued">
-                      No features available for {selectedCategory.title}{" "}
-                      category yet.
-                    </Text>
-                  </BlockStack>
-                </Card>
-              )}
-            </BlockStack>
-          )}
-        </Modal.Section>
-      </Modal>
-
-      {/* Deal Type Selection Modal */}
-      <DealTypeModal
-        open={showDealTypeModal}
-        onClose={() => setShowDealTypeModal(false)}
-        onSelect={handleDealTypeSelect}
-        campaignName={campaignName}
-        selectedCard={selectedCard}
-      />
     </Page>
   );
 }

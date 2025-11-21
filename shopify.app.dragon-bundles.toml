@@ -6,6 +6,9 @@ application_url = "https://arabia-losing-wednesday-superintendent.trycloudflare.
 embedded = true
 handle = "dragon-bundles"
 
+[build]
+automatically_update_urls_on_dev = true
+
 [webhooks]
 api_version = "2025-04"
 
@@ -22,6 +25,3 @@ redirect_urls = [
 
 [pos]
 embedded = false
-
-[build]
-automatically_update_urls_on_dev = true

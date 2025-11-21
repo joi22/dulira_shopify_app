@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import home_icon from "./_index/media/icon-home.png";
 import save from "./_index/media/save-1.jpg";
 import save2 from "./_index/media/save-2.png";
@@ -36,6 +36,7 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { add_to_unlock_ } from "./utils/add_unlock";
 import HomeSectionPreview from "./components/preview/HomeSectionPreview";
+import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
 
 const SHOPIFY_API_VERSION = "2025-07";
 
@@ -472,11 +473,9 @@ export default function AddToUnlock() {
   );
   const [showConfetti, setShowConfetti] = useState(false);
   const [showBadges, setShowBadges] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // Deal Type Modal States
-  const [showDealTypeModal, setShowDealTypeModal] = useState(true);
-  const [selectedDealType, setSelectedDealType] = useState(null);
-  const [showSubOptions, setShowSubOptions] = useState(false);
   const urlParams =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
@@ -486,8 +485,6 @@ export default function AddToUnlock() {
   const dealType = urlParams.get("dealType");
   const rewardTypeParam = urlParams.get("rewardType"); // Get reward type from URL
 
-  console.log(dealType, "==== .... >> deal type ");
-  console.log(rewardTypeParam, "==== .... >> reward type ");
   const rewardModeOptions = [
     dealType !== "flame" && { label: "Fixed Deal", value: "fixed" },
     dealType !== "fixed" && {
@@ -498,6 +495,13 @@ export default function AddToUnlock() {
   const handleToggle = () => {
     setShowBadges(!showBadges); // true ↔ false
   };
+  const location = useLocation();
+  const shopify = useAppBridge();
+  const searchParams = new URLSearchParams(location.search);
+  const campaignNames = searchParams.get("name") || "";
+  const campaignType = searchParams.get("type") || "";
+  const placementParam = searchParams.get("placement") || "";
+  const SAVE_BAR_ID = "ID_SAVE_BAR";
   const [showBadgeIcons, setShowBadgeIcons] = useState(false);
   const [showLockedGoals, setShowLockedGoals] = useState(false);
   const [badgeIcon, setBadgeIcon] = useState(null);
@@ -538,64 +542,20 @@ export default function AddToUnlock() {
   const removeCollection = (id) =>
     removeItem(id, setSelectedCollections, selectedCollections);
 
-  // Modal Handlers
-  const handleDealTypeSelect = (dealType) => {
-    if (dealType === "fixed") {
-      setSelectedDealType("fixed");
-      setShowSubOptions(true);
-    } else {
-      // Flame Match - directly apply
-      setShowDealTypeModal(false);
-      setSelectedDealType("flame");
-      // Update the first offer with flame match settings
-      setOffers([
-        {
-          id: Date.now() + Math.random(),
-          goalType: "quantity",
-          goalAmount: "50",
-          goalquantity: "1",
-          currency: "USD",
-          rewardMode: "flame",
-          rewardType: "gift",
-          discountCode: "10",
-          discountType: "percentage",
-          productPickType: "products",
-          buyProductPicker: [],
-          buyCollectionPicker: [],
-          rewardProducts: [],
-          rewardCollection: [],
-          goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
-          goalTextAfter: "🎉 You've unlocked {{reward}}!",
-        },
-      ]);
+  // Initialize offers based on deal type from URL
+  useEffect(() => {
+    if (dealType && offers.length > 0) {
+      const updatedOffers = offers.map((offer) => ({
+        ...offer,
+        rewardMode: dealType === "flame" ? "flame" : "fixed",
+        rewardType:
+          dealType === "flame"
+            ? "gift"
+            : rewardTypeParam || offer.rewardType || "discount",
+      }));
+      setOffers(updatedOffers);
     }
-  };
-
-  const handleRewardTypeSelect = (rewardType) => {
-    setShowDealTypeModal(false);
-    setShowSubOptions(false);
-    // Update the first offer with fixed deal and reward type
-    setOffers([
-      {
-        id: Date.now() + Math.random(),
-        goalType: "quantity",
-        goalAmount: "50",
-        goalquantity: "1",
-        currency: "USD",
-        rewardMode: "fixed",
-        rewardType: rewardType,
-        discountCode: "10",
-        discountType: "percentage",
-        productPickType: "products",
-        buyProductPicker: [],
-        buyCollectionPicker: [],
-        rewardProducts: [],
-        rewardCollection: [],
-        goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
-        goalTextAfter: "🎉 You've unlocked {{reward}}!",
-      },
-    ]);
-  };
+  }, [dealType]);
 
   const [offers, setOffers] = useState([
     {
@@ -651,17 +611,19 @@ export default function AddToUnlock() {
     console.log("Adding new offer:", newOffer);
     setOffers((prev) => {
       const updated = [...prev, newOffer];
-      console.log("Updated offers after adding:", updated);
+
       return updated;
     });
   };
 
   const removeOffer = (id) => {
+    setHasUnsavedChanges(true);
     setOffers((prev) => prev.filter((offer) => offer.id !== id));
   };
 
   const updateOffer = (id, field, value) => {
     console.log(`Updating offer ${id}: ${field} = ${value}`);
+    setHasUnsavedChanges(true);
     setOffers((prev) => {
       const updated = prev.map((offer) =>
         offer.id === id ? { ...offer, [field]: value } : offer,
@@ -674,6 +636,7 @@ export default function AddToUnlock() {
   // Batch update function for multiple fields
   const updateOfferBatch = (id, updates) => {
     console.log(`Batch updating offer ${id}:`, updates);
+    setHasUnsavedChanges(true);
     setOffers((prev) => {
       const updated = prev.map((offer) =>
         offer.id === id ? { ...offer, ...updates } : offer,
@@ -731,31 +694,19 @@ export default function AddToUnlock() {
     setFormattedGoalText(updatedGoalTexts.join(" | "));
   }, [offers, currentProgress]);
 
-  // Handle fetcher state changes and redirect after successful save
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data) {
-      // Check if the submission was successful
       if (fetcher.data.success) {
-        // Show confetti animation
         setShowConfetti(true);
-
-        // Show success message
         shopify.toast.show("Campaign saved successfully!", { isError: false });
-
-        // Reset loading state
         setMainBtnLoading(false);
-
-        // Redirect to upsell_engine page after a short delay to show confetti
         setTimeout(() => {
           navigate("/app/upsell_engine");
         }, 3500); // 3.5 second delay to show confetti
       } else if (fetcher.data.error) {
-        // Show error message
         shopify.toast.show(fetcher.data.error || "Failed to save campaign", {
           isError: true,
         });
-
-        // Reset loading state
         setMainBtnLoading(false);
       }
     }
@@ -772,7 +723,6 @@ export default function AddToUnlock() {
     }
   }, [showConfetti]);
 
-  // Debug effect to track offers changes
   useEffect(() => {
     console.log("Offers state changed:", offers);
     console.log("Number of offers:", offers.length);
@@ -788,11 +738,6 @@ export default function AddToUnlock() {
     });
   }, [offers]);
 
-  // Detect goal completion and trigger confetti once per goal
-  // Confetti only shows when:
-  // 1. A NEW goal is completed (hasn't triggered confetti before)
-  // 2. The confetti switch is enabled
-  // 3. Progress actually changes (not just state changes)
   useEffect(() => {
     if (offers.length === 0) {
       setShouldShowConfetti(false);
@@ -865,10 +810,6 @@ export default function AddToUnlock() {
       setCompletedGoals(newCompletedGoals);
     }
 
-    // Trigger confetti only if:
-    // 1. A new goal was completed AND
-    // 2. The confetti switch is enabled AND
-    // 3. We haven't already triggered confetti for this specific goal
     const untriggeredGoals = newlyCompletedGoalIds.filter(
       (id) => !confettiTriggeredRef.current.includes(id),
     );
@@ -895,7 +836,6 @@ export default function AddToUnlock() {
     }
   }, [currentProgress, offers]);
 
-  // Clear confetti immediately when switch is turned off
   useEffect(() => {
     if (!status.showConfetti) {
       setShouldShowConfetti(false);
@@ -973,26 +913,53 @@ export default function AddToUnlock() {
   };
 
   const rewardPicker = async (offerId) => {
-    setOffers((prev) =>
-      prev.map((offer) => {
-        if (offer.id !== offerId) return offer;
-        if (offer.rewardProducts.length >= 4) {
-          shopify.toast.show("You can only select up to 4 reward products.", {
-            isError: true,
-          });
-          return offer;
-        }
-        return offer;
-      }),
-    );
+    const currentOffer = offers.find((o) => o.id === offerId);
+    if (!currentOffer) return;
+
+    // Get current deal type from URL or offer
+    const currentDealType = dealType || currentOffer.rewardMode;
+    const isFixedDeal =
+      currentDealType === "fixed" || currentOffer.rewardMode === "fixed";
+    const isFlameMatch =
+      currentDealType === "flame" || currentOffer.rewardMode === "flame";
+
+    // Check limits before opening picker
+    if (isFixedDeal && currentOffer.rewardProducts.length >= 1) {
+      if (
+        typeof window !== "undefined" &&
+        window.shopify &&
+        window.shopify.toast
+      ) {
+        window.shopify.toast.show(
+          "Fixed Deal: Only 1 reward product is allowed. Please remove the existing product first.",
+          { isError: true },
+        );
+      }
+      return;
+    }
+
+    if (isFlameMatch && currentOffer.rewardProducts.length >= 20) {
+      if (
+        typeof window !== "undefined" &&
+        window.shopify &&
+        window.shopify.toast
+      ) {
+        window.shopify.toast.show(
+          "Flame Match: Maximum 20 reward products allowed.",
+          { isError: true },
+        );
+      }
+      return;
+    }
 
     try {
       if (typeof window === "undefined" || !window.shopify) {
         console.warn("Shopify resource picker not available");
         return;
       }
+
       const selectedItems = await window.shopify.resourcePicker({
-        multiple: true,
+        multiple: !isFixedDeal, // Single selection for fixed deal
         type: "product",
         action: "select",
       });
@@ -1006,33 +973,103 @@ export default function AddToUnlock() {
           media: item.images[0]?.originalSrc || null,
         }));
 
+        // Filter out duplicates
+        const newProducts = products.filter(
+          (p) => !currentOffer.rewardProducts.some((pr) => pr.id === p.id),
+        );
+
+        // Check limits after selection
+        const totalProducts =
+          currentOffer.rewardProducts.length + newProducts.length;
+
+        if (isFixedDeal && totalProducts > 1) {
+          if (
+            typeof window !== "undefined" &&
+            window.shopify &&
+            window.shopify.toast
+          ) {
+            window.shopify.toast.show(
+              "Fixed Deal: Only 1 reward product is allowed. Please select only 1 product.",
+              { isError: true },
+            );
+          }
+          return;
+        }
+
+        if (isFlameMatch && totalProducts < 2) {
+          if (
+            typeof window !== "undefined" &&
+            window.shopify &&
+            window.shopify.toast
+          ) {
+            window.shopify.toast.show(
+              "Flame Match: At least 2 reward products are required. Please select more products.",
+              { isError: true },
+            );
+          }
+          return;
+        }
+
         setOffers((prev) =>
           prev.map((offer) =>
             offer.id === offerId
               ? {
                   ...offer,
-                  rewardProducts: [
-                    ...offer.rewardProducts,
-                    ...products.filter(
-                      (p) => !offer.rewardProducts.some((pr) => pr.id === p.id),
-                    ),
-                  ].slice(0, 4),
+                  rewardProducts: isFixedDeal
+                    ? newProducts.slice(0, 1) // Only 1 for fixed deal
+                    : [...currentOffer.rewardProducts, ...newProducts].slice(
+                        0,
+                        20,
+                      ), // Max 20 for flame match
                 }
               : offer,
           ),
         );
+
+        // Show success message
+        if (
+          typeof window !== "undefined" &&
+          window.shopify &&
+          window.shopify.toast
+        ) {
+          if (isFixedDeal) {
+            window.shopify.toast.show("Reward product selected successfully!", {
+              isError: false,
+            });
+          } else {
+            window.shopify.toast.show(
+              `${totalProducts} reward products selected. Minimum 2 required for Flame Match.`,
+              { isError: false },
+            );
+          }
+        }
       }
     } catch (error) {
       console.error("Error in reward picker:", error);
-      shopify.toast.show("Failed to select reward products.", {
-        isError: true,
-      });
+      if (
+        typeof window !== "undefined" &&
+        window.shopify &&
+        window.shopify.toast
+      ) {
+        window.shopify.toast.show("Failed to select reward products.", {
+          isError: true,
+        });
+      }
     }
   };
 
   const removeRewardProduct = (offerId, id) => {
-    setOffers((prev) =>
-      prev.map((offer) =>
+    setOffers((prev) => {
+      const currentOffer = prev.find((o) => o.id === offerId);
+      if (!currentOffer) return prev;
+
+      // Get current deal type
+      const currentDealType = dealType || currentOffer.rewardMode;
+      const isFlameMatch =
+        currentDealType === "flame" || currentOffer.rewardMode === "flame";
+
+      // Remove the product
+      const updatedOffers = prev.map((offer) =>
         offer.id === offerId
           ? {
               ...offer,
@@ -1041,17 +1078,64 @@ export default function AddToUnlock() {
               ),
             }
           : offer,
-      ),
-    );
+      );
+
+      // Check if removal violated minimum requirement after update
+      const updatedOffer = updatedOffers.find((o) => o.id === offerId);
+      if (
+        updatedOffer &&
+        isFlameMatch &&
+        updatedOffer.rewardProducts.length < 2
+      ) {
+        // Use setTimeout to ensure toast shows after state update
+        setTimeout(() => {
+          if (
+            typeof window !== "undefined" &&
+            window.shopify &&
+            window.shopify.toast
+          ) {
+            window.shopify.toast.show(
+              `Flame Match requires at least 2 products. Currently ${updatedOffer.rewardProducts.length} product(s). Please add more.`,
+              { isError: true },
+            );
+          }
+        }, 100);
+      }
+
+      return updatedOffers;
+    });
   };
 
   const handleswitchChange = (field, value) => {
     setStatus((prev) => ({ ...prev, [field]: value }));
+    setHasUnsavedChanges(true);
+    // Show save bar when change is made
+    if (isClient && shopify) {
+      shopify.saveBar.show(SAVE_BAR_ID);
+    }
+    // Note: Save bar will be automatically hidden by useEffect when hasUnsavedChanges is false
   };
+
+  // Track unsaved changes
+  useEffect(() => {
+    // Set hasUnsavedChanges to true when any form field changes
+    setHasUnsavedChanges(true);
+  }, [
+    campaignName,
+    selectedTriggerType,
+    upsellselectedItems,
+    selectedCollections,
+    placement,
+    offers,
+    status,
+    progressBarStyle,
+    showBadges,
+  ]);
 
   // Image upload function
   const uploadImageToShopify = async (file) => {
     try {
+      setHasUnsavedChanges(true);
       const formData = new FormData();
       const fileName = `${Date.now()}-${file.name}`;
 
@@ -1121,60 +1205,29 @@ export default function AddToUnlock() {
     }
   };
 
-  const ProgressBar = ({ progress, style }) => {
-    return (
-      <Box padding="200">
-        <div
-          style={{
-            height: style.thickness === "thin" ? "10px" : "20px",
-            borderRadius:
-              style.cornerRadius === "square"
-                ? "0"
-                : style.cornerRadius === "slightly"
-                  ? "4px"
-                  : "20px",
-            backgroundColor: style.backgroundColor,
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              width: `${Math.min(progress, 100)}%`,
-              height: "100%",
-              backgroundColor:
-                progress >= 100 ? style.goalCompleteColor : style.primaryColor,
-              transition: "width 0.3s ease-in-out",
-            }}
-          />
-          <div className="offer-icons">
-            <img src="" alt="icon " />
-            <span>20</span>
-          </div>
-        </div>
-      </Box>
-    );
-  };
-
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const campaignNames = searchParams.get("name") || "";
-  const campaignType = searchParams.get("type") || "";
-
-  // Log campaign data for debugging
+  // Client-side check
   useEffect(() => {
-    console.log("Campaign Data from URL:", {
-      campaignName: campaignNames,
-      campaignType: campaignType,
-      dealType: dealType,
-    });
-  }, [campaignNames, campaignType, dealType]);
+    setIsClient(true);
+  }, []);
 
-  // Set campaign name from URL params on mount
+  useEffect(() => {
+    if (!isClient || !shopify) return;
+
+    if (hasUnsavedChanges) {
+      shopify.saveBar.show(SAVE_BAR_ID);
+    } else {
+      shopify.saveBar.hide(SAVE_BAR_ID);
+    }
+  }, [hasUnsavedChanges, isClient, shopify]);
+
   useEffect(() => {
     if (campaignNames) {
       setCampaignName(campaignNames);
     }
-  }, [campaignNames]);
+    if (placementParam) {
+      setPlacement(placementParam);
+    }
+  }, [campaignNames, placementParam]);
 
   // Sync preview with placement selection
   useEffect(() => {
@@ -1183,7 +1236,28 @@ export default function AddToUnlock() {
     }
   }, [placement]);
 
-  const handleSubmit = () => {
+  // Create a ref to store handleSubmit so handleSave can call it
+  const handleSubmitRef = useRef(null);
+
+  const handleDiscard = useCallback(() => {
+    setHasUnsavedChanges(false);
+    if (shopify) {
+      shopify.saveBar.hide(SAVE_BAR_ID);
+    }
+    // Reset form or navigate away
+    navigate("/app/upsell_engine");
+  }, [navigate, shopify]);
+
+  const handleSave = useCallback(() => {
+    if (handleSubmitRef.current) {
+      handleSubmitRef.current();
+    }
+    if (shopify) {
+      shopify.saveBar.hide(SAVE_BAR_ID);
+    }
+  }, [shopify]);
+
+  const handleSubmit = useCallback(() => {
     console.log("Offers data:", offers);
     console.log("Badge icon:", badgeIcon);
 
@@ -1246,23 +1320,34 @@ export default function AddToUnlock() {
       }
 
       if (offer.rewardType === "gift") {
-        if (offer.rewardMode === "fixed" && offer.rewardProducts.length === 0) {
-          shopify.toast.show(
-            `Offer ${index + 1}: At least one reward product is required for Fixed Deal.`,
-            { isError: true },
-          );
-          return;
+        // Get current deal type from URL or offer
+        const currentDealType = dealType || offer.rewardMode;
+        const isFixedDeal =
+          currentDealType === "fixed" || offer.rewardMode === "fixed";
+        const isFlameMatch =
+          currentDealType === "flame" || offer.rewardMode === "flame";
+
+        if (isFixedDeal) {
+          if (offer.rewardProducts.length !== 1) {
+            shopify.toast.show(
+              `Offer ${index + 1}: Fixed Deal requires exactly 1 reward product. Currently ${offer.rewardProducts.length} product(s) selected.`,
+              { isError: true },
+            );
+            return;
+          }
         }
-        if (
-          offer.rewardMode === "flame" &&
-          offer.rewardProducts.length === 0 &&
-          offer.rewardCollection.length === 0
-        ) {
-          shopify.toast.show(
-            `Offer ${index + 1}: At least one reward product or collection is required for Flame Match.`,
-            { isError: true },
-          );
-          return;
+
+        if (isFlameMatch) {
+          if (
+            offer.rewardProducts.length < 2 &&
+            offer.rewardCollection.length === 0
+          ) {
+            shopify.toast.show(
+              `Offer ${index + 1}: Flame Match requires at least 2 reward products. Currently ${offer.rewardProducts.length} product(s) selected.`,
+              { isError: true },
+            );
+            return;
+          }
         }
         if (
           offer.productPickType === "collections" &&
@@ -1341,7 +1426,29 @@ export default function AddToUnlock() {
       method: "POST",
       encType: "multipart/form-data",
     });
-  };
+
+    // Clear unsaved changes flag after successful submission
+    setHasUnsavedChanges(false);
+  }, [
+    campaignNames,
+    selectedTriggerType,
+    upsellselectedItems,
+    selectedCollections,
+    upsell_allproduct,
+    offers,
+    showConfetti,
+    showLockedGoals,
+    showBadgeIcons,
+    progressBarStyle,
+    placement,
+    status,
+    fetcher,
+  ]);
+
+  // Store handleSubmit in ref for handleSave
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
 
   const preview_products = [
     {
@@ -2546,217 +2653,21 @@ ${
   };
   return (
     <Page title="Create Upsell Campaign" fullWidth padding="400">
-      {/* Deal Type Selection Modal */}
-      {showDealTypeModal && (
-        <Modal
-          open={showDealTypeModal}
-          onClose={() => setShowDealTypeModal(false)}
-          title="Select Deal Type"
-          primaryAction={{
-            content: "Back",
-            onAction: () => {
-              if (showSubOptions) {
-                setShowSubOptions(false);
-              } else {
-                navigate("/app/create_campaign");
-              }
-            },
-          }}
-        >
-          <Modal.Section>
-            <BlockStack gap="400">
-              {!showSubOptions ? (
-                <>
-                  <Text variant="bodyMd">
-                    Choose the type of deal you want to create
-                  </Text>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "20px",
-                      marginTop: "10px",
-                    }}
-                  >
-                    {/* Fixed Deal Card */}
-                    <div
-                      style={{
-                        background: "#fff",
-                        border: "2px solid #e1e1e1",
-                        borderRadius: "14px",
-                        padding: "20px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        textAlign: "center",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleDealTypeSelect("fixed")}
-                    >
-                      <div
-                        style={{
-                          width: "70px",
-                          height: "70px",
-                          borderRadius: "10px",
-                          background:
-                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontSize: "30px",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        🔒
-                      </div>
-                      <Text variant="headingSm">Fixed Deal</Text>
-                      <Text tone="subdued" variant="bodySm" alignment="center">
-                        Set fixed discounts and offers
-                      </Text>
-                      <Button
-                        fullWidth
-                        primary
-                        onClick={() => handleDealTypeSelect("fixed")}
-                        style={{ marginTop: "16px" }}
-                      >
-                        Select
-                      </Button>
-                    </div>
-
-                    {/* Flame Match Card */}
-                    <div
-                      style={{
-                        background: "#fff",
-                        border: "2px solid #e1e1e1",
-                        borderRadius: "14px",
-                        padding: "20px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        textAlign: "center",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleDealTypeSelect("flame")}
-                    >
-                      <div
-                        style={{
-                          width: "70px",
-                          height: "70px",
-                          borderRadius: "10px",
-                          background:
-                            "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontSize: "30px",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        🔥
-                      </div>
-                      <Text variant="headingSm">Flame Match</Text>
-                      <Text tone="subdued" variant="bodySm" alignment="center">
-                        Dynamic matching and recommendations
-                      </Text>
-                      <Button
-                        fullWidth
-                        primary
-                        onClick={() => handleDealTypeSelect("flame")}
-                        style={{ marginTop: "16px" }}
-                      >
-                        Select
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Text variant="headingMd">Select Reward Type</Text>
-                  <Text variant="bodyMd" tone="subdued">
-                    Choose the reward type for Fixed Deal
-                  </Text>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "20px",
-                      marginTop: "10px",
-                    }}
-                  >
-                    {/* Discount Card */}
-                    <div
-                      style={{
-                        background: "#fff",
-                        border: "2px solid #5c6ac4",
-                        borderRadius: "14px",
-                        padding: "20px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleRewardTypeSelect("discount")}
-                    >
-                      <div style={{ fontSize: "40px", marginBottom: "12px" }}>
-                        💰
-                      </div>
-                      <Text variant="headingSm">Discount</Text>
-                      <Text variant="bodySm">
-                        Apply a fixed discount percentage
-                      </Text>
-                      <Button
-                        fullWidth
-                        primary
-                        onClick={() => handleRewardTypeSelect("discount")}
-                        style={{ marginTop: "16px" }}
-                      >
-                        Select
-                      </Button>
-                    </div>
-
-                    {/* Free Shipping Card */}
-                    <div
-                      style={{
-                        background: "#fff",
-                        border: "2px solid #5c6ac4",
-                        borderRadius: "14px",
-                        padding: "20px",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleRewardTypeSelect("shipping")}
-                    >
-                      <div style={{ fontSize: "40px", marginBottom: "12px" }}>
-                        🚚
-                      </div>
-                      <Text variant="headingSm">Free Shipping</Text>
-                      <Text variant="bodySm">
-                        Offer free shipping to customers
-                      </Text>
-                      <Button
-                        fullWidth
-                        primary
-                        onClick={() => handleRewardTypeSelect("shipping")}
-                        style={{ marginTop: "16px" }}
-                      >
-                        Select
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </BlockStack>
-          </Modal.Section>
-        </Modal>
+      {isClient && (
+        <SaveBar id={SAVE_BAR_ID} discardConfirmation>
+          <button
+            variant="primary"
+            onClick={handleSave}
+            disabled={mainBtnLoading}
+            loading={mainBtnLoading ? "" : undefined}
+          >
+            Save
+          </button>
+          <button onClick={handleDiscard} disabled={mainBtnLoading}>
+            Discard
+          </button>
+        </SaveBar>
       )}
-
-      {/* Confetti Animation */}
       {shouldShowConfetti && status.showConfetti && (
         <div
           key="confetti-container"
@@ -2819,22 +2730,11 @@ ${
           />
         </div>
       )}
+
       <FormLayout>
         <Layout>
           <Layout.Section>
             <BlockStack gap="400">
-              {/* <Card>
-                                <BlockStack gap="200">
-                                    <TextField
-                                        label="Campaign Name"
-                                        value={campaignName}
-                                        onChange={setCampaignName}
-                                        requiredIndicator
-                                        error={!campaignName ? "Campaign name is required" : ""}
-                                    />
-                                    <Divider />
-                                </BlockStack>
-                            </Card> */}
               <Card>
                 <BlockStack gap="200">
                   <Text as="h2" variant="headingMd" fontWeight="bold">
@@ -3150,26 +3050,6 @@ ${
                           <Text variant="headingMd" as="h3">
                             Reward Type
                           </Text>
-                          {/* <Box paddingBlockStart="100">
-                            <ChoiceList
-                              title="Reward Mode"
-                              choices={rewardModeOptions}
-                              selected={[offer.rewardMode]}
-                              onChange={(value) => {
-                                const mode = value[0];
-                                // Batch update all related fields at once
-                                updateOfferBatch(offer.id, {
-                                  rewardMode: mode,
-                                  rewardType:
-                                    mode === "flame" ? "gift" : "discount",
-                                  rewardTypeName:
-                                    mode === "flame"
-                                      ? "Flame Match Gift"
-                                      : "Fixed Discount",
-                                });
-                              }}
-                            />
-                          </Box> */}
 
                           {offer.rewardMode === "fixed" &&
                             dealType !== "flame" && (
@@ -3181,6 +3061,10 @@ ${
                                       label: "Free Shipping",
                                       value: "shipping",
                                     },
+                                    {
+                                      label: "Free Gift",
+                                      value: "gift",
+                                    },
                                   ]}
                                   selected={[offer.rewardType]}
                                   onChange={(value) => {
@@ -3191,7 +3075,9 @@ ${
                                       rewardTypeName:
                                         rewardType === "discount"
                                           ? "Fixed Discount"
-                                          : "Free Shipping",
+                                          : rewardType === "shipping"
+                                            ? "Free Shipping"
+                                            : "Free Gift",
                                     });
                                   }}
                                 />
@@ -3256,38 +3142,6 @@ ${
                                   updateOffer(offer.id, "discountType", value)
                                 }
                               />
-                              {/* <Box paddingBlockStart="200">
-                                                                <Button
-                                                                    onClick={() => rewardPicker(offer.id)}
-                                                                    variant="primary"
-                                                                    size="medium"
-                                                                >
-                                                                    Select Eligible Products
-                                                                </Button>
-                                                                {offer.rewardProducts.length > 0 && (
-                                                                    <Box paddingBlockStart="200">
-                                                                        <Text fontWeight="semibold">Selected Products:</Text>
-                                                                        <BlockStack gap="100">
-                                                                            {offer.rewardProducts.map((item) => (
-                                                                                <InlineStack
-                                                                                    key={item.id}
-                                                                                    align="space-between"
-                                                                                    blockAlign="center"
-                                                                                >
-                                                                                    <Text>{item.title}</Text>
-                                                                                    <Button
-                                                                                        tone="critical"
-                                                                                        size="medium"
-                                                                                        onClick={() => removeRewardProduct(offer.id, item.id)}
-                                                                                    >
-                                                                                        Remove
-                                                                                    </Button>
-                                                                                </InlineStack>
-                                                                            ))}
-                                                                        </BlockStack>
-                                                                    </Box>
-                                                                )}
-                                                            </Box> */}
                             </BlockStack>
                           )}
                           {offer.rewardType === "shipping" && (
@@ -3296,51 +3150,87 @@ ${
                                 Free shipping will be automatically applied
                                 Selected Tigger Products{" "}
                               </Banner>
-                              {/* <Button
-                                                                onClick={() => rewardPicker(offer.id)}
-                                                                variant="primary"
-                                                                size="medium"
-                                                            >
-                                                                Select Eligible Products
-                                                            </Button>
-                                                            {offer.rewardProducts.length > 0 && (
-                                                                <Box paddingBlockStart="200">
-                                                                    <Text fontWeight="semibold">Selected Products:</Text>
-                                                                    <BlockStack gap="100">
-                                                                        {offer.rewardProducts.map((item) => (
-                                                                            <InlineStack
-                                                                                key={item.id}
-                                                                                align="space-between"
-                                                                                blockAlign="center"
-                                                                            >
-                                                                                <Text>{item.title}</Text>
-                                                                                <Button
-                                                                                    tone="critical"
-                                                                                    size="medium"
-                                                                                    onClick={() => removeRewardProduct(offer.id, item.id)}
-                                                                                >
-                                                                                    Remove
-                                                                                </Button>
-                                                                            </InlineStack>
-                                                                        ))}
-                                                                    </BlockStack>
-                                                                </Box>
-                                                            )} */}
                             </BlockStack>
                           )}
                           {offer.rewardType === "gift" && (
                             <BlockStack gap="300">
+                              {/* Reminder banners for Fixed Deal vs Flame Match */}
+                              {(() => {
+                                const currentDealType =
+                                  dealType || offer.rewardMode;
+                                const isFixedDeal =
+                                  currentDealType === "fixed" ||
+                                  offer.rewardMode === "fixed";
+                                const isFlameMatch =
+                                  currentDealType === "flame" ||
+                                  offer.rewardMode === "flame";
+
+                                return (
+                                  <>
+                                    {isFixedDeal && (
+                                      <Banner tone="info">
+                                        <Text fontWeight="medium">
+                                          Fixed Deal: Only 1 product in the
+                                          chosen reward category (fixed deal).
+                                        </Text>
+                                        <Text tone="subdued" variant="bodySm">
+                                          Selected:{" "}
+                                          {offer.rewardProducts.length}/1
+                                        </Text>
+                                      </Banner>
+                                    )}
+                                    {isFlameMatch && (
+                                      <Banner
+                                        tone={
+                                          offer.rewardProducts.length >= 2
+                                            ? "success"
+                                            : "warning"
+                                        }
+                                      >
+                                        <Text fontWeight="medium">
+                                          Flame Match: At least 2 reward
+                                          products are required (2-20 products).
+                                        </Text>
+                                        <Text tone="subdued" variant="bodySm">
+                                          Selected:{" "}
+                                          {offer.rewardProducts.length}/2
+                                          (minimum)
+                                        </Text>
+                                      </Banner>
+                                    )}
+                                  </>
+                                );
+                              })()}
                               <Button
                                 onClick={() => rewardPicker(offer.id)}
                                 variant="primary"
                                 size="medium"
+                                disabled={
+                                  (dealType === "fixed" ||
+                                    offer.rewardMode === "fixed") &&
+                                  offer.rewardProducts.length >= 1
+                                }
                               >
-                                Select Free Products
+                                {(() => {
+                                  const currentDealType =
+                                    dealType || offer.rewardMode;
+                                  const isFixedDeal =
+                                    currentDealType === "fixed" ||
+                                    offer.rewardMode === "fixed";
+                                  if (
+                                    isFixedDeal &&
+                                    offer.rewardProducts.length >= 1
+                                  ) {
+                                    return "1 Product Selected (Max Reached)";
+                                  }
+                                  return "Select Free Products";
+                                })()}
                               </Button>
                               {offer.rewardProducts.length > 0 && (
                                 <Box paddingBlockStart="200">
                                   <Text fontWeight="semibold">
-                                    Selected Free Products:
+                                    Selected Free Products (
+                                    {offer.rewardProducts.length}):
                                   </Text>
                                   <BlockStack gap="100">
                                     {offer.rewardProducts.map((item) => (
@@ -3445,16 +3335,12 @@ ${
                     </BlockStack>
                   </Card>
                 ))}
-                <Button
-                  variant="primary"
-                  onClick={handleSubmit}
-                  loading={mainBtnLoading}
-                  accessibilityLabel="Save campaign"
-                >
-                  Save Campaign
-                </Button>
               </BlockStack>
-
+              <Card>
+                <BlockStack>
+                  <Button>Rewad procuts applay discount</Button>
+                </BlockStack>
+              </Card>
               <Card sectioned>
                 <BlockStack gap="300">
                   <Text variant="headingMd" as="h3">
@@ -3694,76 +3580,7 @@ ${
 
           <Layout.Section variant="oneHalf">
             <div style={{ position: "sticky", top: "20px" }}>
-              <BlockStack gap="400">
-                <Card>
-                  <BlockStack gap="300">
-                    <ChoiceList
-                      title="Select Campaign Placement"
-                      choices={[
-                        { label: "Homepage", value: "home" },
-                        { label: "Product Page", value: "Page" },
-                        { label: "Cart Page", value: "cart" },
-                      ]}
-                      selected={[placement]}
-                      onChange={(value) => setPlacement(value[0] || "")}
-                    />
-                  </BlockStack>
-                </Card>
-
-                {/* <Card>
-                  <BlockStack gap="300">
-                    <Text as="h3" variant="headingSm">
-                      Test Progress
-                    </Text>
-                    <Text variant="bodySm" tone="subdued">
-                      Current Progress: {currentProgress}{" "}
-                      {offers.length > 0 && offers[0].goalType === "quantity"
-                        ? "items"
-                        : offers.length > 0 &&
-                            offers[0].goalType === "amount_cart"
-                          ? offers[0].currency
-                          : ""}
-                    </Text>
-                    <InlineStack gap="200">
-                      <Button
-                        size="small"
-                        onClick={() =>
-                          setCurrentProgress((prev) => Math.max(0, prev - 1))
-                        }
-                      >
-                        - Decrease
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => setCurrentProgress((prev) => prev + 1)}
-                      >
-                        + Increase
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setCurrentProgress(0);
-                          setCompletedGoals([]);
-                          completedGoalsRef.current = [];
-                          confettiTriggeredRef.current = [];
-                          setShouldShowConfetti(false);
-                        }}
-                      >
-                        Reset
-                      </Button>
-                    </InlineStack>
-                    <Divider />
-                    <Text variant="bodySm" tone="subdued">
-                      Goal Status:{" "}
-                      {completedGoals.length > 0
-                        ? `${completedGoals.length} goal(s) completed`
-                        : "No goals completed yet"}
-                    </Text>
-                  </BlockStack>
-                </Card> */}
-
-                {renderPreview()}
-              </BlockStack>
+              <BlockStack gap="400">{renderPreview()}</BlockStack>
             </div>
           </Layout.Section>
         </Layout>

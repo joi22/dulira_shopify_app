@@ -10,6 +10,8 @@ import {
   TextField,
   Divider,
   Box,
+  Layout,
+  ChoiceList,
 } from "@shopify/polaris";
 import {
   GiftCardIcon,
@@ -26,12 +28,14 @@ const CATEGORIES = [
     title: "Upsell",
     description: "Encourage customers to upgrade or add higher-value products.",
     icon: GiftCardIcon,
+    image: "/imags/upsell.jpg",
   },
   {
     type: "cross_sell",
     title: "Cross-sell",
     description: "Suggest complementary products to increase order value.",
     icon: OrderRepeatIcon,
+    image: "/imags/cross-sell.jpg",
   },
   {
     type: "loyalty",
@@ -39,18 +43,21 @@ const CATEGORIES = [
     description:
       "Reward customers for purchases to build long-term relationships.",
     icon: HeartIcon,
+    image: "/imags/loyalty.jpg",
   },
   {
     type: "urgency",
     title: "Urgency",
     description: "Motivate quick purchases with time-sensitive offers.",
     icon: ClockIcon,
+    image: "/imags/Urgency.jpg",
   },
   {
     type: "engagement",
     title: "Engagement",
     description: "Boost customer interaction with personalized experiences.",
     icon: ChatIcon,
+    image: "/imags/engagement.jpg",
   },
 ];
 
@@ -70,7 +77,8 @@ const CAMPAIGN_CARDS = [
     title: "Add to Unlock",
     type: "add_to_unlock",
     url: "addtounlock",
-    description: "Progress bar for free gifts/discounts",
+    description:
+      "Encourage adding more items to unlock rewards, such as discounts, free gifts, or free shipping",
     category: "upsell",
     thumbnail: "🎁",
     tutorialLink: "https://example.com/add-to-unlock-tutorial",
@@ -177,13 +185,18 @@ const CAMPAIGN_CARDS = [
   },
 ];
 
-const CampaignCard = ({ card, index, campaignName, onSelect }) => {
+const CampaignCard = ({
+  card,
+  index,
+  campaignName,
+  onSelect,
+  selectedCard,
+}) => {
   const handleSelect = () => {
-    if (!campaignName.trim()) {
-      return alert("Please enter a campaign name first.");
-    }
     onSelect(card);
   };
+
+  const isSelected = selectedCard?.id === card.id;
 
   const getCardImage = () => {
     switch (card.type) {
@@ -204,79 +217,98 @@ const CampaignCard = ({ card, index, campaignName, onSelect }) => {
     }
   };
 
-  // Get discount percentage based on card type
-  const getDiscount = () => {
-    if (card.type === "buy_more_save_more") return "20%";
-    if (card.type === "checkout_upsell") return "20%";
-    return "20%";
-  };
-
   return (
     <div
       style={{
+        position: "relative",
         background: "#fff",
-        border: "1px solid #e4e4e4",
-        borderRadius: "12px",
-        padding: "16px",
-        minHeight: "240px",
-        width: "100%",
-        maxWidth: "350px",
-        boxShadow: "0 2px 8px rgba(197, 58, 58, 0.08)",
+        borderRadius: "8px",
+        border: isSelected ? "2px solid #5c6ac4" : "1px solid #e1e3e5",
+        padding: "20px",
         display: "flex",
         flexDirection: "column",
-        cursor: "pointer",
+        height: "100%",
+        minHeight: "320px",
+        justifyContent: "space-between",
         transition: "all 0.3s ease",
-        position: "relative",
+        cursor: "pointer",
+        boxShadow: isSelected
+          ? "0 4px 12px rgba(92, 106, 196, 0.15)"
+          : "0 2px 4px rgba(0, 0, 0, 0.05)",
       }}
       onClick={handleSelect}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.1)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.05)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }
+      }}
     >
-      {/* Info Icon in top right */}
-      <div style={{ position: "absolute", top: "12px", right: "12px" }}>
-        <InfoIcon width="20px" height="20px" />
-      </div>
-
+      {/* Info Icon - Top Right */}
       <div
-        style={{ textAlign: "center", marginTop: "8px", marginBottom: "16px" }}
+        style={{
+          position: "absolute",
+          top: "16px",
+          right: "16px",
+          width: "24px",
+          height: "24px",
+          borderRadius: "50%",
+          background: "#f5f5f5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          zIndex: 10,
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Handle info click
+        }}
+      ></div>
+
+      {/* Illustration Section */}
+      <div
+        style={{
+          width: "100%",
+          height: "160px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "16px",
+          backgroundColor: "#f9f9f9",
+          borderRadius: "6px",
+          padding: "12px",
+        }}
       >
         <img
           src={getCardImage()}
           alt={card.title}
           style={{
-            width: "100%",
-            maxHeight: "120px",
+            maxWidth: "100%",
+            maxHeight: "100%",
             objectFit: "contain",
-            borderRadius: "8px",
           }}
         />
       </div>
 
-      <Text
-        variant="headingSm"
-        fontWeight="semibold"
-        style={{ marginBottom: "4px" }}
-      >
-        {card.title}
-      </Text>
-
-      <Text
-        variant="bodySm"
-        tone="subdued"
-        style={{ marginBottom: "12px", minHeight: "40px" }}
-      >
-        {card.description}
-      </Text>
-
-      <Button
-        fullWidth
-        primary
-        onClick={(e) => {
-          e.stopPropagation();
-          handleSelect();
-        }}
-        style={{ marginTop: "auto" }}
-      >
-        Select
-      </Button>
+      {/* Title */}
+      <BlockStack>
+        <Text variant="headingSm" fontWeight="bold">
+          {card.title}
+        </Text>
+        <InlineStack align="space-between" blockAlign="center" gap={"200"}>
+          <Text variant="bodySm" tone="subdued">
+            {card.description}
+          </Text>
+          <InfoIcon width="16px" height="16px" />
+        </InlineStack>
+      </BlockStack>
     </div>
   );
 };
@@ -287,12 +319,16 @@ export default function CreateCampaign() {
   const [campaignName, setCampaignName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [placement, setPlacement] = useState("");
+  const [dealType, setDealType] = useState("");
 
   const handleNext = () => {
-    if (step === 1 && campaignName.trim()) {
+    if (step === 1 && selectedCategory) {
       setStep(2);
-    } else if (step === 2 && selectedCategory) {
+    } else if (step === 2 && selectedCard) {
       setStep(3);
+    } else if (step === 3 && campaignName.trim()) {
+      setStep(4);
     }
   };
 
@@ -308,14 +344,27 @@ export default function CreateCampaign() {
     } else if (step === 3) {
       setStep(2);
       setSelectedCard(null);
+    } else if (step === 4) {
+      setStep(3);
     }
   };
 
   const handleCardSelect = (card) => {
     console.log("Campaign card selected:", card);
     console.log("Card type:", card.type);
-    // Navigate directly to addtounlock page
-    navigate(`/app/addtounlock?type=${card.type}&name=${campaignName}`);
+    setSelectedCard(card);
+    setStep(3);
+  };
+
+  const handleFinalSubmit = () => {
+    if (!campaignName.trim() || !placement || !dealType) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    // Navigate to addtounlock page with all parameters
+    navigate(
+      `/app/addtounlock?type=${selectedCard.type}&name=${campaignName}&dealType=${dealType}&placement=${placement}`,
+    );
   };
 
   const steps = [
@@ -336,176 +385,385 @@ export default function CreateCampaign() {
 
   return (
     <Page
+      fullWidth
       backAction={{
         content: "Back to Upsell Engine",
         onAction: () => navigate("/app/upsell_engine"),
       }}
       title="Create New Campaign"
     >
-      {/* Progress Indicator */}
-      {/* <Card sectioned>
-        <InlineStack align="space-between" blockAlign="center">
-          {steps.map((s, index) => (
-            <Box key={s.number} style={{ flex: 1, textAlign: "center" }}>
+      <style>{`
+        .category-card-wrapper {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .category-card-wrapper:hover {
+          transform: translateY(-8px);
+        }
+        .category-card-wrapper:hover .Polaris-Card {
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        .category-card-wrapper:active {
+          transform: translateY(-4px);
+        }
+        .Polaris-Page {
+          background-color: #f5f5f5;
+        }
+        .Polaris-Layout {
+          background-color: #f5f5f5;
+        }
+      `}</style>
+      <Layout sectioned padding="400">
+        <Layout.Section>
+          {step === 1 && (
+            <Card padding={"500"} sectioned>
+              <BlockStack gap="200">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text variant="headingMd" fontWeight="bold">
+                    Step 1: Choose Category
+                  </Text>
+                </InlineStack>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: "24px",
+                    width: "100%",
+                    padding: "20px 0",
+                  }}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <div
+                      key={cat.type}
+                      className="category-card-wrapper"
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setStep(2);
+                      }}
+                      style={{
+                        cursor: "pointer",
+                        position: "relative",
+                        borderRadius: "8px",
+                        overflow: "hidden",
+                        transition: "all 0.3s ease",
+                        transform:
+                          selectedCategory?.type === cat.type
+                            ? "translateY(-4px)"
+                            : "translateY(0)",
+                        boxShadow:
+                          selectedCategory?.type === cat.type
+                            ? "0 8px 16px rgba(92, 106, 196, 0.2)"
+                            : "0 2px 8px rgba(0, 0, 0, 0.08)",
+                        border:
+                          selectedCategory?.type === cat.type
+                            ? "2px solid #5c6ac4"
+                            : "none",
+                      }}
+                    >
+                      {/* Image Section - Full Width */}
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "280px",
+                          overflow: "hidden",
+                          position: "relative",
+                          backgroundColor: "#f5f5f5",
+                        }}
+                      >
+                        <img
+                          src={cat.image}
+                          alt={cat.title}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            transition: "transform 0.3s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "scale(1.05)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "scale(1)";
+                          }}
+                        />
+                      </div>
+
+                      {/* Content Section - Overlay on Image */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          background:
+                            "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+                          padding: "20px 16px 16px",
+                          color: "#fff",
+                        }}
+                      >
+                        <Text
+                          variant="headingLg"
+                          fontWeight="bold"
+                          style={{
+                            color: "#fff",
+                            marginBottom: "8px",
+                            textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                          }}
+                        >
+                          {cat.title}
+                        </Text>
+                        <Text
+                          variant="bodyMd"
+                          style={{
+                            color: "rgba(255,255,255,0.9)",
+                            lineHeight: "1.4",
+                            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                          }}
+                        >
+                          {cat.description}
+                        </Text>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </BlockStack>
+            </Card>
+          )}
+
+          {/* Step 2: Choose Campaign Type (Feature Card) */}
+          {step === 2 && (
+            <div>
+              <Card sectioned>
+                <BlockStack gap="400">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <Button variant="plain" onClick={handleBack}>
+                      ← Back to Category
+                    </Button>
+                    <Text variant="headingMd" fontWeight="bold">
+                      Step 2: Choose Campaign Type
+                    </Text>
+                    <div style={{ width: "80px" }}></div>
+                  </InlineStack>
+                </BlockStack>
+              </Card>
+
               <div
                 style={{
-                  display: "inline-block",
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  backgroundColor: s.active
-                    ? s.completed
-                      ? "#4CAF50"
-                      : "#5c6ac4"
-                    : "#e0e0e0",
-                  color: "white",
-                  lineHeight: "40px",
-                  fontWeight: "bold",
-                  marginBottom: "8px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                  gap: "20px",
+                  width: "100%",
+                  padding: "20px",
+                  backgroundColor: "#f5f5f5",
+                  borderRadius: "8px",
+                  marginTop: "20px",
                 }}
               >
-                {s.completed ? "✓" : s.number}
+                {CAMPAIGN_CARDS.filter(
+                  (card) => card.category === selectedCategory.type,
+                ).map((card) => (
+                  <CampaignCard
+                    key={card.id}
+                    card={card}
+                    campaignName={campaignName}
+                    onSelect={handleCardSelect}
+                    selectedCard={selectedCard}
+                  />
+                ))}
               </div>
-              <Text variant="bodySm">{s.title}</Text>
-            </Box>
-          ))}
-        </InlineStack>
-      </Card>
-
-      <Divider /> */}
-
-      {/* Step 1: Campaign Name */}
-      {step === 1 && (
-        <Card sectioned>
-          <BlockStack gap="400">
-            <Text variant="headingMd" fontWeight="bold">
-              Step 1: Name Your Campaign
-            </Text>
-            <TextField
-              label="Campaign Name"
-              value={campaignName}
-              onChange={setCampaignName}
-              placeholder="e.g., Summer Free Gift Offer"
-              requiredIndicator
-              autoFocus
-            />
-            <InlineStack align="end">
-              <Button
-                primary
-                onClick={handleNext}
-                disabled={!campaignName.trim()}
-              >
-                Next: Choose Category
-              </Button>
-            </InlineStack>
-          </BlockStack>
-        </Card>
-      )}
-
-      {/* Step 2: Category Selection */}
-      {step === 2 && (
-        <Card sectioned>
-          <BlockStack gap="400">
-            <InlineStack align="space-between" blockAlign="center">
-              <Text variant="headingMd" fontWeight="bold">
-                Step 2: Choose Category
-              </Text>
-              <Button variant="plain" onClick={handleBack}>
-                ← Back
-              </Button>
-            </InlineStack>
-
-            <InlineStack wrap gap="300" style={{ justifyContent: "space-between" }}>
-              {CATEGORIES.map((cat) => (
-                <Box
-                  key={cat.type}
-                  width="300px"
-                  minHeight="300px"
-                  onClick={() => setSelectedCategory(cat)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Card
-                    sectioned
-                    style={{
-                      borderColor:
-                        selectedCategory?.type === cat.type
-                          ? "#5c6ac4"
-                          : "#e0e0e0",
-                      borderWidth:
-                        selectedCategory?.type === cat.type ? "2px" : "1px",
-                      transition: "all 0.2s ease",
-                      backgroundColor:
-                        selectedCategory?.type === cat.type
-                          ? "#f5f8ff"
-                          : "white",
-                    }}
-                  >
-                    <Box width="300px" height="300px">
-                    <BlockStack gap="200" align="center">
-                      <cat.icon width="50px" />
-                      <Text variant="headingSm">{cat.title}</Text>
-                      <Text variant="bodyXs" alignment="center">
-                        {cat.description}
-                      </Text>
-                    </BlockStack>
-                    </Box>
-                  </Card>
-                </Box>
-              ))}
-            </InlineStack>
-
-            <InlineStack align="end">
-              <Button primary onClick={handleNext} disabled={!selectedCategory}>
-                Next: Choose Campaign Type
-              </Button>
-            </InlineStack>
-          </BlockStack>
-        </Card>
-      )}
-
-      {/* Step 3: Campaign Type Selection */}
-      {step === 3 && (
-        <Card sectioned>
-          <BlockStack gap="400">
-            <InlineStack align="space-between" blockAlign="center">
-              <Text variant="headingMd" fontWeight="bold">
-                Step 3: Choose Campaign Type
-              </Text>
-              <Button variant="plain" onClick={handleBack}>
-                ← Back
-              </Button>
-            </InlineStack>
-
-            <Card sectioned>
-              <Text variant="headingSm">{selectedCategory.title}</Text>
-              <Text variant="bodyMd" tone="subdued">
-                {selectedCategory.description}
-              </Text>
-            </Card>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: "16px",
-                width: "100%",
-                padding: "10px 0",
-              }}
-            >
-              {CAMPAIGN_CARDS.filter(
-                (card) => card.category === selectedCategory.type,
-              ).map((card) => (
-                <CampaignCard
-                  key={card.id}
-                  card={card}
-                  campaignName={campaignName}
-                  onSelect={handleCardSelect}
-                />
-              ))}
             </div>
-          </BlockStack>
-        </Card>
-      )}
+          )}
+
+          {/* Step 3: Campaign Name */}
+          {step === 3 && (
+            <Card sectioned>
+              <BlockStack gap="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Button variant="plain" onClick={handleBack}>
+                    ← Back
+                  </Button>
+                  <Text variant="headingMd" fontWeight="bold">
+                    Step 3: Name Your Campaign
+                  </Text>
+                </InlineStack>
+                <TextField
+                  label="Campaign Name"
+                  value={campaignName}
+                  onChange={setCampaignName}
+                  placeholder="e.g., Summer Free Gift Offer"
+                  requiredIndicator
+                  autoFocus
+                />
+                <InlineStack align="end">
+                  <Button
+                    primary
+                    onClick={handleNext}
+                    disabled={!campaignName.trim()}
+                  >
+                    Next: Configure Settings
+                  </Button>
+                </InlineStack>
+              </BlockStack>
+            </Card>
+          )}
+
+          {step === 4 && (
+            <Card sectioned>
+              <BlockStack gap="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Button variant="plain" onClick={handleBack}>
+                    ← Back
+                  </Button>
+                  <Text variant="headingMd" fontWeight="bold">
+                    Step 4: Configure Settings
+                  </Text>
+                </InlineStack>
+
+                <Card sectioned>
+                  <BlockStack gap="300">
+                    <Text variant="headingSm" fontWeight="bold">
+                      Campaign Placement
+                    </Text>
+                    <ChoiceList
+                      title="Select Campaign Placement"
+                      choices={[
+                        { label: "Homepage", value: "home" },
+                        { label: "Product Page", value: "Page" },
+                        { label: "Cart Page", value: "cart" },
+                      ]}
+                      selected={[placement]}
+                      onChange={(value) => setPlacement(value[0] || "")}
+                    />
+                  </BlockStack>
+                </Card>
+
+                <Card sectioned>
+                  <BlockStack gap="300">
+                    <Text variant="headingSm" fontWeight="bold">
+                      Offer Type
+                    </Text>
+                    <Text variant="bodySm" tone="subdued">
+                      Choose the type of deal you want to create
+                    </Text>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "20px",
+                        marginTop: "10px",
+                      }}
+                    >
+                      {/* Fixed Deal Card */}
+                      <div
+                        style={{
+                          background: "#fff",
+                          border:
+                            dealType === "fixed"
+                              ? "2px solid #5c6ac4"
+                              : "2px solid #e1e1e1",
+                          borderRadius: "14px",
+                          padding: "20px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => setDealType("fixed")}
+                      >
+                        <div
+                          style={{
+                            width: "70px",
+                            height: "70px",
+                            borderRadius: "10px",
+                            background:
+                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "30px",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          🔒
+                        </div>
+                        <Text variant="headingSm">Fixed Deal</Text>
+                        <Text
+                          tone="subdued"
+                          variant="bodySm"
+                          alignment="center"
+                        >
+                          Set fixed discounts and offers
+                        </Text>
+                      </div>
+
+                      {/* Flame Match Card */}
+                      <div
+                        style={{
+                          background: "#fff",
+                          border:
+                            dealType === "flame"
+                              ? "2px solid #5c6ac4"
+                              : "2px solid #e1e1e1",
+                          borderRadius: "14px",
+                          padding: "20px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => setDealType("flame")}
+                      >
+                        <div
+                          style={{
+                            width: "70px",
+                            height: "70px",
+                            borderRadius: "10px",
+                            background:
+                              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "30px",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          🔥
+                        </div>
+                        <Text variant="headingSm">Flame Match</Text>
+                        <Text
+                          tone="subdued"
+                          variant="bodySm"
+                          alignment="center"
+                        >
+                          Dynamic matching and recommendations
+                        </Text>
+                      </div>
+                    </div>
+                  </BlockStack>
+                </Card>
+
+                <InlineStack align="end">
+                  <Button
+                    primary
+                    onClick={handleFinalSubmit}
+                    disabled={!placement || !dealType}
+                  >
+                    Create Campaign
+                  </Button>
+                </InlineStack>
+              </BlockStack>
+            </Card>
+          )}
+        </Layout.Section>
+      </Layout>
     </Page>
   );
 }
