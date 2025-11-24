@@ -482,8 +482,11 @@ export default function AddToUnlock() {
       : new URLSearchParams();
 
   // 'dealType' parameter ki value
-  const dealType = urlParams.get("dealType");
+  const dealTypeFromUrl = urlParams.get("dealType");
   const rewardTypeParam = urlParams.get("rewardType"); // Get reward type from URL
+
+  // State for deal type - use URL param if available, otherwise allow selection
+  const [dealType, setDealType] = useState(dealTypeFromUrl || "");
 
   const rewardModeOptions = [
     dealType !== "flame" && { label: "Fixed Deal", value: "fixed" },
@@ -521,6 +524,7 @@ export default function AddToUnlock() {
   const [shouldShowConfetti, setShouldShowConfetti] = useState(false);
   const completedGoalsRef = useRef([]);
   const confettiTriggeredRef = useRef([]);
+  const confettiShownOnceRef = useRef(false);
 
   const filteredCollections = selectedCollections.filter(
     (c) =>
@@ -542,41 +546,46 @@ export default function AddToUnlock() {
   const removeCollection = (id) =>
     removeItem(id, setSelectedCollections, selectedCollections);
 
-  // Initialize offers based on deal type from URL
+  // Initialize offers based on deal type
   useEffect(() => {
-    if (dealType && offers.length > 0) {
+    const currentDealType = dealType || dealTypeFromUrl;
+    if (currentDealType && offers.length > 0) {
       const updatedOffers = offers.map((offer) => ({
         ...offer,
-        rewardMode: dealType === "flame" ? "flame" : "fixed",
+        rewardMode: currentDealType === "flame" ? "flame" : "fixed",
         rewardType:
-          dealType === "flame"
+          currentDealType === "flame"
             ? "gift"
             : rewardTypeParam || offer.rewardType || "discount",
       }));
       setOffers(updatedOffers);
     }
-  }, [dealType]);
+  }, [dealType, dealTypeFromUrl, rewardTypeParam]);
 
-  const [offers, setOffers] = useState([
-    {
-      id: Date.now() + Math.random(), // More unique ID
-      goalType: "quantity",
-      goalAmount: "50",
-      goalquantity: "1",
-      currency: "USD",
-      rewardMode: dealType || "fixed",
-      rewardType: rewardTypeParam || "discount", // Use rewardType from URL
-      discountCode: "10",
-      discountType: "percentage",
-      productPickType: "products",
-      buyProductPicker: [],
-      buyCollectionPicker: [],
-      rewardProducts: [],
-      rewardCollection: [],
-      goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
-      goalTextAfter: "🎉 You've unlocked {{reward}}!",
-    },
-  ]);
+  const [offers, setOffers] = useState(() => {
+    const initialDealType = dealTypeFromUrl || "";
+    return [
+      {
+        id: Date.now() + Math.random(), // More unique ID
+        goalType: "quantity",
+        goalAmount: "50",
+        goalquantity: "1",
+        currency: "USD",
+        rewardMode: initialDealType === "flame" ? "flame" : "fixed",
+        rewardType:
+          initialDealType === "flame" ? "gift" : rewardTypeParam || "discount", // Use rewardType from URL
+        discountCode: "10",
+        discountType: "percentage",
+        productPickType: "products",
+        buyProductPicker: [],
+        buyCollectionPicker: [],
+        rewardProducts: [],
+        rewardCollection: [],
+        goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
+        goalTextAfter: "🎉 You've unlocked {{reward}}!",
+      },
+    ];
+  });
 
   const currencyOptions = [
     { label: "US Dollar (USD)", value: "USD" },
@@ -589,14 +598,15 @@ export default function AddToUnlock() {
   ];
 
   const addOffer = () => {
+    const currentDealType = dealType || dealTypeFromUrl || "fixed";
     const newOffer = {
       id: Date.now() + Math.random(), // More unique ID
       goalType: "quantity",
       goalAmount: "50",
       goalquantity: "1",
       currency: "USD",
-      rewardMode: "fixed",
-      rewardType: "discount",
+      rewardMode: currentDealType === "flame" ? "flame" : "fixed",
+      rewardType: currentDealType === "flame" ? "gift" : "discount",
       discountCode: "10",
       discountType: "percentage",
       productPickType: "products",
@@ -814,10 +824,18 @@ export default function AddToUnlock() {
       (id) => !confettiTriggeredRef.current.includes(id),
     );
 
-    if (untriggeredGoals.length > 0 && status.showConfetti) {
-      console.log("🎉 New goal completed! Showing confetti");
+    // Only show confetti once if switch is enabled and it hasn't been shown before
+    if (
+      untriggeredGoals.length > 0 &&
+      status.showConfetti &&
+      !confettiShownOnceRef.current
+    ) {
+      console.log("🎉 New goal completed! Showing confetti (one time only)");
       console.log("Newly completed goal IDs:", untriggeredGoals);
       console.log("Already triggered for:", confettiTriggeredRef.current);
+
+      // Mark that confetti has been shown once
+      confettiShownOnceRef.current = true;
 
       // Mark these goals as having triggered confetti
       confettiTriggeredRef.current = [
@@ -839,6 +857,9 @@ export default function AddToUnlock() {
   useEffect(() => {
     if (!status.showConfetti) {
       setShouldShowConfetti(false);
+      // Reset confetti shown flag when switch is turned off
+      // This allows confetti to show once again if switch is turned back on
+      confettiShownOnceRef.current = false;
     }
   }, [status.showConfetti]);
 
@@ -1384,6 +1405,13 @@ export default function AddToUnlock() {
       );
       return;
     }
+    if (!dealType && !dealTypeFromUrl) {
+      shopify.toast.show(
+        "Deal type is required. Please select Fixed Deal or Flame Match.",
+        { isError: true },
+      );
+      return;
+    }
     if (!placement) {
       shopify.toast.show("Placement is required.", { isError: true });
       return;
@@ -1397,6 +1425,11 @@ export default function AddToUnlock() {
     formData.append("selectedCampaignType", "add_to_unlock");
     formData.append("selectedTriggerType", selectedTriggerType);
     formData.append("status", JSON.stringify(status));
+    // Use dealType from state or URL
+    const finalDealType = dealType || dealTypeFromUrl;
+    if (finalDealType) {
+      formData.append("dealType", finalDealType);
+    }
 
     if (selectedTriggerType === "products") {
       formData.append("selectedProducts", JSON.stringify(upsellselectedItems));
@@ -1505,7 +1538,7 @@ export default function AddToUnlock() {
           activeOffer = offer; // First uncompleted offer
           break;
         }
-        activeOffer = offer; 
+        activeOffer = offer;
       }
     }
 
@@ -1513,7 +1546,6 @@ export default function AddToUnlock() {
       ? activeOffer.goalType === "quantity"
         ? Math.min(
             (currentProgress / (parseInt(activeOffer.goalquantity) || 1)) * 100,
-
           )
         : Math.min(
             (currentProgress / (parseFloat(activeOffer.goalAmount) || 1)) * 100,
@@ -1523,7 +1555,12 @@ export default function AddToUnlock() {
         ? 100
         : (currentProgress / 1) * 100;
 
-        console.log("=========>>>><<<",activeOffer.goalquantity,"-----------------",currentProgress);
+    console.log(
+      "=========>>>><<<",
+      activeOffer.goalquantity,
+      "-----------------",
+      currentProgress,
+    );
 
     const getOfferProgressPercentage = (offer) => {
       const goalValue =
@@ -2750,8 +2787,153 @@ ${
 
       <FormLayout>
         <Layout>
+          <div style={{width:"60%"}}>
+
+         
           <Layout.Section>
             <BlockStack gap="400">
+              {/* Deal Type Selection - Show if not selected from URL */}
+              {!dealTypeFromUrl && (
+                <Card>
+                  <BlockStack gap="300">
+                    <Text as="h2" variant="headingMd" fontWeight="bold">
+                      Choose Deal Type
+                    </Text>
+                    <Text as="p" tone="subdued">
+                      Select the type of deal you want to create. This will
+                      determine how rewards are configured.
+                    </Text>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "20px",
+                        marginTop: "10px",
+                      }}
+                    >
+                      {/* Fixed Deal Card */}
+                      <div
+                        style={{
+                          background: "#fff",
+                          border:
+                            dealType === "fixed"
+                              ? "2px solid #5c6ac4"
+                              : "2px solid #e1e1e1",
+                          borderRadius: "14px",
+                          padding: "20px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => {
+                          setDealType("fixed");
+                          setHasUnsavedChanges(true);
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "70px",
+                            height: "70px",
+                            borderRadius: "10px",
+                            background:
+                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "30px",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          🔒
+                        </div>
+                        <Text variant="headingSm">Fixed Deal</Text>
+                        <Text
+                          tone="subdued"
+                          variant="bodySm"
+                          alignment="center"
+                        >
+                          Set fixed discounts and offers
+                        </Text>
+                      </div>
+
+                      {/* Flame Match Card */}
+                      <div
+                        style={{
+                          background: "#fff",
+                          border:
+                            dealType === "flame"
+                              ? "2px solid #5c6ac4"
+                              : "2px solid #e1e1e1",
+                          borderRadius: "14px",
+                          padding: "20px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => {
+                          setDealType("flame");
+                          setHasUnsavedChanges(true);
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "70px",
+                            height: "70px",
+                            borderRadius: "10px",
+                            background:
+                              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            fontSize: "30px",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          🔥
+                        </div>
+                        <Text variant="headingSm">Flame Match</Text>
+                        <Text
+                          tone="subdued"
+                          variant="bodySm"
+                          alignment="center"
+                        >
+                          Dynamic matching and recommendations
+                        </Text>
+                      </div>
+                    </div>
+                    {!dealType && (
+                      <Banner tone="warning">
+                        <Text>Please select a deal type to continue.</Text>
+                      </Banner>
+                    )}
+                  </BlockStack>
+                </Card>
+              )}
+
+              {/* Show selected deal type if from URL */}
+              {dealTypeFromUrl && (
+                <Card>
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="headingMd" fontWeight="bold">
+                      Deal Type:{" "}
+                      {dealTypeFromUrl === "fixed"
+                        ? "Fixed Deal"
+                        : "Flame Match"}
+                    </Text>
+                  </BlockStack>
+                </Card>
+              )}
+
               <Card>
                 <BlockStack gap="200">
                   <Text as="h2" variant="headingMd" fontWeight="bold">
@@ -2760,6 +2942,14 @@ ${
                   <Text as="p">
                     Choose which products will trigger the upsell offer.
                   </Text>
+                  {!dealType && !dealTypeFromUrl && (
+                    <Banner tone="warning">
+                      <Text>
+                        Please select a deal type above before configuring
+                        trigger products.
+                      </Text>
+                    </Banner>
+                  )}
                   {!placement && (
                     <Banner tone="info">
                       <Text>
@@ -2773,7 +2963,7 @@ ${
                       label="All products"
                       checked={selectedTriggerType === "all"}
                       name="triggerType"
-                      disabled={!placement}
+                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
                       onChange={() => {
                         setSelectedTriggerType("all");
                         setUpsell_allproduct(true);
@@ -2783,14 +2973,14 @@ ${
                       label="Specific products"
                       checked={selectedTriggerType === "products"}
                       name="triggerType"
-                      disabled={!placement}
+                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
                       onChange={() => setSelectedTriggerType("products")}
                     />
                     <RadioButton
                       label="Specific collections"
                       checked={selectedTriggerType === "collections"}
                       name="triggerType"
-                      disabled={!placement}
+                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
                       onChange={() => setSelectedTriggerType("collections")}
                     />
                   </InlineStack>
@@ -2804,7 +2994,9 @@ ${
                           <Button
                             onClick={productpicker}
                             size="medium"
-                            disabled={!placement}
+                            disabled={
+                              !placement || (!dealType && !dealTypeFromUrl)
+                            }
                             accessibilityLabel="Browse products for upsell"
                           >
                             Browse Products
@@ -2864,7 +3056,9 @@ ${
                           <Button
                             onClick={collectionPicker}
                             size="medium"
-                            disabled={!placement}
+                            disabled={
+                              !placement || (!dealType && !dealTypeFromUrl)
+                            }
                             accessibilityLabel="Browse collections for upsell"
                           >
                             Browse Collections
@@ -2971,11 +3165,19 @@ ${
                     icon={PlusIcon}
                     onClick={addOffer}
                     variant="primary"
+                    disabled={!dealType && !dealTypeFromUrl}
                     accessibilityLabel="Add new offer"
                   >
                     Add Offer
                   </Button>
                 </InlineStack>
+                {!dealType && !dealTypeFromUrl && (
+                  <Banner tone="warning">
+                    <Text>
+                      Please select a deal type above before adding offers.
+                    </Text>
+                  </Banner>
+                )}
 
                 {offers.map((offer, index) => (
                   <Card key={offer.id} sectioned background="">
@@ -3081,38 +3283,37 @@ ${
                             Reward Type
                           </Text>
 
-                          {offer.rewardMode === "fixed" &&
-                            dealType !== "flame" && (
-                              <BlockStack gap="200">
-                                <ChoiceList
-                                  choices={[
-                                    { label: "Discount", value: "discount" },
-                                    {
-                                      label: "Free Shipping",
-                                      value: "shipping",
-                                    },
-                                    {
-                                      label: "Free Gift",
-                                      value: "gift",
-                                    },
-                                  ]}
-                                  selected={[offer.rewardType]}
-                                  onChange={(value) => {
-                                    const rewardType = value[0];
-                                    // Batch update reward type and name
-                                    updateOfferBatch(offer.id, {
-                                      rewardType: rewardType,
-                                      rewardTypeName:
-                                        rewardType === "discount"
-                                          ? "Fixed Discount"
-                                          : rewardType === "shipping"
-                                            ? "Free Shipping"
-                                            : "Free Gift",
-                                    });
-                                  }}
-                                />
-                              </BlockStack>
-                            )}
+                          {offer.rewardMode === "fixed" && (
+                            <BlockStack gap="200">
+                              <ChoiceList
+                                choices={[
+                                  { label: "Discount", value: "discount" },
+                                  {
+                                    label: "Free Shipping",
+                                    value: "shipping",
+                                  },
+                                  {
+                                    label: "Free Gift",
+                                    value: "gift",
+                                  },
+                                ]}
+                                selected={[offer.rewardType]}
+                                onChange={(value) => {
+                                  const rewardType = value[0];
+                                  // Batch update reward type and name
+                                  updateOfferBatch(offer.id, {
+                                    rewardType: rewardType,
+                                    rewardTypeName:
+                                      rewardType === "discount"
+                                        ? "Fixed Discount"
+                                        : rewardType === "shipping"
+                                          ? "Free Shipping"
+                                          : "Free Gift",
+                                  });
+                                }}
+                              />
+                            </BlockStack>
+                          )}
 
                           {offer.rewardMode === "flame" && (
                             <Box
@@ -3778,12 +3979,12 @@ ${
               </Button>
             </BlockStack>
           </Layout.Section>
-
-          <Layout.Section variant="oneHalf">
-            <div style={{ position: "sticky", top: "20px" }}>
+           </div>
+          <div style={{ position: "sticky", top: "10px", width:"40%" }}>
+            <Layout.Section position="sticky" top="10px" variant="oneHalf">
               <BlockStack gap="400">{renderPreview()}</BlockStack>
-            </div>
-          </Layout.Section>
+            </Layout.Section>
+          </div>
         </Layout>
       </FormLayout>
     </Page>
