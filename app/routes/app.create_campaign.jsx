@@ -82,7 +82,7 @@ const CAMPAIGN_CARDS = [
       "Encourage adding more items to unlock rewards, such as discounts, free gifts, or free shipping",
     category: "upsell",
     thumbnail: "🎁",
-    tutorialLink: "https://example.com/add-to-unlock-tutorial",
+    tutorialLink: "",
   },
   {
     id: 3,
@@ -204,7 +204,7 @@ const CampaignCard = ({
       case "buy_one_get_one":
         return "/app/routes/_index/media/bogo.jpg";
       case "add_to_unlock":
-        return "/app/routes/_index/media/addtounlock.png";
+        return "/app/routes/_index/media/add_to_lock.png";
       case "buy_more_save_more":
         return "/app/routes/_index/media/save-2.png";
       case "checkout_upsell":
@@ -313,6 +313,41 @@ const CampaignCard = ({
     </div>
   );
 };
+
+const Placment_Postion = [
+  {
+    id: 1,
+    title: "Home",
+    description: "Display on your store's homepage",
+    thumbnail: "🏠",
+    icon: "/imags/home.png",
+    color: "#5c6ac4",
+    backgroundColor: "#f5f5f5",
+    textColor: "#333",
+    borderColor: "#e1e3e5",
+    borderRadius: "8px",
+  },
+  {
+    id: 2,
+    title: "Page",
+    description: "Display on your store's page",
+    thumbnail: "📄",
+    icon: "/imags/product_page.png",
+    color: "#5c6ac4",
+    backgroundColor: "#f5f5f5",
+    textColor: "#333",
+  },
+  {
+    id: 3,
+    title: "Cart",
+    description: "Display on your store's cart page",
+    thumbnail: "🛒",
+    icon: "/imags/cart.png",
+    color: "#5c6ac4",
+    backgroundColor: "#f5f5f5",
+    textColor: "#333",
+  },
+];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -691,7 +726,7 @@ export default function CreateCampaign() {
       <Layout sectioned padding="400">
         <Layout.Section>
           {step === 1 && (
-            <Card padding={"500"} sectioned>
+            <div>
               <BlockStack gap="200">
                 <InlineStack align="space-between" blockAlign="center">
                   <Text variant="headingMd" fontWeight="bold">
@@ -702,111 +737,124 @@ export default function CreateCampaign() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                    gap: "24px",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "20px",
                     width: "100%",
                     padding: "20px 0",
                   }}
                 >
-                  {CATEGORIES.map((cat) => (
-                    <div
-                      key={cat.type}
-                      className="category-card-wrapper"
-                      onClick={() => {
-                        setSelectedCategory(cat);
-                        setStep(2);
-                      }}
-                      style={{
-                        cursor: "pointer",
-                        position: "relative",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        transition: "all 0.3s ease",
-                        transform:
-                          selectedCategory?.type === cat.type
-                            ? "translateY(-4px)"
-                            : "translateY(0)",
-                        boxShadow:
-                          selectedCategory?.type === cat.type
-                            ? "0 8px 16px rgba(92, 106, 196, 0.2)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.08)",
-                        border:
-                          selectedCategory?.type === cat.type
-                            ? "2px solid #5c6ac4"
-                            : "none",
-                      }}
-                    >
-                      {/* Image Section - Full Width */}
+                  {CATEGORIES.map((cat) => {
+                    const IconComponent = cat.icon;
+                    return (
                       <div
+                        key={cat.type}
+                        className="category-card-wrapper"
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setStep(2);
+                        }}
                         style={{
-                          width: "100%",
-                          height: "280px",
-                          overflow: "hidden",
+                          cursor: "pointer",
                           position: "relative",
-                          backgroundColor: "#f5f5f5",
+                          borderRadius: "8px",
+                          background: "#fff",
+                          border:
+                            selectedCategory?.type === cat.type
+                              ? "2px solid #5c6ac4"
+                              : "1px solid #e1e3e5",
+                          transition: "all 0.3s ease",
+                          transform:
+                            selectedCategory?.type === cat.type
+                              ? "translateY(-4px)"
+                              : "translateY(0)",
+                          boxShadow:
+                            selectedCategory?.type === cat.type
+                              ? "0 8px 16px rgba(92, 106, 196, 0.2)"
+                              : "0 2px 8px rgba(0, 0, 0, 0.08)",
+                          display: "flex",
+                          flexDirection: "column",
+                          height: "100%",
+                          minHeight: "280px",
+                          padding: "24px",
                         }}
                       >
-                        <img
-                          src={cat.image}
-                          alt={cat.title}
+                        {/* Question Mark Icon - Top Right */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "16px",
+                            right: "16px",
+                            width: "24px",
+                            height: "24px",
+                            borderRadius: "50%",
+                            background: "#f5f5f5",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            zIndex: 10,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Handle info click
+                          }}
+                        >
+                          <InfoIcon width="14px" height="14px" />
+                        </div>
+
+                        {/* Icon/Illustration Section - Centered */}
+                        <div
                           style={{
                             width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            transition: "transform 0.3s ease",
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginBottom: "20px",
+                            padding: "20px 0",
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "scale(1.05)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "scale(1)";
-                          }}
-                        />
-                      </div>
+                        >
+                          <div
+                            style={{
+                              width: "120px",
+                              height: "120px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "#f9f9f9",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <IconComponent width="64px" height="64px" />
+                          </div>
+                        </div>
 
-                      {/* Content Section - Overlay on Image */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          background:
-                            "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                          padding: "20px 16px 16px",
-                          color: "#fff",
-                        }}
-                      >
-                        <Text
-                          variant="headingLg"
-                          fontWeight="bold"
+                        {/* Title Section */}
+                        <div
                           style={{
-                            color: "#fff",
-                            marginBottom: "8px",
-                            textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
                           }}
                         >
-                          {cat.title}
-                        </Text>
-                        <Text
-                          variant="bodyMd"
-                          style={{
-                            color: "rgba(255,255,255,0.9)",
-                            lineHeight: "1.4",
-                            textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                          }}
-                        >
-                          {cat.description}
-                        </Text>
+                          <Text
+                            variant="headingMd"
+                            fontWeight="bold"
+                            style={{
+                              color: "#202223",
+                            }}
+                          >
+                            {cat.title}
+                          </Text>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </BlockStack>
-            </Card>
+            </div>
           )}
 
-          {/* Step 2: Choose Campaign Type (Feature Card) */}
           {step === 2 && (
             <div>
               <Card sectioned>
@@ -850,11 +898,10 @@ export default function CreateCampaign() {
             </div>
           )}
 
-          {/* Step 3: Offer Type, Campaign Name & Placement */}
           {step === 3 && (
-            <div >
-              <div style={{marginBottom: "20px"}}>
-               <InlineStack  align="end" gap="200">
+            <div>
+              <div style={{ marginBottom: "20px" }}>
+                <InlineStack align="end" gap="200">
                   <Button
                     variant="primary"
                     onClick={handleFinalSubmit}
@@ -863,434 +910,311 @@ export default function CreateCampaign() {
                     Create Campaign
                   </Button>
                 </InlineStack>
-</div>
-            <Card sectioned>
-              <BlockStack gap="400">
-                <InlineStack align="space-between" blockAlign="center">
-                  <Button variant="plain" onClick={handleBack}>
-                    ← Back
-                  </Button>
-                  <Text variant="headingMd" fontWeight="bold">
-                    Step 3: Offer Type, Campaign Name & Placement
-                  </Text>
-                </InlineStack>
-
-                <Card sectioned>
-                  <BlockStack gap="300">
-                    <Text variant="headingSm" fontWeight="bold">
-                      Campaign Name
+              </div>
+              <Card sectioned>
+                <BlockStack gap="400">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <Button variant="plain" onClick={handleBack}>
+                      ← Back
+                    </Button>
+                    <Text variant="headingMd" fontWeight="bold">
+                      Step 3: Offer Type, Campaign Name & Placement
                     </Text>
-                    <TextField
-                      label="Campaign Name"
-                      value={campaignName}
-                      onChange={setCampaignName}
-                      placeholder="e.g., Summer Free Gift Offer"
-                      requiredIndicator
-                    />
-                  </BlockStack>
-                </Card>
+                  </InlineStack>
 
-                <Card sectioned>
-                  <BlockStack gap="300">
-                    <Text variant="headingSm" fontWeight="bold">
-                      Offer Type
-                    </Text>
-                    <Text variant="bodySm" tone="subdued">
-                      Choose the type of deal you want to create. This will
-                      determine how rewards are configured.
-                    </Text>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "20px",
-                        marginTop: "10px",
-                      }}
-                    >
-                      {/* Fixed Deal Card */}
-                      <div
-                        style={{
-                          background: "#fff",
-                          border:
-                            dealType === "fixed"
-                              ? "2px solid #5c6ac4"
-                              : "2px solid #e1e1e1",
-                          borderRadius: "14px",
-                          padding: "20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          textAlign: "center",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                        onClick={() => setDealType("fixed")}
-                      >
-                        <div
-                          style={{
-                            width: "70px",
-                            height: "70px",
-                            borderRadius: "10px",
-                            background:
-                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "30px",
-                            marginBottom: "12px",
-                          }}
-                        >
-                          🔒
-                        </div>
-                        <Text variant="headingSm">Fixed Deal</Text>
-                        <Text
-                          tone="subdued"
-                          variant="bodySm"
-                          alignment="center"
-                        >
-                          Set fixed discounts and offers
-                        </Text>
-                      </div>
+                  <Card sectioned>
+                    <BlockStack gap="300">
+                      <Text variant="headingSm" fontWeight="bold">
+                        Campaign Name
+                      </Text>
+                      <TextField
+                        label="Campaign Name"
+                        value={campaignName}
+                        onChange={setCampaignName}
+                        placeholder="e.g., Summer Free Gift Offer"
+                        requiredIndicator
+                      />
+                    </BlockStack>
+                  </Card>
+                  <Card sectioned>
+                    <BlockStack gap="300">
+                      <InlineStack align="space-between" blockAlign="center">
 
-                      {/* Flame Match Card */}
-                      <div
-                        style={{
-                          background: "#fff",
-                          border:
-                            dealType === "flame"
-                              ? "2px solid #5c6ac4"
-                              : "2px solid #e1e1e1",
-                          borderRadius: "14px",
-                          padding: "20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          textAlign: "center",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                        onClick={() => setDealType("flame")}
-                      >
-                        <div
-                          style={{
-                            width: "70px",
-                            height: "70px",
-                            borderRadius: "10px",
-                            background:
-                              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "30px",
-                            marginBottom: "12px",
-                          }}
-                        >
-                          🔥
-                        </div>
-                        <Text variant="headingSm">Flame Match</Text>
-                        <Text
-                          tone="subdued"
-                          variant="bodySm"
-                          alignment="center"
-                        >
-                          Dynamic matching and recommendations
-                        </Text>
-                      </div>
-                    </div>
-                  </BlockStack>
-                </Card>
-
-              
-
-                <Card sectioned>
-                  <BlockStack gap="300">
-                    <InlineStack align="space-between" blockAlign="center">
                       <Text variant="headingSm" fontWeight="bold">
                         Campaign Placement
                       </Text>
-                      <Button
-                        onClick={() => setShowPreviewModal(true)}
-                        disabled={!placement}
-                        variant="primary"
-                      >
+                      <Button variant="primary" onClick={() => setShowPreviewModal(true)}>
                         Preview
                       </Button>
-                    </InlineStack>
-                    <Text variant="bodySm" tone="subdued">
-                      Select where you want to display this campaign
-                    </Text>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(280px, 1fr))",
-                        gap: "24px",
-                        width: "100%",
-                        padding: "20px 0",
-                      }}
-                    >
-                      {/* Homepage Card */}
+                      </InlineStack>
+                      <Text variant="bodySm" tone="subdued">
+                        Select where you want to display this campaign
+                      </Text>
                       <div
-                        onClick={() => setPlacement("home")}
                         style={{
-                          cursor: "pointer",
-                          position: "relative",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                          transition: "all 0.3s ease",
-                          transform:
-                            placement === "home"
-                              ? "translateY(-4px)"
-                              : "translateY(0)",
-                          boxShadow:
-                            placement === "home"
-                              ? "0 8px 16px rgba(92, 106, 196, 0.2)"
-                              : "0 2px 8px rgba(0, 0, 0, 0.08)",
-                          border:
-                            placement === "home" ? "2px solid #5c6ac4" : "none",
-                          background: "#fff",
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(280px, 1fr))",
+                          gap: "24px",
+                          width: "100%",
+                          padding: "20px 0",
                         }}
                       >
+                        {Placment_Postion.map((item) => {
+                          // Map array titles to placement values
+                          const placementValue =
+                            item.title === "Home"
+                              ? "home"
+                              : item.title === "Page"
+                                ? "Page"
+                                : "cart";
+                          const isSelected = placement === placementValue;
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => setPlacement(placementValue)}
+                              style={{
+                                cursor: "pointer",
+                                position: "relative",
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                transition: "all 0.3s ease",
+                                transform: isSelected
+                                  ? "translateY(-4px)"
+                                  : "translateY(0)",
+                                boxShadow: isSelected
+                                  ? "0 8px 16px rgba(92, 106, 196, 0.2)"
+                                  : "0 2px 8px rgba(0, 0, 0, 0.08)",
+                                border: isSelected
+                                  ? "2px solid #5c6ac4"
+                                  : "2px solid transparent",
+                                background: "transparent",
+                              }}
+                            >
+                              {/* Preview Icon */}
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (item.preview_link) {
+                                    window.open(item.preview_link, "_blank");
+                                  } else {
+                                    setPlacement(placementValue);
+                                    setShowPreviewModal(true);
+                                  }
+                                }}
+                                style={{
+                                  position: "absolute",
+                                  top: "12px",
+                                  right: "12px",
+                                  zIndex: 10,
+                                  width: "32px",
+                                  height: "32px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  cursor: "pointer",
+                                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                                  transition: "all 0.2s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor =
+                                    "#fff";
+                                  e.currentTarget.style.transform =
+                                    "scale(1.1)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor =
+                                    "rgba(255, 255, 255, 0.9)";
+                                  e.currentTarget.style.transform = "scale(1)";
+                                }}
+                              >
+                                <InfoIcon width={18} height={18} />
+                              </div>
+                              <div
+                                style={{
+                                  width: "100%",
+                                  height: "280px",
+                                  overflow: "hidden",
+                                  position: "relative",
+                                  backgroundColor: "#f5f5f5",
+                                }}
+                              >
+                                <img
+                                  src={item.icon}
+                                  alt={item.title}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    transition: "transform 0.3s ease",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform =
+                                      "scale(1.05)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform =
+                                      "scale(1)";
+                                  }}
+                                />
+                              </div>
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  background:
+                                    "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+                                  padding: "20px 16px 16px",
+                                  color: "#fff",
+                                }}
+                              >
+                                <Text
+                                  variant="headingLg"
+                                  fontWeight="bold"
+                                  style={{
+                                    color: "#fff",
+                                    marginBottom: "8px",
+                                    textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                                  }}
+                                >
+                                  {item.title}
+                                </Text>
+                                <Text
+                                  variant="bodyMd"
+                                  style={{
+                                    color: "rgba(255,255,255,0.9)",
+                                    lineHeight: "1.4",
+                                    textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                                  }}
+                                >
+                                  {item.description}
+                                </Text>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </BlockStack>
+                  </Card>
+                  <Card sectioned>
+                    <BlockStack gap="300">
+                      <Text variant="headingSm" fontWeight="bold">
+                        Offer Type
+                      </Text>
+                      <Text variant="bodySm" tone="subdued">
+                        Choose the type of deal you want to create. This will
+                        determine how rewards are configured.
+                      </Text>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "20px",
+                          marginTop: "10px",
+                        }}
+                      >
+                        {/* Fixed Deal Card */}
                         <div
                           style={{
-                            width: "100%",
-                            height: "280px",
-                            overflow: "hidden",
-                            position: "relative",
-                            backgroundColor: "#f5f5f5",
+                            background: "#fff",
+                            border:
+                              dealType === "fixed"
+                                ? "2px solid #5c6ac4"
+                                : "2px solid #e1e1e1",
+                            borderRadius: "14px",
+                            padding: "20px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
                           }}
+                          onClick={() => setDealType("fixed")}
                         >
-                          <img
-                            src="/imags/home.png"
-                            alt="Homepage"
+                          <div
                             style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              transition: "transform 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = "scale(1.05)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                            padding: "20px 16px 16px",
-                            color: "#fff",
-                          }}
-                        >
-                          <Text
-                            variant="headingLg"
-                            fontWeight="bold"
-                            style={{
-                              color: "#fff",
-                              marginBottom: "8px",
-                              textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                              width: "70px",
+                              height: "70px",
+                              borderRadius: "10px",
+                              background:
+                                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                              fontSize: "30px",
+                              marginBottom: "12px",
                             }}
                           >
-                            Homepage
+                            🔒
+                          </div>
+                          <Text variant="headingSm">Fixed Deal</Text>
+                          <Text
+                            tone="subdued"
+                            variant="bodySm"
+                            alignment="center"
+                          >
+                            Set fixed discounts and offers
                           </Text>
-                          <Text
-                            variant="bodyMd"
+                        </div>
+
+                        {/* Flame Match Card */}
+                        <div
+                          style={{
+                            background: "#fff",
+                            border:
+                              dealType === "flame"
+                                ? "2px solid #5c6ac4"
+                                : "2px solid #e1e1e1",
+                            borderRadius: "14px",
+                            padding: "20px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                          }}
+                          onClick={() => setDealType("flame")}
+                        >
+                          <div
                             style={{
-                              color: "rgba(255,255,255,0.9)",
-                              lineHeight: "1.4",
-                              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                              width: "70px",
+                              height: "70px",
+                              borderRadius: "10px",
+                              background:
+                                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                              fontSize: "30px",
+                              marginBottom: "12px",
                             }}
                           >
-                            Display on your store's homepage
+                            🔥
+                          </div>
+                          <Text variant="headingSm">Flame Match</Text>
+                          <Text
+                            tone="subdued"
+                            variant="bodySm"
+                            alignment="center"
+                          >
+                            Dynamic matching and recommendations
                           </Text>
                         </div>
                       </div>
-
-                      {/* Product Page Card */}
-                      <div
-                        onClick={() => setPlacement("Page")}
-                        style={{
-                          cursor: "pointer",
-                          position: "relative",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                          transition: "all 0.3s ease",
-                          transform:
-                            placement === "Page"
-                              ? "translateY(-4px)"
-                              : "translateY(0)",
-                          boxShadow:
-                            placement === "Page"
-                              ? "0 8px 16px rgba(92, 106, 196, 0.2)"
-                              : "0 2px 8px rgba(0, 0, 0, 0.08)",
-                          border:
-                            placement === "Page" ? "2px solid #5c6ac4" : "none",
-                          background: "#fff",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "280px",
-                            overflow: "hidden",
-                            position: "relative",
-                            backgroundColor: "#f5f5f5",
-                          }}
-                        >
-                          <img
-                            src="/imags/product_page.png"
-                            alt="Product Page"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              transition: "transform 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = "scale(1.05)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                            padding: "20px 16px 16px",
-                            color: "#fff",
-                          }}
-                        >
-                          <Text
-                            variant="headingLg"
-                            fontWeight="bold"
-                            style={{
-                              color: "#fff",
-                              marginBottom: "8px",
-                              textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                            }}
-                          >
-                            Product Page
-                          </Text>
-                          <Text
-                            variant="bodyMd"
-                            style={{
-                              color: "rgba(255,255,255,0.9)",
-                              lineHeight: "1.4",
-                              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                            }}
-                          >
-                            Display on individual product pages
-                          </Text>
-                        </div>
-                      </div>
-
-                      {/* Cart Page Card */}
-                      <div
-                        onClick={() => setPlacement("cart")}
-                        style={{
-                          cursor: "pointer",
-                          position: "relative",
-                          borderRadius: "8px",
-                          overflow: "hidden",
-                          transition: "all 0.3s ease",
-                          transform:
-                            placement === "cart"
-                              ? "translateY(-4px)"
-                              : "translateY(0)",
-                          boxShadow:
-                            placement === "cart"
-                              ? "0 8px 16px rgba(92, 106, 196, 0.2)"
-                              : "0 2px 8px rgba(0, 0, 0, 0.08)",
-                          border:
-                            placement === "cart" ? "2px solid #5c6ac4" : "none",
-                          background: "#fff",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "280px",
-                            overflow: "hidden",
-                            position: "relative",
-                            backgroundColor: "#f5f5f5",
-                          }}
-                        >
-                          <img
-                            src="/imags/cart.png"
-                            alt="Cart Page"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              transition: "transform 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = "scale(1.05)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                            padding: "20px 16px 16px",
-                            color: "#fff",
-                          }}
-                        >
-                          <Text
-                            variant="headingLg"
-                            fontWeight="bold"
-                            style={{
-                              color: "#fff",
-                              marginBottom: "8px",
-                              textShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                            }}
-                          >
-                            Cart Page
-                          </Text>
-                          <Text
-                            variant="bodyMd"
-                            style={{
-                              color: "rgba(255,255,255,0.9)",
-                              lineHeight: "1.4",
-                              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
-                            }}
-                          >
-                            Display in the cart drawer/page
-                          </Text>
-                        </div>
-                      </div>
-                    </div>
-                  </BlockStack>
-                </Card>
-
-               
-              </BlockStack>
-            </Card>
+                    </BlockStack>
+                  </Card>
+                </BlockStack>
+              </Card>
             </div>
           )}
 

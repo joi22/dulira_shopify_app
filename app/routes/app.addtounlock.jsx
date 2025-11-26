@@ -37,7 +37,11 @@ import prisma from "../db.server";
 import { add_to_unlock_ } from "./utils/add_unlock";
 import HomeSectionPreview from "./components/preview/HomeSectionPreview";
 import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
-
+import * as reactColor from "react-color";
+const SketchPicker =
+  reactColor.SketchPicker ||
+  (reactColor.default && reactColor.default.SketchPicker) ||
+  reactColor.default;
 const SHOPIFY_API_VERSION = "2025-07";
 
 const PRODUCT_FRAGMENT = `
@@ -465,6 +469,8 @@ export default function AddToUnlock() {
   const [selectedCollections, setSelectedCollections] = useState([]);
   const [collectionSearch, setCollectionSearch] = useState("");
   const [placement, setPlacement] = useState("");
+  const [blockProducts, setBlockProducts] = useState([]);
+  const [blockProductSearch, setBlockProductSearch] = useState("");
   const [formattedGoalText, setFormattedGoalText] = useState(
     "Spend $50 to unlock a free gift!",
   );
@@ -521,6 +527,7 @@ export default function AddToUnlock() {
   const [currentProgress, setCurrentProgress] = useState(1);
   const [activePreview, setActivePreview] = useState("home");
   const [completedGoals, setCompletedGoals] = useState([]);
+  const [openColorPicker, setOpenColorPicker] = useState(null); // Track which color picker is open
   const [shouldShowConfetti, setShouldShowConfetti] = useState(false);
   const completedGoalsRef = useRef([]);
   const confettiTriggeredRef = useRef([]);
@@ -536,6 +543,11 @@ export default function AddToUnlock() {
       p.title?.toLowerCase().includes(productSearch.toLowerCase()) ||
       p.handle?.toLowerCase().includes(productSearch.toLowerCase()),
   );
+  const filteredBlockProducts = blockProducts.filter(
+    (p) =>
+      p.title?.toLowerCase().includes(blockProductSearch.toLowerCase()) ||
+      p.handle?.toLowerCase().includes(blockProductSearch.toLowerCase()),
+  );
 
   const removeItem = (id, setItems, items) => {
     setItems(items.filter((item) => item.id !== id));
@@ -545,6 +557,28 @@ export default function AddToUnlock() {
     removeItem(id, setUpsellselectedItems, upsellselectedItems);
   const removeCollection = (id) =>
     removeItem(id, setSelectedCollections, selectedCollections);
+  const removeBlockProduct = (id) =>
+    removeItem(id, setBlockProducts, blockProducts);
+
+  // Close color picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        openColorPicker &&
+        !event.target.closest("[data-color-picker]") &&
+        !event.target.closest("[data-color-button]")
+      ) {
+        setOpenColorPicker(null);
+      }
+    };
+
+    if (openColorPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [openColorPicker]);
 
   // Initialize offers based on deal type
   useEffect(() => {
@@ -555,7 +589,7 @@ export default function AddToUnlock() {
         rewardMode: currentDealType === "flame" ? "flame" : "fixed",
         rewardType:
           currentDealType === "flame"
-            ? "gift"
+            ? offer.rewardType || "gift" // Preserve existing reward type for flame match, default to "gift" if not set
             : rewardTypeParam || offer.rewardType || "discount",
       }));
       setOffers(updatedOffers);
@@ -854,15 +888,6 @@ export default function AddToUnlock() {
     }
   }, [currentProgress, offers]);
 
-  useEffect(() => {
-    if (!status.showConfetti) {
-      setShouldShowConfetti(false);
-      // Reset confetti shown flag when switch is turned off
-      // This allows confetti to show once again if switch is turned back on
-      confettiShownOnceRef.current = false;
-    }
-  }, [status.showConfetti]);
-
   const productpicker = async () => {
     try {
       if (typeof window === "undefined" || !window.shopify) {
@@ -899,6 +924,43 @@ export default function AddToUnlock() {
     } catch (error) {
       console.error("Error in product picker:", error);
       shopify.toast.show("Failed to select products.", { isError: true });
+    }
+  };
+
+  const blockProductPicker = async () => {
+    try {
+      if (typeof window === "undefined" || !window.shopify) {
+        console.warn("Shopify resource picker not available");
+        return;
+      }
+      const selectedItems = await window.shopify.resourcePicker({
+        selectionIds: blockProducts.map((product) => product.id),
+        multiple: true,
+        query: "status:active AND published_status:published",
+        type: "product",
+        action: "select",
+        showVariants: true,
+      });
+
+      if (selectedItems) {
+        const products = selectedItems.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+          variantId: item.variants[0]?.id.split("/").pop(),
+          price: item.variants[0]?.price,
+          media: item.images[0]?.originalSrc || item.images[0]?.src || null,
+        }));
+
+        const uniqueProducts = products.filter(
+          (newProduct) =>
+            !blockProducts.some((existing) => existing.id === newProduct.id),
+        );
+        setBlockProducts((prev) => [...prev, ...uniqueProducts]);
+      }
+    } catch (error) {
+      console.error("Error in block product picker:", error);
+      shopify.toast.show("Failed to select block products.", { isError: true });
     }
   };
 
@@ -1130,22 +1192,20 @@ export default function AddToUnlock() {
   const handleswitchChange = (field, value) => {
     setStatus((prev) => ({ ...prev, [field]: value }));
     setHasUnsavedChanges(true);
-    // Show save bar when change is made
+
     if (isClient && shopify) {
       shopify.saveBar.show(SAVE_BAR_ID);
     }
-    // Note: Save bar will be automatically hidden by useEffect when hasUnsavedChanges is false
   };
 
-  // Track unsaved changes
   useEffect(() => {
-    // Set hasUnsavedChanges to true when any form field changes
     setHasUnsavedChanges(true);
   }, [
     campaignName,
     selectedTriggerType,
     upsellselectedItems,
     selectedCollections,
+    blockProducts,
     placement,
     offers,
     status,
@@ -1442,6 +1502,9 @@ export default function AddToUnlock() {
       formData.append("upsell_allproducts", "true");
     }
 
+    // Append block products
+    formData.append("blockProducts", JSON.stringify(blockProducts));
+
     // Append offers (including gift items)
     formData.append("offers", JSON.stringify(offers));
 
@@ -1467,6 +1530,7 @@ export default function AddToUnlock() {
     selectedTriggerType,
     upsellselectedItems,
     selectedCollections,
+    blockProducts,
     upsell_allproduct,
     offers,
     showConfetti,
@@ -1498,7 +1562,7 @@ export default function AddToUnlock() {
       image: save2, // You can replace with another image variable
     },
     {
-      id: 2,
+      id: 3,
       title: "Summer PANTS Bundle",
       price: "49.99",
       image:
@@ -1507,7 +1571,7 @@ export default function AddToUnlock() {
   ];
 
   const renderPreview = () => {
-    const sortedOffers = offers.sort((a, b) =>
+    const sortedOffers = [...offers].sort((a, b) =>
       a.goalType === "quantity"
         ? parseInt(a.goalquantity) - parseInt(b.goalquantity)
         : parseFloat(a.goalAmount) - parseFloat(b.goalAmount),
@@ -1691,111 +1755,7 @@ export default function AddToUnlock() {
             .replace("{{reward}}", rewardDescription)
             .replace("{{goal}}", goal);
     };
-    let formattedPreGoalText = "No offers available";
-    if (sortedOffers.length > 0 && activeOffer) {
-      formattedPreGoalText = renderGoalText(activeOffer);
-    }
-    const renderRewardContent = (offer) => {
-      if (
-        offer.rewardType === "gift" &&
-        offer.rewardMode === "fixed" &&
-        offer.rewardProducts.length > 0
-      ) {
-        return (
-          <BlockStack gap="200">
-            <Text fontWeight="semibold">Reward Product:</Text>
-            {offer.rewardProducts.map((product) => (
-              <InlineStack key={product.id} align="space-between">
-                <Text>{product.title}</Text>
-                {product.media && (
-                  <Image
-                    source={product.media}
-                    alt={product.title}
-                    width="50px"
-                  />
-                )}
-              </InlineStack>
-            ))}
-          </BlockStack>
-        );
-      } else if (offer.rewardType === "gift" && offer.rewardMode === "flame") {
-        return (
-          <BlockStack gap="200">
-            <Text fontWeight="semibold">Choose a Free Gift:</Text>
-            {offer.rewardProducts.length > 0 && (
-              <BlockStack gap="100">
-                {offer.rewardProducts.map((product) => (
-                  <InlineStack key={product.id} align="space-between">
-                    <Text>{product.title}</Text>
-                    {product.media && (
-                      <Image
-                        source={product.media}
-                        alt={product.title}
-                        width="50px"
-                      />
-                    )}
-                  </InlineStack>
-                ))}
-              </BlockStack>
-            )}
-            {offer.rewardCollection.length > 0 && (
-              <BlockStack gap="100">
-                {offer.rewardCollection.map((collection) => (
-                  <Text key={collection.id}>{collection.title}</Text>
-                ))}
-              </BlockStack>
-            )}
-          </BlockStack>
-        );
-      } else if (offer.rewardType === "discount") {
-        return (
-          <Text>{`${offer.discountCode}${offer.discountType === "percentage" ? "%" : "$"} Discount`}</Text>
-        );
-      } else if (offer.rewardType === "shipping") {
-        return <Text>Free Shipping</Text>;
-      }
-      return null;
-    };
 
-    const renderTriggerContent = () => {
-      if (selectedTriggerType === "all") {
-        return <Text>All Products</Text>;
-      } else if (
-        selectedTriggerType === "products" &&
-        filteredProducts.length > 0
-      ) {
-        return (
-          <BlockStack gap="100">
-            {filteredProducts.map((product) => (
-              <InlineStack key={product.id} align="space-between">
-                <Text>{product.title}</Text>
-                {product.media && (
-                  <Image
-                    source={product.media}
-                    alt={product.title}
-                    width="50px"
-                  />
-                )}
-              </InlineStack>
-            ))}
-          </BlockStack>
-        );
-      } else if (
-        selectedTriggerType === "collections" &&
-        filteredCollections.length > 0
-      ) {
-        return (
-          <BlockStack gap="100">
-            {filteredCollections.map((collection) => (
-              <Text key={collection.id}>{collection.title}</Text>
-            ))}
-          </BlockStack>
-        );
-      }
-      return <Text>No trigger products/collections selected</Text>;
-    };
-
-    // Only show preview if placement is selected
     if (!placement) {
       return (
         <Card>
@@ -2049,9 +2009,11 @@ export default function AddToUnlock() {
                   const productsToShow =
                     offer.rewardType === "gift"
                       ? offer.rewardProducts || []
-                      : upsellselectedItems.length > 0
-                        ? upsellselectedItems
-                        : preview_products; // Show default products when none selected
+                      : blockProducts.length > 0
+                        ? blockProducts
+                        : upsellselectedItems.length > 0
+                          ? upsellselectedItems
+                          : preview_products; // Show default products when none selected
                   const buttonLabel =
                     offer.rewardType === "shipping"
                       ? "FREE SHIPPING"
@@ -2787,228 +2749,430 @@ ${
 
       <FormLayout>
         <Layout>
-          <div style={{width:"60%"}}>
-
-         
-          <Layout.Section>
-            <BlockStack gap="400">
-              {/* Deal Type Selection - Show if not selected from URL */}
-              {!dealTypeFromUrl && (
-                <Card>
-                  <BlockStack gap="300">
-                    <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Choose Deal Type
-                    </Text>
-                    <Text as="p" tone="subdued">
-                      Select the type of deal you want to create. This will
-                      determine how rewards are configured.
-                    </Text>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "20px",
-                        marginTop: "10px",
-                      }}
-                    >
-                      {/* Fixed Deal Card */}
+          <div style={{ width: "60%" }}>
+            <Layout.Section>
+              <BlockStack gap="400">
+                {/* Deal Type Selection - Show if not selected from URL */}
+                {!dealTypeFromUrl && (
+                  <Card>
+                    <BlockStack gap="300">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Choose Deal Type
+                      </Text>
+                      <Text as="p" tone="subdued">
+                        Select the type of deal you want to create. This will
+                        determine how rewards are configured.
+                      </Text>
                       <div
                         style={{
-                          background: "#fff",
-                          border:
-                            dealType === "fixed"
-                              ? "2px solid #5c6ac4"
-                              : "2px solid #e1e1e1",
-                          borderRadius: "14px",
-                          padding: "20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          textAlign: "center",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                        onClick={() => {
-                          setDealType("fixed");
-                          setHasUnsavedChanges(true);
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "20px",
+                          marginTop: "10px",
                         }}
                       >
+                        {/* Fixed Deal Card */}
                         <div
                           style={{
-                            width: "70px",
-                            height: "70px",
-                            borderRadius: "10px",
-                            background:
-                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            background: "#fff",
+                            border:
+                              dealType === "fixed"
+                                ? "2px solid #5c6ac4"
+                                : "2px solid #e1e1e1",
+                            borderRadius: "14px",
+                            padding: "20px",
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "30px",
-                            marginBottom: "12px",
+                            justifyContent: "space-between",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                          }}
+                          onClick={() => {
+                            setDealType("fixed");
+                            setHasUnsavedChanges(true);
                           }}
                         >
-                          🔒
+                          <div
+                            style={{
+                              width: "70px",
+                              height: "70px",
+                              borderRadius: "10px",
+                              background:
+                                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                              fontSize: "30px",
+                              marginBottom: "12px",
+                            }}
+                          >
+                            🔒
+                          </div>
+                          <Text variant="headingSm">Fixed Deal</Text>
+                          <Text
+                            tone="subdued"
+                            variant="bodySm"
+                            alignment="center"
+                          >
+                            Set fixed discounts and offers
+                          </Text>
                         </div>
-                        <Text variant="headingSm">Fixed Deal</Text>
-                        <Text
-                          tone="subdued"
-                          variant="bodySm"
-                          alignment="center"
-                        >
-                          Set fixed discounts and offers
-                        </Text>
-                      </div>
 
-                      {/* Flame Match Card */}
-                      <div
-                        style={{
-                          background: "#fff",
-                          border:
-                            dealType === "flame"
-                              ? "2px solid #5c6ac4"
-                              : "2px solid #e1e1e1",
-                          borderRadius: "14px",
-                          padding: "20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          textAlign: "center",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                        onClick={() => {
-                          setDealType("flame");
-                          setHasUnsavedChanges(true);
-                        }}
-                      >
                         <div
                           style={{
-                            width: "70px",
-                            height: "70px",
-                            borderRadius: "10px",
-                            background:
-                              "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                            background: "#fff",
+                            border:
+                              dealType === "flame"
+                                ? "2px solid #5c6ac4"
+                                : "2px solid #e1e1e1",
+                            borderRadius: "14px",
+                            padding: "20px",
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            fontSize: "30px",
-                            marginBottom: "12px",
+                            justifyContent: "space-between",
+                            textAlign: "center",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                          }}
+                          onClick={() => {
+                            setDealType("flame");
+                            setHasUnsavedChanges(true);
                           }}
                         >
-                          🔥
+                          <div
+                            style={{
+                              width: "70px",
+                              height: "70px",
+                              borderRadius: "10px",
+                              background:
+                                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                              fontSize: "30px",
+                              marginBottom: "12px",
+                            }}
+                          >
+                            🔥
+                          </div>
+                          <Text variant="headingSm">Flame Match</Text>
+                          <Text
+                            tone="subdued"
+                            variant="bodySm"
+                            alignment="center"
+                          >
+                            Dynamic matching and recommendations
+                          </Text>
                         </div>
-                        <Text variant="headingSm">Flame Match</Text>
-                        <Text
-                          tone="subdued"
-                          variant="bodySm"
-                          alignment="center"
-                        >
-                          Dynamic matching and recommendations
-                        </Text>
                       </div>
-                    </div>
-                    {!dealType && (
-                      <Banner tone="warning">
-                        <Text>Please select a deal type to continue.</Text>
-                      </Banner>
-                    )}
-                  </BlockStack>
-                </Card>
-              )}
+                      {!dealType && (
+                        <Banner tone="warning">
+                          <Text>Please select a deal type to continue.</Text>
+                        </Banner>
+                      )}
+                    </BlockStack>
+                  </Card>
+                )}
 
-              {/* Show selected deal type if from URL */}
-              {dealTypeFromUrl && (
+                {/* Show selected deal type if from URL */}
+                {dealTypeFromUrl && (
+                  <Card>
+                    <BlockStack gap="200">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Deal Type:{" "}
+                        {dealTypeFromUrl === "fixed"
+                          ? "Fixed Deal"
+                          : "Flame Match"}
+                      </Text>
+                    </BlockStack>
+                  </Card>
+                )}
+
                 <Card>
                   <BlockStack gap="200">
                     <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Deal Type:{" "}
-                      {dealTypeFromUrl === "fixed"
-                        ? "Fixed Deal"
-                        : "Flame Match"}
+                      Selected Products Upsell
                     </Text>
+                    <Text as="p">
+                      Choose which products will trigger the upsell offer.
+                    </Text>
+                    {!dealType && !dealTypeFromUrl && (
+                      <Banner tone="warning">
+                        <Text>
+                          Please select a deal type above before configuring
+                          trigger products.
+                        </Text>
+                      </Banner>
+                    )}
+                    {!placement && (
+                      <Banner tone="info">
+                        <Text>
+                          Please select a placement above before choosing
+                          trigger products.
+                        </Text>
+                      </Banner>
+                    )}
+                    <InlineStack gap="200">
+                      <RadioButton
+                        label="All products"
+                        checked={selectedTriggerType === "all"}
+                        name="triggerType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => {
+                          setSelectedTriggerType("all");
+                          setUpsell_allproduct(true);
+                        }}
+                      />
+                      <RadioButton
+                        label="Specific products"
+                        checked={selectedTriggerType === "products"}
+                        name="triggerType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => setSelectedTriggerType("products")}
+                      />
+                      <RadioButton
+                        label="Specific collections"
+                        checked={selectedTriggerType === "collections"}
+                        name="triggerType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => setSelectedTriggerType("collections")}
+                      />
+                    </InlineStack>
+                    {selectedTriggerType === "products" && (
+                      <Box padding="200" borderStyle="base">
+                        <BlockStack gap="200">
+                          <Text as="h3" variant="headingSm" fontWeight="bold">
+                            Selected Products
+                          </Text>
+                          <InlineStack gap="200">
+                            <Button
+                              onClick={productpicker}
+                              size="medium"
+                              disabled={
+                                !placement || (!dealType && !dealTypeFromUrl)
+                              }
+                              accessibilityLabel="Browse products for upsell"
+                            >
+                              Browse Products
+                            </Button>
+                          </InlineStack>
+                          {filteredProducts.length > 0 ? (
+                            <ResourceList
+                              resourceName={{
+                                singular: "product",
+                                plural: "products",
+                              }}
+                              items={filteredProducts}
+                              renderItem={(item) => {
+                                const { id, title, handle, price, media } =
+                                  item;
+                                return (
+                                  <ResourceItem id={id}>
+                                    <InlineStack
+                                      align="space-between"
+                                      gap="300"
+                                    >
+                                      <InlineStack gap="300" align="center">
+                                        {media && (
+                                          <Image
+                                            source={media}
+                                            alt={title}
+                                            width="60px"
+                                          />
+                                        )}
+                                        <BlockStack>
+                                          <Text fontWeight="bold">{title}</Text>
+                                          <Text>Price: ${price}</Text>
+                                          <Text>Handle: {handle}</Text>
+                                        </BlockStack>
+                                      </InlineStack>
+                                      <Button
+                                        tone="critical"
+                                        onClick={() => removeProduct(id)}
+                                        size="medium"
+                                      >
+                                        Remove
+                                      </Button>
+                                    </InlineStack>
+                                  </ResourceItem>
+                                );
+                              }}
+                            />
+                          ) : (
+                            <Text>No matching products</Text>
+                          )}
+                        </BlockStack>
+                      </Box>
+                    )}
+                    {selectedTriggerType === "collections" && (
+                      <Box padding="200" borderStyle="base">
+                        <BlockStack gap="200">
+                          <Text as="h3" variant="headingSm" fontWeight="bold">
+                            Selected Collections
+                          </Text>
+                          <InlineStack gap="200">
+                            <Button
+                              onClick={collectionPicker}
+                              size="medium"
+                              disabled={
+                                !placement || (!dealType && !dealTypeFromUrl)
+                              }
+                              accessibilityLabel="Browse collections for upsell"
+                            >
+                              Browse Collections
+                            </Button>
+                          </InlineStack>
+                          {filteredCollections.length > 0 ? (
+                            <ResourceList
+                              resourceName={{
+                                singular: "collection",
+                                plural: "collections",
+                              }}
+                              items={filteredCollections}
+                              renderItem={(item) => {
+                                const { id, title, handle } = item;
+                                return (
+                                  <ResourceItem id={id}>
+                                    <InlineStack
+                                      align="space-between"
+                                      gap="300"
+                                    >
+                                      <BlockStack>
+                                        <Text fontWeight="bold">{title}</Text>
+                                        <Text>Handle: {handle}</Text>
+                                      </BlockStack>
+                                      <Button
+                                        tone="critical"
+                                        onClick={() => removeCollection(id)}
+                                        size="medium"
+                                      >
+                                        Remove
+                                      </Button>
+                                    </InlineStack>
+                                  </ResourceItem>
+                                );
+                              }}
+                            />
+                          ) : (
+                            <Text>No matching collections</Text>
+                          )}
+                        </BlockStack>
+                      </Box>
+                    )}
+
+                    <Box paddingBlockStart="200">
+                      <BlockStack gap={"300"}>
+                        <InlineStack align="space-between">
+                          <label className="switch-container">
+                            <input
+                              type="checkbox"
+                              checked={status.active}
+                              onChange={(e) =>
+                                handleswitchChange("active", e.target.checked)
+                              }
+                              className="switch-input"
+                            />
+                            <span className="switch-slider"></span>
+                          </label>
+                          <Text as="h4" variant="headingMd">
+                            Enable
+                          </Text>
+                        </InlineStack>
+                        <InlineStack align="space-between">
+                          <label className="switch-container">
+                            <input
+                              type="checkbox"
+                              checked={status.showConfetti}
+                              onChange={(e) =>
+                                handleswitchChange(
+                                  "showConfetti",
+                                  e.target.checked,
+                                )
+                              }
+                              className="switch-input"
+                            />
+                            <span className="switch-slider"></span>
+                          </label>
+                          <Text as="h4" variant="headingMd">
+                            Show Confetti
+                          </Text>
+                        </InlineStack>
+                        <InlineStack align="space-between">
+                          <label className="switch-container">
+                            <input
+                              type="checkbox"
+                              className="switch-input"
+                              checked={showBadges}
+                              onChange={handleToggle}
+                            />
+                            <span className="switch-slider"></span>
+                          </label>
+
+                          <Text as="h4" variant="headingMd">
+                            {showBadges ? "Hide Badges" : "Show Badges"}
+                          </Text>
+                        </InlineStack>
+                      </BlockStack>
+                    </Box>
                   </BlockStack>
                 </Card>
-              )}
 
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd" fontWeight="bold">
-                    Selected Products Upsell
-                  </Text>
-                  <Text as="p">
-                    Choose which products will trigger the upsell offer.
-                  </Text>
-                  {!dealType && !dealTypeFromUrl && (
-                    <Banner tone="warning">
-                      <Text>
-                        Please select a deal type above before configuring
-                        trigger products.
-                      </Text>
-                    </Banner>
-                  )}
-                  {!placement && (
-                    <Banner tone="info">
-                      <Text>
-                        Please select a placement above before choosing trigger
-                        products.
-                      </Text>
-                    </Banner>
-                  )}
-                  <InlineStack gap="200">
-                    <RadioButton
-                      label="All products"
-                      checked={selectedTriggerType === "all"}
-                      name="triggerType"
-                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
-                      onChange={() => {
-                        setSelectedTriggerType("all");
-                        setUpsell_allproduct(true);
-                      }}
-                    />
-                    <RadioButton
-                      label="Specific products"
-                      checked={selectedTriggerType === "products"}
-                      name="triggerType"
-                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
-                      onChange={() => setSelectedTriggerType("products")}
-                    />
-                    <RadioButton
-                      label="Specific collections"
-                      checked={selectedTriggerType === "collections"}
-                      name="triggerType"
-                      disabled={!placement || (!dealType && !dealTypeFromUrl)}
-                      onChange={() => setSelectedTriggerType("collections")}
-                    />
-                  </InlineStack>
-                  {selectedTriggerType === "products" && (
+                {/* Block Products Section - Products shown in the upsell block */}
+                <Card>
+                  <BlockStack gap="200">
+                    <Text as="h2" variant="headingMd" fontWeight="bold">
+                      Block Products
+                    </Text>
+                    <Text as="p">
+                      Choose which products will appear in the upsell block.
+                      These are the products customers will see in the upsell
+                      widget.
+                    </Text>
+                    {!placement && (
+                      <Banner tone="info">
+                        <Text>
+                          Please select a placement above before choosing block
+                          products.
+                        </Text>
+                      </Banner>
+                    )}
+                    {!dealType && !dealTypeFromUrl && (
+                      <Banner tone="warning">
+                        <Text>
+                          Please select a deal type above before configuring
+                          block products.
+                        </Text>
+                      </Banner>
+                    )}
                     <Box padding="200" borderStyle="base">
                       <BlockStack gap="200">
                         <Text as="h3" variant="headingSm" fontWeight="bold">
-                          Selected Products
+                          Selected Block Products
                         </Text>
                         <InlineStack gap="200">
                           <Button
-                            onClick={productpicker}
+                            onClick={blockProductPicker}
                             size="medium"
                             disabled={
                               !placement || (!dealType && !dealTypeFromUrl)
                             }
-                            accessibilityLabel="Browse products for upsell"
+                            accessibilityLabel="Browse products for upsell block"
                           >
-                            Browse Products
+                            Browse Block Products
                           </Button>
                         </InlineStack>
-                        {filteredProducts.length > 0 ? (
+                        {filteredBlockProducts.length > 0 ? (
                           <ResourceList
                             resourceName={{
-                              singular: "product",
-                              plural: "products",
+                              singular: "block product",
+                              plural: "block products",
                             }}
-                            items={filteredProducts}
+                            items={filteredBlockProducts}
                             renderItem={(item) => {
                               const { id, title, handle, price, media } = item;
                               return (
@@ -3030,7 +3194,7 @@ ${
                                     </InlineStack>
                                     <Button
                                       tone="critical"
-                                      onClick={() => removeProduct(id)}
+                                      onClick={() => removeBlockProduct(id)}
                                       size="medium"
                                     >
                                       Remove
@@ -3041,946 +3205,1226 @@ ${
                             }}
                           />
                         ) : (
-                          <Text>No matching products</Text>
+                          <Text>
+                            No block products selected. Products shown in the
+                            upsell block will be the trigger products.
+                          </Text>
                         )}
                       </BlockStack>
                     </Box>
-                  )}
-                  {selectedTriggerType === "collections" && (
-                    <Box padding="200" borderStyle="base">
-                      <BlockStack gap="200">
-                        <Text as="h3" variant="headingSm" fontWeight="bold">
-                          Selected Collections
-                        </Text>
-                        <InlineStack gap="200">
-                          <Button
-                            onClick={collectionPicker}
-                            size="medium"
-                            disabled={
-                              !placement || (!dealType && !dealTypeFromUrl)
-                            }
-                            accessibilityLabel="Browse collections for upsell"
-                          >
-                            Browse Collections
-                          </Button>
-                        </InlineStack>
-                        {filteredCollections.length > 0 ? (
-                          <ResourceList
-                            resourceName={{
-                              singular: "collection",
-                              plural: "collections",
-                            }}
-                            items={filteredCollections}
-                            renderItem={(item) => {
-                              const { id, title, handle } = item;
-                              return (
-                                <ResourceItem id={id}>
-                                  <InlineStack align="space-between" gap="300">
-                                    <BlockStack>
-                                      <Text fontWeight="bold">{title}</Text>
-                                      <Text>Handle: {handle}</Text>
-                                    </BlockStack>
-                                    <Button
-                                      tone="critical"
-                                      onClick={() => removeCollection(id)}
-                                      size="medium"
-                                    >
-                                      Remove
-                                    </Button>
-                                  </InlineStack>
-                                </ResourceItem>
-                              );
-                            }}
-                          />
-                        ) : (
-                          <Text>No matching collections</Text>
-                        )}
-                      </BlockStack>
-                    </Box>
-                  )}
+                  </BlockStack>
+                </Card>
 
-                  <Box paddingBlockStart="200">
-                    <BlockStack gap={"300"}>
-                      <InlineStack align="space-between">
-                        <label className="switch-container">
-                          <input
-                            type="checkbox"
-                            checked={status.active}
-                            onChange={(e) =>
-                              handleswitchChange("active", e.target.checked)
-                            }
-                            className="switch-input"
-                          />
-                          <span className="switch-slider"></span>
-                        </label>
-                        <Text as="h4" variant="headingMd">
-                          Enable
-                        </Text>
-                      </InlineStack>
-                      <InlineStack align="space-between">
-                        <label className="switch-container">
-                          <input
-                            type="checkbox"
-                            checked={status.showConfetti}
-                            onChange={(e) =>
-                              handleswitchChange(
-                                "showConfetti",
-                                e.target.checked,
-                              )
-                            }
-                            className="switch-input"
-                          />
-                          <span className="switch-slider"></span>
-                        </label>
-                        <Text as="h4" variant="headingMd">
-                          Show Confetti
-                        </Text>
-                      </InlineStack>
-                      <InlineStack align="space-between">
-                        <label className="switch-container">
-                          <input
-                            type="checkbox"
-                            className="switch-input"
-                            checked={showBadges}
-                            onChange={handleToggle}
-                          />
-                          <span className="switch-slider"></span>
-                        </label>
-
-                        <Text as="h4" variant="headingMd">
-                          {showBadges ? "Hide Badges" : "Show Badges"}
-                        </Text>
-                      </InlineStack>
-                    </BlockStack>
-                  </Box>
-                </BlockStack>
-              </Card>
-
-              <BlockStack gap="400">
-                <InlineStack align="space-between">
-                  <Text variant="headingMd" as="h2">
-                    Offers
-                  </Text>
-                  <Button
-                    icon={PlusIcon}
-                    onClick={addOffer}
-                    variant="primary"
-                    disabled={!dealType && !dealTypeFromUrl}
-                    accessibilityLabel="Add new offer"
-                  >
-                    Add Offer
-                  </Button>
-                </InlineStack>
-                {!dealType && !dealTypeFromUrl && (
-                  <Banner tone="warning">
-                    <Text>
-                      Please select a deal type above before adding offers.
+                <BlockStack gap="400">
+                  <InlineStack align="space-between">
+                    <Text variant="headingMd" as="h2">
+                      Offers
                     </Text>
-                  </Banner>
-                )}
+                    <Button
+                      icon={PlusIcon}
+                      onClick={addOffer}
+                      variant="primary"
+                      disabled={!dealType && !dealTypeFromUrl}
+                      accessibilityLabel="Add new offer"
+                    >
+                      Add Offer
+                    </Button>
+                  </InlineStack>
+                  {!dealType && !dealTypeFromUrl && (
+                    <Banner tone="warning">
+                      <Text>
+                        Please select a deal type above before adding offers.
+                      </Text>
+                    </Banner>
+                  )}
 
-                {offers.map((offer, index) => (
-                  <Card key={offer.id} sectioned background="">
-                    <BlockStack gap="300">
-                      <InlineStack align="space-between">
-                        <Text variant="headingMd" as="h3">
-                          Offer {index + 1}
-                        </Text>
-                        {offers.length > 1 && (
-                          <Button
-                            icon={DeleteIcon}
-                            tone="critical"
-                            onClick={() => removeOffer(offer.id)}
-                            accessibilityLabel={`Remove offer ${index + 1}`}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </InlineStack>
-
-                      <Card sectioned>
-                        <BlockStack gap="300">
+                  {offers.map((offer, index) => (
+                    <Card key={offer.id} sectioned background="">
+                      <BlockStack gap="300">
+                        <InlineStack align="space-between">
                           <Text variant="headingMd" as="h3">
-                            Goal Configuration
+                            Offer {index + 1}
                           </Text>
-                          <Box paddingBlockStart="200">
-                            <BlockStack gap={"300"}>
-                              <InlineStack
-                                gap="200"
-                                blockAlign="center"
-                                wrap={false}
-                              >
-                                {goalOptions.map((type) => (
-                                  <Button
-                                    key={type.value}
-                                    pressed={offer.goalType === type.value}
-                                    onClick={() =>
-                                      updateOffer(
-                                        offer.id,
-                                        "goalType",
-                                        type.value,
-                                      )
-                                    }
-                                    size="medium"
-                                  >
-                                    {type.label}
-                                  </Button>
-                                ))}
-                              </InlineStack>
-                            </BlockStack>
-                          </Box>
-                          {offer.goalType === "amount_cart" && (
-                            <BlockStack gap="200">
-                              <Select
-                                label="Currency"
-                                options={currencyOptions}
-                                value={offer.currency}
-                                onChange={(value) =>
-                                  updateOffer(offer.id, "currency", value)
-                                }
-                              />
-                              <TextField
-                                label="Cart Total Goal"
-                                type="number"
-                                value={offer.goalAmount}
-                                onChange={(value) => {
-                                  updateOffer(offer.id, "goalAmount", value);
-                                }}
-                                prefix={offer.currency}
-                                requiredIndicator
-                                helpText="Set the minimum cart total required to unlock the reward"
-                                error={
-                                  !offer.goalAmount
-                                    ? "Cart total goal is required"
-                                    : ""
-                                }
-                              />
-                            </BlockStack>
-                          )}
-                          {offer.goalType === "quantity" && (
-                            <TextField
-                              label="Product Quantity Goal"
-                              type="number"
-                              value={offer.goalquantity}
-                              onChange={(value) => {
-                                updateOffer(offer.id, "goalquantity", value);
-                              }}
-                              requiredIndicator
-                              helpText="How many products need to be added to the cart to unlock the reward"
-                              error={
-                                !offer.goalquantity
-                                  ? "Quantity goal is required"
-                                  : ""
-                              }
-                            />
-                          )}
-                        </BlockStack>
-                      </Card>
-
-                      <Card sectioned>
-                        <BlockStack gap="300">
-                          <Text variant="headingMd" as="h3">
-                            Reward Type
-                          </Text>
-
-                          {offer.rewardMode === "fixed" && (
-                            <BlockStack gap="200">
-                              <ChoiceList
-                                choices={[
-                                  { label: "Discount", value: "discount" },
-                                  {
-                                    label: "Free Shipping",
-                                    value: "shipping",
-                                  },
-                                  {
-                                    label: "Free Gift",
-                                    value: "gift",
-                                  },
-                                ]}
-                                selected={[offer.rewardType]}
-                                onChange={(value) => {
-                                  const rewardType = value[0];
-                                  // Batch update reward type and name
-                                  updateOfferBatch(offer.id, {
-                                    rewardType: rewardType,
-                                    rewardTypeName:
-                                      rewardType === "discount"
-                                        ? "Fixed Discount"
-                                        : rewardType === "shipping"
-                                          ? "Free Shipping"
-                                          : "Free Gift",
-                                  });
-                                }}
-                              />
-                            </BlockStack>
-                          )}
-
-                          {offer.rewardMode === "flame" && (
-                            <Box
-                              padding="200"
-                              background="bg-surface-secondary"
-                              border="divider"
-                              borderRadius="200"
+                          {offers.length > 1 && (
+                            <Button
+                              icon={DeleteIcon}
+                              tone="critical"
+                              onClick={() => removeOffer(offer.id)}
+                              accessibilityLabel={`Remove offer ${index + 1}`}
                             >
-                              <Text as="p" variant="bodyMd" fontWeight="medium">
-                                Flame Match Reward:{" "}
-                                {offer.rewardTypeName || "Customer Choice Gift"}
-                              </Text>
-                              <Text as="p" variant="bodySm" tone="subdued">
-                                Customers can choose their preferred reward from
-                                available options
-                              </Text>
-                            </Box>
+                              Remove
+                            </Button>
                           )}
-                        </BlockStack>
-                      </Card>
+                        </InlineStack>
 
-                      <Card sectioned>
-                        <BlockStack gap="300">
-                          <Text variant="headingMd" as="h3">
-                            Reward Product
-                          </Text>
-                          {offer.rewardType === "discount" && (
-                            <BlockStack gap="300">
+                        <Card sectioned>
+                          <BlockStack gap="300">
+                            <Text variant="headingMd" as="h3">
+                              Goal Configuration
+                            </Text>
+                            <Box paddingBlockStart="200">
+                              <BlockStack gap={"300"}>
+                                <InlineStack
+                                  gap="200"
+                                  blockAlign="center"
+                                  wrap={false}
+                                >
+                                  {goalOptions.map((type) => (
+                                    <Button
+                                      key={type.value}
+                                      pressed={offer.goalType === type.value}
+                                      onClick={() =>
+                                        updateOffer(
+                                          offer.id,
+                                          "goalType",
+                                          type.value,
+                                        )
+                                      }
+                                      size="medium"
+                                    >
+                                      {type.label}
+                                    </Button>
+                                  ))}
+                                </InlineStack>
+                              </BlockStack>
+                            </Box>
+                            {offer.goalType === "amount_cart" && (
+                              <BlockStack gap="200">
+                                <Select
+                                  label="Currency"
+                                  options={currencyOptions}
+                                  value={offer.currency}
+                                  onChange={(value) =>
+                                    updateOffer(offer.id, "currency", value)
+                                  }
+                                />
+                                <TextField
+                                  label="Cart Total Goal"
+                                  type="number"
+                                  value={offer.goalAmount}
+                                  onChange={(value) => {
+                                    updateOffer(offer.id, "goalAmount", value);
+                                  }}
+                                  prefix={offer.currency}
+                                  requiredIndicator
+                                  helpText="Set the minimum cart total required to unlock the reward"
+                                  error={
+                                    !offer.goalAmount
+                                      ? "Cart total goal is required"
+                                      : ""
+                                  }
+                                />
+                              </BlockStack>
+                            )}
+                            {offer.goalType === "quantity" && (
                               <TextField
-                                label="Discount Value"
-                                placeholder="10, 20, etc."
-                                value={offer.discountCode}
-                                onChange={(value) =>
-                                  updateOffer(offer.id, "discountCode", value)
-                                }
+                                label="Product Quantity Goal"
                                 type="number"
+                                min={1}
+                                value={offer.goalquantity}
+                                onChange={(value) => {
+                                  updateOffer(offer.id, "goalquantity", value);
+                                }}
+                                requiredIndicator
+                                helpText="How many products need to be added to the cart to unlock the reward"
                                 error={
-                                  !offer.discountCode
-                                    ? "Discount value is required"
+                                  !offer.goalquantity
+                                    ? "Quantity goal is required"
                                     : ""
                                 }
                               />
-                              <Select
-                                label="Discount Type"
-                                options={[
-                                  {
-                                    label: "Percentage (%)",
-                                    value: "percentage",
-                                  },
-                                  {
-                                    label: "Fixed Amount ($)",
-                                    value: "amount",
-                                  },
-                                ]}
-                                value={offer.discountType}
-                                onChange={(value) =>
-                                  updateOffer(offer.id, "discountType", value)
-                                }
-                              />
-                              {/* Reward Product Picker for Fixed Deal Discount */}
-                              {(() => {
-                                const currentDealType =
-                                  dealType || offer.rewardMode;
-                                const isFixedDeal =
-                                  currentDealType === "fixed" ||
-                                  offer.rewardMode === "fixed";
+                            )}
+                          </BlockStack>
+                        </Card>
 
-                                if (isFixedDeal) {
-                                  return (
-                                    <BlockStack gap="300">
-                                      <Banner tone="info">
-                                        <Text fontWeight="medium">
-                                          Fixed Deal: Only 1 product in the
-                                          chosen reward category (fixed deal).
-                                        </Text>
-                                        <Text tone="subdued" variant="bodySm">
-                                          Selected:{" "}
-                                          {offer.rewardProducts.length}/1
-                                        </Text>
-                                        {offer.rewardProducts.length === 0 && (
-                                          <Text
-                                            tone="subdued"
-                                            variant="bodySm"
-                                            style={{ marginTop: "8px" }}
-                                          >
-                                            If no reward product is selected,
-                                            the discount will apply to trigger
-                                            products.
-                                          </Text>
-                                        )}
-                                      </Banner>
-                                      <Button
-                                        onClick={() => rewardPicker(offer.id)}
-                                        variant="primary"
-                                        size="medium"
-                                        disabled={
-                                          offer.rewardProducts.length >= 1
-                                        }
-                                      >
-                                        {offer.rewardProducts.length >= 1
-                                          ? "1 Product Selected (Max Reached)"
-                                          : "Select Reward Product (Optional)"}
-                                      </Button>
-                                      {offer.rewardProducts.length > 0 && (
-                                        <Box paddingBlockStart="200">
-                                          <Text fontWeight="semibold">
-                                            Selected Reward Product:
-                                          </Text>
-                                          <BlockStack gap="100">
-                                            {offer.rewardProducts.map(
-                                              (item) => (
-                                                <InlineStack
-                                                  key={item.id}
-                                                  align="space-between"
-                                                  blockAlign="center"
-                                                >
-                                                  <Text>{item.title}</Text>
-                                                  <Button
-                                                    tone="critical"
-                                                    size="medium"
-                                                    onClick={() =>
-                                                      removeRewardProduct(
-                                                        offer.id,
-                                                        item.id,
-                                                      )
-                                                    }
-                                                  >
-                                                    Remove
-                                                  </Button>
-                                                </InlineStack>
-                                              ),
-                                            )}
-                                          </BlockStack>
-                                        </Box>
-                                      )}
-                                    </BlockStack>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </BlockStack>
-                          )}
-                          {offer.rewardType === "shipping" && (
-                            <BlockStack gap="300">
-                              <Banner tone="success">
-                                Free shipping will be automatically applied
-                                Selected Tigger Products{" "}
-                              </Banner>
-                              {/* Reward Product Picker for Fixed Deal Shipping */}
-                              {(() => {
-                                const currentDealType =
-                                  dealType || offer.rewardMode;
-                                const isFixedDeal =
-                                  currentDealType === "fixed" ||
-                                  offer.rewardMode === "fixed";
+                        <Card sectioned>
+                          <BlockStack gap="300">
+                            <Text variant="headingMd" as="h3">
+                              Reward Type
+                            </Text>
 
-                                if (isFixedDeal) {
-                                  return (
-                                    <BlockStack gap="300">
-                                      <Banner tone="info">
-                                        <Text fontWeight="medium">
-                                          Fixed Deal: Only 1 product in the
-                                          chosen reward category (fixed deal).
-                                        </Text>
-                                        <Text tone="subdued" variant="bodySm">
-                                          Selected:{" "}
-                                          {offer.rewardProducts.length}/1
-                                        </Text>
-                                        {offer.rewardProducts.length === 0 && (
-                                          <Text
-                                            tone="subdued"
-                                            variant="bodySm"
-                                            style={{ marginTop: "8px" }}
-                                          >
-                                            If no reward product is selected,
-                                            free shipping will apply to trigger
-                                            products.
-                                          </Text>
-                                        )}
-                                      </Banner>
-                                      <Button
-                                        onClick={() => rewardPicker(offer.id)}
-                                        variant="primary"
-                                        size="medium"
-                                        disabled={
-                                          offer.rewardProducts.length >= 1
-                                        }
-                                      >
-                                        {offer.rewardProducts.length >= 1
-                                          ? "1 Product Selected (Max Reached)"
-                                          : "Select Reward Product (Optional)"}
-                                      </Button>
-                                      {offer.rewardProducts.length > 0 && (
-                                        <Box paddingBlockStart="200">
-                                          <Text fontWeight="semibold">
-                                            Selected Reward Product:
-                                          </Text>
-                                          <BlockStack gap="100">
-                                            {offer.rewardProducts.map(
-                                              (item) => (
-                                                <InlineStack
-                                                  key={item.id}
-                                                  align="space-between"
-                                                  blockAlign="center"
-                                                >
-                                                  <Text>{item.title}</Text>
-                                                  <Button
-                                                    tone="critical"
-                                                    size="medium"
-                                                    onClick={() =>
-                                                      removeRewardProduct(
-                                                        offer.id,
-                                                        item.id,
-                                                      )
-                                                    }
-                                                  >
-                                                    Remove
-                                                  </Button>
-                                                </InlineStack>
-                                              ),
-                                            )}
-                                          </BlockStack>
-                                        </Box>
-                                      )}
-                                    </BlockStack>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </BlockStack>
-                          )}
-                          {offer.rewardType === "gift" && (
-                            <BlockStack gap="300">
-                              {/* Reminder banners for Fixed Deal vs Flame Match */}
-                              {(() => {
-                                const currentDealType =
-                                  dealType || offer.rewardMode;
-                                const isFixedDeal =
-                                  currentDealType === "fixed" ||
-                                  offer.rewardMode === "fixed";
-                                const isFlameMatch =
-                                  currentDealType === "flame" ||
-                                  offer.rewardMode === "flame";
+                            {offer.rewardMode === "fixed" && (
+                              <BlockStack gap="200">
+                                <ChoiceList
+                                  choices={[
+                                    { label: "Discount", value: "discount" },
+                                    {
+                                      label: "Free Shipping",
+                                      value: "shipping",
+                                    },
+                                    {
+                                      label: "Free Gift",
+                                      value: "gift",
+                                    },
+                                  ]}
+                                  selected={[offer.rewardType]}
+                                  onChange={(value) => {
+                                    const rewardType = value[0];
+                                    // Batch update reward type and name
+                                    updateOfferBatch(offer.id, {
+                                      rewardType: rewardType,
+                                      rewardTypeName:
+                                        rewardType === "discount"
+                                          ? "Fixed Discount"
+                                          : rewardType === "shipping"
+                                            ? "Free Shipping"
+                                            : "Free Gift",
+                                    });
+                                  }}
+                                />
+                              </BlockStack>
+                            )}
 
-                                return (
-                                  <>
-                                    {isFixedDeal && (
-                                      <Banner tone="info">
-                                        <Text fontWeight="medium">
-                                          Fixed Deal: Only 1 product in the
-                                          chosen reward category (fixed deal).
-                                        </Text>
-                                        <Text tone="subdued" variant="bodySm">
-                                          Selected:{" "}
-                                          {offer.rewardProducts.length}/1
-                                        </Text>
-                                        {offer.rewardProducts.length === 0 && (
-                                          <Text
-                                            tone="subdued"
-                                            variant="bodySm"
-                                            style={{ marginTop: "8px" }}
-                                          >
-                                            If no reward product is selected,
-                                            the free gift will apply to trigger
-                                            products.
-                                          </Text>
-                                        )}
-                                      </Banner>
-                                    )}
-                                    {isFlameMatch && (
-                                      <Banner
-                                        tone={
-                                          offer.rewardProducts.length >= 2
-                                            ? "success"
-                                            : "warning"
-                                        }
-                                      >
-                                        <Text fontWeight="medium">
-                                          Flame Match: At least 2 reward
-                                          products are required (2-20 products).
-                                        </Text>
-                                        <Text tone="subdued" variant="bodySm">
-                                          Selected:{" "}
-                                          {offer.rewardProducts.length}/2
-                                          (minimum)
-                                        </Text>
-                                      </Banner>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                              <Button
-                                onClick={() => rewardPicker(offer.id)}
-                                variant="primary"
-                                size="medium"
-                                disabled={
-                                  (dealType === "fixed" ||
-                                    offer.rewardMode === "fixed") &&
-                                  offer.rewardProducts.length >= 1
-                                }
-                              >
+                            {offer.rewardMode === "flame" && (
+                              <BlockStack gap="200">
+                                <Banner tone="info">
+                                  <Text fontWeight="medium">
+                                    Flame Match: Customers can choose their
+                                    preferred reward from available options
+                                  </Text>
+                                </Banner>
+                                <ChoiceList
+                                  choices={[
+                                    { label: "Discount", value: "discount" },
+                                    {
+                                      label: "Free Shipping",
+                                      value: "shipping",
+                                    },
+                                    {
+                                      label: "Free Gift",
+                                      value: "gift",
+                                    },
+                                  ]}
+                                  selected={[offer.rewardType]}
+                                  onChange={(value) => {
+                                    const rewardType = value[0];
+                                    // Batch update reward type and name
+                                    updateOfferBatch(offer.id, {
+                                      rewardType: rewardType,
+                                      rewardTypeName:
+                                        rewardType === "discount"
+                                          ? "Flame Match Discount"
+                                          : rewardType === "shipping"
+                                            ? "Free Shipping"
+                                            : "Customer Choice Gift",
+                                    });
+                                  }}
+                                />
+                              </BlockStack>
+                            )}
+                          </BlockStack>
+                        </Card>
+
+                        <Card sectioned>
+                          <BlockStack gap="300">
+                            <Text variant="headingMd" as="h3">
+                              Reward Product
+                            </Text>
+                            {offer.rewardType === "discount" && (
+                              <BlockStack gap="300">
+                                <TextField
+                                  label="Discount Value"
+                                  placeholder="10, 20, etc."
+                                  value={offer.discountCode}
+                                  onChange={(value) =>
+                                    updateOffer(offer.id, "discountCode", value)
+                                  }
+                                  type="number"
+                                  error={
+                                    !offer.discountCode
+                                      ? "Discount value is required"
+                                      : ""
+                                  }
+                                />
+                                <Select
+                                  label="Discount Type"
+                                  options={[
+                                    {
+                                      label: "Percentage (%)",
+                                      value: "percentage",
+                                    },
+                                    {
+                                      label: "Fixed Amount ($)",
+                                      value: "amount",
+                                    },
+                                  ]}
+                                  value={offer.discountType}
+                                  onChange={(value) =>
+                                    updateOffer(offer.id, "discountType", value)
+                                  }
+                                />
+                                {/* Reward Product Picker for Fixed Deal and Flame Match Discount */}
                                 {(() => {
                                   const currentDealType =
                                     dealType || offer.rewardMode;
                                   const isFixedDeal =
                                     currentDealType === "fixed" ||
                                     offer.rewardMode === "fixed";
-                                  if (
-                                    isFixedDeal &&
-                                    offer.rewardProducts.length >= 1
-                                  ) {
-                                    return "1 Product Selected (Max Reached)";
-                                  }
-                                  return "Select Free Products";
-                                })()}
-                              </Button>
-                              {offer.rewardProducts.length > 0 && (
-                                <Box paddingBlockStart="200">
-                                  <Text fontWeight="semibold">
-                                    Selected Free Products (
-                                    {offer.rewardProducts.length}):
-                                  </Text>
-                                  <BlockStack gap="100">
-                                    {offer.rewardProducts.map((item) => (
-                                      <InlineStack
-                                        key={item.id}
-                                        align="space-between"
-                                        blockAlign="center"
-                                      >
-                                        <Text>{item.title}</Text>
+                                  const isFlameMatch =
+                                    currentDealType === "flame" ||
+                                    offer.rewardMode === "flame";
+
+                                  if (isFixedDeal) {
+                                    return (
+                                      <BlockStack gap="300">
+                                        <Banner tone="info">
+                                          <Text fontWeight="medium">
+                                            Fixed Deal: Only 1 product in the
+                                            chosen reward category (fixed deal).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/1
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              the discount will apply to trigger
+                                              products.
+                                            </Text>
+                                          )}
+                                        </Banner>
                                         <Button
-                                          tone="critical"
+                                          onClick={() => rewardPicker(offer.id)}
+                                          variant="primary"
                                           size="medium"
-                                          onClick={() =>
-                                            removeRewardProduct(
-                                              offer.id,
-                                              item.id,
-                                            )
+                                          disabled={
+                                            offer.rewardProducts.length >= 1
                                           }
                                         >
-                                          Remove
+                                          {offer.rewardProducts.length >= 1
+                                            ? "1 Product Selected (Max Reached)"
+                                            : "Select Reward Product "}
                                         </Button>
-                                      </InlineStack>
-                                    ))}
-                                  </BlockStack>
+                                        {offer.rewardProducts.length > 0 && (
+                                          <Box paddingBlockStart="200">
+                                            <Text fontWeight="semibold">
+                                              Selected Reward Product:
+                                            </Text>
+                                            <BlockStack gap="100">
+                                              {offer.rewardProducts.map(
+                                                (item) => (
+                                                  <InlineStack
+                                                    key={item.id}
+                                                    align="space-between"
+                                                    blockAlign="center"
+                                                  >
+                                                    <Text>{item.title}</Text>
+                                                    <Button
+                                                      tone="critical"
+                                                      size="medium"
+                                                      onClick={() =>
+                                                        removeRewardProduct(
+                                                          offer.id,
+                                                          item.id,
+                                                        )
+                                                      }
+                                                    >
+                                                      Remove
+                                                    </Button>
+                                                  </InlineStack>
+                                                ),
+                                              )}
+                                            </BlockStack>
+                                          </Box>
+                                        )}
+                                      </BlockStack>
+                                    );
+                                  }
+
+                                  if (isFlameMatch) {
+                                    return (
+                                      <BlockStack gap="300">
+                                        <Banner
+                                          tone={
+                                            offer.rewardProducts.length >= 2
+                                              ? "success"
+                                              : "warning"
+                                          }
+                                        >
+                                          <Text fontWeight="medium">
+                                            Flame Match: At least 2 reward
+                                            products are required (2-20
+                                            products).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/2
+                                            (minimum)
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              the discount will apply to trigger
+                                              products.
+                                            </Text>
+                                          )}
+                                        </Banner>
+                                        <Button
+                                          onClick={() => rewardPicker(offer.id)}
+                                          variant="primary"
+                                          size="medium"
+                                          disabled={
+                                            offer.rewardProducts.length >= 20
+                                          }
+                                        >
+                                          {offer.rewardProducts.length >= 20
+                                            ? "20 Products Selected (Max Reached)"
+                                            : "Select Reward Products"}
+                                        </Button>
+                                        {offer.rewardProducts.length > 0 && (
+                                          <Box paddingBlockStart="200">
+                                            <Text fontWeight="semibold">
+                                              Selected Reward Products (
+                                              {offer.rewardProducts.length}):
+                                            </Text>
+                                            <BlockStack gap="100">
+                                              {offer.rewardProducts.map(
+                                                (item) => (
+                                                  <InlineStack
+                                                    key={item.id}
+                                                    align="space-between"
+                                                    blockAlign="center"
+                                                  >
+                                                    <Text>{item.title}</Text>
+                                                    <Button
+                                                      tone="critical"
+                                                      size="medium"
+                                                      onClick={() =>
+                                                        removeRewardProduct(
+                                                          offer.id,
+                                                          item.id,
+                                                        )
+                                                      }
+                                                    >
+                                                      Remove
+                                                    </Button>
+                                                  </InlineStack>
+                                                ),
+                                              )}
+                                            </BlockStack>
+                                          </Box>
+                                        )}
+                                      </BlockStack>
+                                    );
+                                  }
+
+                                  return null;
+                                })()}
+                              </BlockStack>
+                            )}
+                            {offer.rewardType === "shipping" && (
+                              <BlockStack gap="300">
+                                <Banner tone="success">
+                                  Free shipping will be automatically applied
+                                  Selected Tigger Products{" "}
+                                </Banner>
+                                {/* Reward Product Picker for Fixed Deal and Flame Match Shipping */}
+                                {(() => {
+                                  const currentDealType =
+                                    dealType || offer.rewardMode;
+                                  const isFixedDeal =
+                                    currentDealType === "fixed" ||
+                                    offer.rewardMode === "fixed";
+                                  const isFlameMatch =
+                                    currentDealType === "flame" ||
+                                    offer.rewardMode === "flame";
+
+                                  if (isFixedDeal) {
+                                    return (
+                                      <BlockStack gap="300">
+                                        <Banner tone="info">
+                                          <Text fontWeight="medium">
+                                            Fixed Deal: Only 1 product in the
+                                            chosen reward category (fixed deal).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/1
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              free shipping will apply to
+                                              trigger products.
+                                            </Text>
+                                          )}
+                                        </Banner>
+                                        <Button
+                                          onClick={() => rewardPicker(offer.id)}
+                                          variant="primary"
+                                          size="medium"
+                                          disabled={
+                                            offer.rewardProducts.length >= 1
+                                          }
+                                        >
+                                          {offer.rewardProducts.length >= 1
+                                            ? "1 Product Selected (Max Reached)"
+                                            : "Select Reward Product (Optional)"}
+                                        </Button>
+                                        {offer.rewardProducts.length > 0 && (
+                                          <Box paddingBlockStart="200">
+                                            <Text fontWeight="semibold">
+                                              Selected Reward Product:
+                                            </Text>
+                                            <BlockStack gap="100">
+                                              {offer.rewardProducts.map(
+                                                (item) => (
+                                                  <InlineStack
+                                                    key={item.id}
+                                                    align="space-between"
+                                                    blockAlign="center"
+                                                  >
+                                                    <Text>{item.title}</Text>
+                                                    <Button
+                                                      tone="critical"
+                                                      size="medium"
+                                                      onClick={() =>
+                                                        removeRewardProduct(
+                                                          offer.id,
+                                                          item.id,
+                                                        )
+                                                      }
+                                                    >
+                                                      Remove
+                                                    </Button>
+                                                  </InlineStack>
+                                                ),
+                                              )}
+                                            </BlockStack>
+                                          </Box>
+                                        )}
+                                      </BlockStack>
+                                    );
+                                  }
+
+                                  if (isFlameMatch) {
+                                    return (
+                                      <BlockStack gap="300">
+                                        <Banner
+                                          tone={
+                                            offer.rewardProducts.length >= 2
+                                              ? "success"
+                                              : "warning"
+                                          }
+                                        >
+                                          <Text fontWeight="medium">
+                                            Flame Match: At least 2 reward
+                                            products are required (2-20
+                                            products).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/2
+                                            (minimum)
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              free shipping will apply to
+                                              trigger products.
+                                            </Text>
+                                          )}
+                                        </Banner>
+                                        <Button
+                                          onClick={() => rewardPicker(offer.id)}
+                                          variant="primary"
+                                          size="medium"
+                                          disabled={
+                                            offer.rewardProducts.length >= 20
+                                          }
+                                        >
+                                          {offer.rewardProducts.length >= 20
+                                            ? "20 Products Selected (Max Reached)"
+                                            : "Select Reward Products"}
+                                        </Button>
+                                        {offer.rewardProducts.length > 0 && (
+                                          <Box paddingBlockStart="200">
+                                            <Text fontWeight="semibold">
+                                              Selected Reward Products (
+                                              {offer.rewardProducts.length}):
+                                            </Text>
+                                            <BlockStack gap="100">
+                                              {offer.rewardProducts.map(
+                                                (item) => (
+                                                  <InlineStack
+                                                    key={item.id}
+                                                    align="space-between"
+                                                    blockAlign="center"
+                                                  >
+                                                    <Text>{item.title}</Text>
+                                                    <Button
+                                                      tone="critical"
+                                                      size="medium"
+                                                      onClick={() =>
+                                                        removeRewardProduct(
+                                                          offer.id,
+                                                          item.id,
+                                                        )
+                                                      }
+                                                    >
+                                                      Remove
+                                                    </Button>
+                                                  </InlineStack>
+                                                ),
+                                              )}
+                                            </BlockStack>
+                                          </Box>
+                                        )}
+                                      </BlockStack>
+                                    );
+                                  }
+
+                                  return null;
+                                })()}
+                              </BlockStack>
+                            )}
+                            {offer.rewardType === "gift" && (
+                              <BlockStack gap="300">
+                                {/* Reminder banners for Fixed Deal vs Flame Match */}
+                                {(() => {
+                                  const currentDealType =
+                                    dealType || offer.rewardMode;
+                                  const isFixedDeal =
+                                    currentDealType === "fixed" ||
+                                    offer.rewardMode === "fixed";
+                                  const isFlameMatch =
+                                    currentDealType === "flame" ||
+                                    offer.rewardMode === "flame";
+
+                                  return (
+                                    <>
+                                      {isFixedDeal && (
+                                        <Banner tone="info">
+                                          <Text fontWeight="medium">
+                                            Fixed Deal: Only 1 product in the
+                                            chosen reward category (fixed deal).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/1
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              the free gift will apply to
+                                              trigger products.
+                                            </Text>
+                                          )}
+                                        </Banner>
+                                      )}
+                                      {isFlameMatch && (
+                                        <Banner
+                                          tone={
+                                            offer.rewardProducts.length >= 2
+                                              ? "success"
+                                              : "warning"
+                                          }
+                                        >
+                                          <Text fontWeight="medium">
+                                            Flame Match: At least 2 reward
+                                            products are required (2-20
+                                            products).
+                                          </Text>
+                                          <Text tone="subdued" variant="bodySm">
+                                            Selected:{" "}
+                                            {offer.rewardProducts.length}/2
+                                            (minimum)
+                                          </Text>
+                                          {offer.rewardProducts.length ===
+                                            0 && (
+                                            <Text
+                                              tone="subdued"
+                                              variant="bodySm"
+                                              style={{ marginTop: "8px" }}
+                                            >
+                                              If no reward product is selected,
+                                              the free gift will apply to
+                                              trigger products.
+                                            </Text>
+                                          )}
+                                        </Banner>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                                <Button
+                                  onClick={() => rewardPicker(offer.id)}
+                                  variant="primary"
+                                  size="medium"
+                                  disabled={
+                                    (dealType === "fixed" ||
+                                      offer.rewardMode === "fixed") &&
+                                    offer.rewardProducts.length >= 1
+                                  }
+                                >
+                                  {(() => {
+                                    const currentDealType =
+                                      dealType || offer.rewardMode;
+                                    const isFixedDeal =
+                                      currentDealType === "fixed" ||
+                                      offer.rewardMode === "fixed";
+                                    if (
+                                      isFixedDeal &&
+                                      offer.rewardProducts.length >= 1
+                                    ) {
+                                      return "1 Product Selected (Max Reached)";
+                                    }
+                                    return "Select Free Products";
+                                  })()}
+                                </Button>
+                                {offer.rewardProducts.length > 0 && (
+                                  <Box paddingBlockStart="200">
+                                    <Text fontWeight="semibold">
+                                      Selected Free Products (
+                                      {offer.rewardProducts.length}):
+                                    </Text>
+                                    <BlockStack gap="100">
+                                      {offer.rewardProducts.map((item) => (
+                                        <InlineStack
+                                          key={item.id}
+                                          align="space-between"
+                                          blockAlign="center"
+                                        >
+                                          <Text>{item.title}</Text>
+                                          <Button
+                                            tone="critical"
+                                            size="medium"
+                                            onClick={() =>
+                                              removeRewardProduct(
+                                                offer.id,
+                                                item.id,
+                                              )
+                                            }
+                                          >
+                                            Remove
+                                          </Button>
+                                        </InlineStack>
+                                      ))}
+                                    </BlockStack>
+                                  </Box>
+                                )}
+                              </BlockStack>
+                            )}
+                          </BlockStack>
+                        </Card>
+
+                        <Card sectioned>
+                          <BlockStack gap="300">
+                            <Text variant="headingMd" as="h3">
+                              Goal Text Customization
+                            </Text>
+                            <TextField
+                              label="Before Goal is Reached"
+                              value={offer.goalTextBefore}
+                              onChange={(value) =>
+                                updateOffer(offer.id, "goalTextBefore", value)
+                              }
+                              helpText="Use smart variables: {{goal}}, {{amount_left}}, {{reward}}"
+                            />
+                            <TextField
+                              label="After Goal is Reached"
+                              value={offer.goalTextAfter}
+                              onChange={(value) =>
+                                updateOffer(offer.id, "goalTextAfter", value)
+                              }
+                              helpText="Use smart variables: {{goal}}, {{reward}}"
+                            />
+                            <Box>
+                              <Text as="p">Badge Icon</Text>
+                              <input
+                                type="file"
+                                onChange={(event) =>
+                                  handleBadgeIconChange(offer.id, event)
+                                }
+                                style={{ marginTop: "8px" }}
+                              />
+                              {(offer.badgeIconUrl || offer.badgeIcon) && (
+                                <Box paddingBlockStart="200">
+                                  <Text fontWeight="semibold">
+                                    Selected Badge Icon:
+                                  </Text>
+                                  <InlineStack
+                                    align="space-between"
+                                    blockAlign="center"
+                                  >
+                                    <Image
+                                      source={
+                                        offer.badgeIconUrl
+                                          ? offer.badgeIconUrl
+                                          : offer.badgeIcon
+                                            ? createObjectURL(offer.badgeIcon)
+                                            : ""
+                                      }
+                                      alt="Badge Icon Preview"
+                                      width="50px"
+                                    />
+                                    <Button
+                                      tone="critical"
+                                      size="medium"
+                                      onClick={() => {
+                                        updateOffer(
+                                          offer.id,
+                                          "badgeIcon",
+                                          null,
+                                        );
+                                        updateOffer(
+                                          offer.id,
+                                          "badgeIconUrl",
+                                          null,
+                                        );
+                                      }}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </InlineStack>
                                 </Box>
                               )}
-                            </BlockStack>
-                          )}
-                        </BlockStack>
-                      </Card>
-
-                      <Card sectioned>
-                        <BlockStack gap="300">
-                          <Text variant="headingMd" as="h3">
-                            Goal Text Customization
-                          </Text>
-                          <TextField
-                            label="Before Goal is Reached"
-                            value={offer.goalTextBefore}
-                            onChange={(value) =>
-                              updateOffer(offer.id, "goalTextBefore", value)
-                            }
-                            helpText="Use smart variables: {{goal}}, {{amount_left}}, {{reward}}"
-                          />
-                          <TextField
-                            label="After Goal is Reached"
-                            value={offer.goalTextAfter}
-                            onChange={(value) =>
-                              updateOffer(offer.id, "goalTextAfter", value)
-                            }
-                            helpText="Use smart variables: {{goal}}, {{reward}}"
-                          />
-                          <Box>
-                            <Text as="p">Badge Icon</Text>
-                            <input
-                              type="file"
-                              onChange={(event) =>
-                                handleBadgeIconChange(offer.id, event)
-                              }
-                              style={{ marginTop: "8px" }}
-                            />
-                            {(offer.badgeIconUrl || offer.badgeIcon) && (
-                              <Box paddingBlockStart="200">
-                                <Text fontWeight="semibold">
-                                  Selected Badge Icon:
-                                </Text>
-                                <InlineStack
-                                  align="space-between"
-                                  blockAlign="center"
-                                >
-                                  <Image
-                                    source={
-                                      offer.badgeIconUrl
-                                        ? offer.badgeIconUrl
-                                        : offer.badgeIcon
-                                          ? createObjectURL(offer.badgeIcon)
-                                          : ""
-                                    }
-                                    alt="Badge Icon Preview"
-                                    width="50px"
-                                  />
-                                  <Button
-                                    tone="critical"
-                                    size="medium"
-                                    onClick={() => {
-                                      updateOffer(offer.id, "badgeIcon", null);
-                                      updateOffer(
-                                        offer.id,
-                                        "badgeIconUrl",
-                                        null,
-                                      );
-                                    }}
-                                  >
-                                    Remove
-                                  </Button>
-                                </InlineStack>
-                              </Box>
-                            )}
-                          </Box>
-                        </BlockStack>
-                      </Card>
-                    </BlockStack>
-                  </Card>
-                ))}
-              </BlockStack>
-              <Card sectioned>
-                <BlockStack gap="300">
-                  <Text variant="headingMd" as="h3">
-                    Design Customization
-                  </Text>
-
-                  <Select
-                    label="Progress Bar Thickness"
-                    options={[
-                      { label: "Thin", value: "thin" },
-                      { label: "Thick", value: "thick" },
-                    ]}
-                    value={progressBarStyle.thickness || "thick"} // default value
-                    onChange={(value) => {
-                      // Update the thickness in progressBarStyle
-                      setProgressBarStyle((prev) => ({
-                        ...prev,
-                        thickness: value,
-                      }));
-
-                      // Update barSize state if the value is thin
-                      if (value === "thin") {
-                        setBarSize(true);
-                        console.log("value", barSize);
-                      } else {
-                        setBarSize(false);
-                      }
-                    }}
-                  />
-                  <Select
-                    label="Corner Radius"
-                    options={[
-                      { label: "Square", value: "square" },
-                      { label: "Slightly Rounded", value: "slightly" },
-                      { label: "Fully Rounded", value: "rounded" },
-                    ]}
-                    value={progressBarStyle.cornerRadius}
-                    onChange={(value) =>
-                      setProgressBarStyle((prev) => ({
-                        ...prev,
-                        cornerRadius: value,
-                      }))
-                    }
-                  />
-                  <style>
-                    {`
-                    input[type="color"]::-webkit-color-swatch-wrapper {
-                      padding: 0;
-                      border-radius: 3px;
-                    }
-                    input[type="color"]::-webkit-color-swatch {
-                      border: none;
-                      border-radius: 3px;
-                    }
-                    input[type="color"] {
-                      border: none;
-                      border-radius: 3px;
-                      padding: 0;
-                      cursor: pointer;
-                      appearance: none;
-                      outline: none;
-                      box-shadow: 0 0 0 1px #d1d5db; /* light premium grey border */
-                    }
-                  `}
-                  </style>
-
-                  <InlineStack gap="200">
-                    <h2
-                      style={{
-                        fontSize: "14px",
-                        color: "grey",
-                        fontWeight: "600",
-                      }}
-                    >
-                      Progree Bar Colors
-                    </h2>
-                    <div
-                      style={{
-                        display: "flex",
-                        width: "100%",
-                        marginBottom: "16px",
-                      }}
-                    >
-                      {/* First color */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        <input
-                          type="color"
-                          value={progressBarStyle.primaryColor}
-                          onChange={(e) =>
-                            setProgressBarStyle((prev) => ({
-                              ...prev,
-                              primaryColor: e.target.value,
-                            }))
-                          }
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "#a0a0a0",
-                            fontWeight: 700,
-                            fontSize: "15px",
-                          }}
-                        >
-                          Primary
-                        </span>
-                      </div>
-
-                      {/* Second color */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        <input
-                          type="color"
-                          value={progressBarStyle.secondaryColor}
-                          onChange={(e) =>
-                            setProgressBarStyle((prev) => ({
-                              ...prev,
-                              secondaryColor: e.target.value,
-                            }))
-                          }
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            marginLeft: "130px",
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "#a0a0a0",
-                            fontWeight: 700,
-                            fontSize: "15px",
-                          }}
-                        >
-                          Secondary
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", width: "100%" }}>
-                      {/* Third color */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        <input
-                          type="color"
-                          value={progressBarStyle.goalCompleteColor}
-                          onChange={(e) =>
-                            setProgressBarStyle((prev) => ({
-                              ...prev,
-                              goalCompleteColor: e.target.value,
-                            }))
-                          }
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "#a0a0a0",
-                            fontWeight: 700,
-                            fontSize: "15px",
-                          }}
-                        >
-                          Goal complete
-                        </span>
-                      </div>
-
-                      {/* Fourth color */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        <input
-                          type="color"
-                          value={progressBarStyle.backgroundColor}
-                          onChange={(e) =>
-                            setProgressBarStyle((prev) => ({
-                              ...prev,
-                              backgroundColor: e.target.value,
-                            }))
-                          }
-                          style={{
-                            width: "42px",
-                            height: "42px",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            marginLeft: "82px",
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "#a0a0a0",
-                            fontWeight: 700,
-                            fontSize: "15px",
-                          }}
-                        >
-                          Background
-                        </span>
-                      </div>
-                    </div>
-                  </InlineStack>
+                            </Box>
+                          </BlockStack>
+                        </Card>
+                      </BlockStack>
+                    </Card>
+                  ))}
                 </BlockStack>
-              </Card>
-              <Button variant="secondary" onClick={handleSave}>
-                {mainBtnLoading ? "Saving..." : "Save"}
-              </Button>
-            </BlockStack>
-          </Layout.Section>
-           </div>
-          <div style={{ position: "sticky", top: "10px", width:"40%" }}>
+                <Card sectioned>
+                  <Box
+                    minHeight="350px"
+                    padding={"150"}
+                    background="white"
+                    borderRadius="10px"
+                    boxShadow="0 0 10px 0 rgba(107, 107, 107, 0.1)"
+                  >
+                    <BlockStack gap="300">
+                      <InlineStack gap="200">
+                        <h2
+                          style={{
+                            fontSize: "14px",
+                            color: "grey",
+                            fontWeight: "600",
+                          }}
+                        >
+                          Progree Bar Colors
+                        </h2>
+                        <div
+                          style={{
+                            display: "flex",
+                            width: "100%",
+                            marginBottom: "16px",
+                          }}
+                        >
+                          {/* First color */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              position: "relative",
+                            }}
+                          >
+                            <button
+                              data-color-button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColorPicker(
+                                  openColorPicker === "primary"
+                                    ? null
+                                    : "primary",
+                                );
+                              }}
+                              style={{
+                                width: "42px",
+                                height: "42px",
+                                backgroundColor: progressBarStyle.primaryColor,
+                                border: "1px solid #d1d5db",
+                                borderRadius: "3px",
+                                cursor: "pointer",
+                                padding: 0,
+                                boxShadow:
+                                  openColorPicker === "primary"
+                                    ? "0 0 0 2px #0066cc"
+                                    : "none",
+                              }}
+                            />
+                            <span
+                              style={{
+                                color: "#a0a0a0",
+                                fontWeight: 700,
+                                fontSize: "15px",
+                              }}
+                            >
+                              Primary
+                            </span>
+                            {openColorPicker === "primary" && (
+                              <div
+                                data-color-picker
+                                style={{
+                                  position: "absolute",
+                                  zIndex: 1000,
+                                  top: "0px",
+                                  left: "50px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SketchPicker
+                                  color={progressBarStyle.primaryColor}
+                                  onChange={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      primaryColor: color.hex,
+                                    }));
+                                  }}
+                                  onChangeComplete={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      primaryColor: color.hex,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Second color */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              position: "relative",
+                              marginLeft: "130px",
+                            }}
+                          >
+                            <button
+                              data-color-button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColorPicker(
+                                  openColorPicker === "secondary"
+                                    ? null
+                                    : "secondary",
+                                );
+                              }}
+                              style={{
+                                width: "42px",
+                                height: "42px",
+                                backgroundColor:
+                                  progressBarStyle.secondaryColor,
+                                border: "1px solid #d1d5db",
+                                borderRadius: "3px",
+                                cursor: "pointer",
+                                padding: 0,
+                                boxShadow:
+                                  openColorPicker === "secondary"
+                                    ? "0 0 0 2px #0066cc"
+                                    : "none",
+                              }}
+                            />
+                            <span
+                              style={{
+                                color: "#a0a0a0",
+                                fontWeight: 700,
+                                fontSize: "15px",
+                              }}
+                            >
+                              Secondary
+                            </span>
+                            {openColorPicker === "secondary" && (
+                              <div
+                                data-color-picker
+                                style={{
+                                  position: "absolute",
+                                  zIndex: 1000,
+                                  top: "0px",
+                                  left: "50px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SketchPicker
+                                  color={progressBarStyle.secondaryColor}
+                                  onChange={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      secondaryColor: color.hex,
+                                    }));
+                                  }}
+                                  onChangeComplete={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      secondaryColor: color.hex,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", width: "100%" }}>
+                          {/* Third color */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              position: "relative",
+                            }}
+                          >
+                            <button
+                              data-color-button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColorPicker(
+                                  openColorPicker === "goalComplete"
+                                    ? null
+                                    : "goalComplete",
+                                );
+                              }}
+                              style={{
+                                width: "42px",
+                                height: "42px",
+                                backgroundColor:
+                                  progressBarStyle.goalCompleteColor,
+                                border: "1px solid #d1d5db",
+                                borderRadius: "3px",
+                                cursor: "pointer",
+                                padding: 0,
+                                boxShadow:
+                                  openColorPicker === "goalComplete"
+                                    ? "0 0 0 2px #0066cc"
+                                    : "none",
+                              }}
+                            />
+                            <span
+                              style={{
+                                color: "#a0a0a0",
+                                fontWeight: 700,
+                                fontSize: "15px",
+                              }}
+                            >
+                              Goal complete
+                            </span>
+                            {openColorPicker === "goalComplete" && (
+                              <div
+                                data-color-picker
+                                style={{
+                                  position: "absolute",
+                                  zIndex: 1000,
+                                  top: "-70px",
+                                  left: "50px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SketchPicker
+                                  color={progressBarStyle.goalCompleteColor}
+                                  onChange={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      goalCompleteColor: color.hex,
+                                    }));
+                                  }}
+                                  onChangeComplete={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      goalCompleteColor: color.hex,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Fourth color */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                              position: "relative",
+                              marginLeft: "82px",
+                            }}
+                          >
+                            <button
+                              data-color-button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColorPicker(
+                                  openColorPicker === "background"
+                                    ? null
+                                    : "background",
+                                );
+                              }}
+                              style={{
+                                width: "42px",
+                                height: "42px",
+                                backgroundColor:
+                                  progressBarStyle.backgroundColor,
+                                border: "1px solid #d1d5db",
+                                borderRadius: "3px",
+                                cursor: "pointer",
+                                padding: 0,
+                                boxShadow:
+                                  openColorPicker === "background"
+                                    ? "0 0 0 2px #0066cc"
+                                    : "none",
+                              }}
+                            />
+                            <span
+                              style={{
+                                color: "#a0a0a0",
+                                fontWeight: 700,
+                                fontSize: "15px",
+                              }}
+                            >
+                              Background
+                            </span>
+                            {openColorPicker === "background" && (
+                              <div
+                                data-color-picker
+                                style={{
+                                  position: "absolute",
+                                  zIndex: 1000,
+                                  top: "-70px",
+                                  left: "50px",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <SketchPicker
+                                  color={progressBarStyle.backgroundColor}
+                                  onChange={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      backgroundColor: color.hex,
+                                    }));
+                                  }}
+                                  onChangeComplete={(color) => {
+                                    setProgressBarStyle((prev) => ({
+                                      ...prev,
+                                      backgroundColor: color.hex,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </InlineStack>
+
+                      <Text variant="headingMd" as="h3">
+                        Design Customization
+                      </Text>
+
+                      <Select
+                        label="Progress Bar Thickness"
+                        options={[
+                          { label: "Thin", value: "thin" },
+                          { label: "Thick", value: "thick" },
+                        ]}
+                        value={progressBarStyle.thickness || "thick"} // default value
+                        onChange={(value) => {
+                          // Update the thickness in progressBarStyle
+                          setProgressBarStyle((prev) => ({
+                            ...prev,
+                            thickness: value,
+                          }));
+
+                          // Update barSize state if the value is thin
+                          if (value === "thin") {
+                            setBarSize(true);
+                            console.log("value", barSize);
+                          } else {
+                            setBarSize(false);
+                          }
+                        }}
+                      />
+                      <Select
+                        label="Corner Radius"
+                        options={[
+                          { label: "Square", value: "square" },
+                          { label: "Slightly Rounded", value: "slightly" },
+                          { label: "Fully Rounded", value: "rounded" },
+                        ]}
+                        value={progressBarStyle.cornerRadius}
+                        onChange={(value) =>
+                          setProgressBarStyle((prev) => ({
+                            ...prev,
+                            cornerRadius: value,
+                          }))
+                        }
+                      />
+                      <style>
+                        {`
+                        input[type="color"]::-webkit-color-swatch-wrapper {
+                          padding: 0;
+                          border-radius: 3px;
+                        }
+                        input[type="color"]::-webkit-color-swatch {
+                          border: none;
+                          border-radius: 3px;
+                        }
+                        input[type="color"] {
+                          border: none;
+                          border-radius: 3px;
+                          padding: 0;
+                          cursor: pointer;
+                          appearance: none;
+                          outline: none;
+                          box-shadow: 0 0 0 1px #d1d5db; /* light premium grey border */
+                        }
+                      `}
+                      </style>
+                    </BlockStack>
+                  </Box>
+                </Card>
+                <Box padding={"200"}>
+                  <BlockStack>
+                    <InlineStack gap="200">
+                      <Button
+                        loading={mainBtnLoading}
+                        variant="primary"
+                        onClick={handleSave}
+                      >
+                        {mainBtnLoading ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleDiscard}
+                        disabled={mainBtnLoading}
+                      >
+                        Cancel
+                      </Button>
+                    </InlineStack>
+                  </BlockStack>
+                </Box>
+              </BlockStack>
+            </Layout.Section>
+          </div>
+          <div style={{ position: "sticky", top: "10px", width: "40%" }}>
             <Layout.Section position="sticky" top="10px" variant="oneHalf">
               <BlockStack gap="400">{renderPreview()}</BlockStack>
             </Layout.Section>
