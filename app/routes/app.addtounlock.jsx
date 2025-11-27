@@ -37,11 +37,8 @@ import prisma from "../db.server";
 import { add_to_unlock_ } from "./utils/add_unlock";
 import HomeSectionPreview from "./components/preview/HomeSectionPreview";
 import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
-import * as reactColor from "react-color";
-const SketchPicker =
-  reactColor.SketchPicker ||
-  (reactColor.default && reactColor.default.SketchPicker) ||
-  reactColor.default;
+import pakg from "react-color";
+const SketchPicker = pakg;
 const SHOPIFY_API_VERSION = "2025-07";
 
 const PRODUCT_FRAGMENT = `
@@ -2220,20 +2217,20 @@ export default function AddToUnlock() {
             background-color: #f9f9f9;
             border-radius: 8px;
         }
-        
+
         .gift-section-title {
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 16px;
             text-align: center;
         }
-        
+
         .gift-items-container {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-        
+
         .gift-item {
             display: flex;
             padding: 10px;
@@ -2242,44 +2239,44 @@ export default function AddToUnlock() {
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border: 1px solid #eee;
         }
-        
+
         .gift-item-image {
             width: 60px;
             height: 60px;
             margin-right: 10px;
         }
-        
+
         .gift-item-image img {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
-        
+
         .gift-item-details {
             flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-        
+
         .gift-item-title {
             font-weight: 500;
             font-size: 14px;
             margin-bottom: 4px;
         }
-        
+
         .gift-item-variant {
             font-size: 12px;
             color: #666;
             margin-bottom: 4px;
         }
-        
+
         .gift-item-price {
             font-weight: 600;
             color: #5c6ac4;
             font-size: 14px;
         }
-        
+
         .gift-badge {
             background-color: #5c6ac4;
             color: white;
@@ -2288,14 +2285,14 @@ export default function AddToUnlock() {
             border-radius: 4px;
             margin-left: 8px;
         }
-        
+
         /* Gift Item Button Styles */
         .gift-item-actions {
             display: flex;
             align-items: center;
             margin-top: 8px;
         }
-        
+
         .add-to-cart-btn {
             background-color: #5c6ac4;
             color: white;
@@ -2328,7 +2325,7 @@ export default function AddToUnlock() {
                                 height: 100%;
                                 border-radius: 15px; /* Increased border radius */
                             }
-                                
+
                             .cart-item {
                                 display: flex;
                                 padding: 12px 0;
@@ -2404,7 +2401,7 @@ export default function AddToUnlock() {
                                 font-size: 12px;
                                 margin-top: 4px;
                             }
-                            
+
                             /* New styles for header layout */
                             .header-top {
                                 display: flex;
@@ -2479,7 +2476,7 @@ export default function AddToUnlock() {
 
                                             <div class="discount-container">
                                                 <div class="dsicount-title">${getDynamicCartText()}</div>
-                                                <div class="un-fill" 
+                                                <div class="un-fill"
                                                     style="
                                                         background: ${progressBarStyle.backgroundColor};
                                                         border-radius: ${progressBarStyle.cornerRadius === "square" ? "0px" : progressBarStyle.cornerRadius === "slightly" ? "4px" : "15px"};
@@ -2501,9 +2498,9 @@ ${
         .map(
           (offer) => `
           <div class="progress_step" style="left: ${Math.min(offer.percentage, 100)}%;">
-              
-              <div 
-                class="circle" 
+
+              <div
+                class="circle"
                 style="
                   background: ${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.primaryColor};
                   width: 50px;
@@ -2523,13 +2520,13 @@ ${
                                 background-color: ${progressPercentage >= 100 ? progressBarStyle.goalCompleteColor : progressBarStyle.secondaryColor};
                 "
               >
-                 
-                
 
-                  <img 
-                    src="${offer.badgeIconUrl ? offer.badgeIconUrl : offer.badgeIcon ? createObjectURL(offer.badgeIcon) : offer.icon}" 
-                    width="25px" 
-                    alt="${offer.rewardType} Icon" 
+
+
+                  <img
+                    src="${offer.badgeIconUrl ? offer.badgeIconUrl : offer.badgeIcon ? createObjectURL(offer.badgeIcon) : offer.icon}"
+                    width="25px"
+                    alt="${offer.rewardType} Icon"
                   />
               </div>
 
@@ -2548,9 +2545,9 @@ ${
 }
 
 
-                                        
+
                                                 </div>
-                                               
+
                                             </div>
                                         </div>
                                         <div class="cart-content">
