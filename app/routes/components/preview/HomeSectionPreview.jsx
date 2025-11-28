@@ -105,7 +105,6 @@ const HomeSectionPreview = ({
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           max-width: 100%;
           margin: 0 auto;
-          padding: 20px;
         }
 
         .preview-header {
@@ -127,8 +126,7 @@ const HomeSectionPreview = ({
         .bundled-offers-container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 20px;
-          background: ${backgroundColor};
+         
         }
 
         .section-title {
@@ -195,6 +193,7 @@ const HomeSectionPreview = ({
 
         .price-section {
           margin-bottom: 12px;
+          text-align: center;
         }
 
         .current-price {
@@ -264,7 +263,6 @@ const HomeSectionPreview = ({
         /* Responsive Design - Updated for 2 products per view */
         @media (max-width: 1024px) {
           .bundled-offers-container {
-            padding: 15px;
           }
           .product-card {
             flex: 0 0 calc(50% - 10px);

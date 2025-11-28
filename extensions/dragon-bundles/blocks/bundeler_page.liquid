@@ -81,7 +81,8 @@
   }
 
   @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0px);
     }
     50% {
@@ -135,8 +136,40 @@
     color: #fff;
     margin-top: 4px;
   }
-  .scroll-trigger{
-  padding:0px;}
+  .scroll-trigger {
+    padding: 0px;
+  }
+
+  /* Deals Container */
+  .deals-wrapper {
+    width: 100%;
+  }
+
+  .deal-item {
+    margin-bottom: 20px;
+  }
+
+  .deal-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .loading-deals {
+    text-align: center;
+    padding: 40px 20px;
+    color: #ffffff;
+    font-size: 18px;
+    background: linear-gradient(135deg, #e8014f 0%, #e8014f 50%, #e8014f 100%);
+    border-radius: 12px;
+  }
+
+  .no-deals {
+    text-align: center;
+    padding: 40px 20px;
+    color: #ffffff;
+    font-size: 18px;
+    background: linear-gradient(135deg, #e8014f 0%, #e8014f 50%, #e8014f 100%);
+    border-radius: 12px;
+  }
 
   @media (max-width: 768px) {
     .bundle-deals-banner {
@@ -202,43 +235,86 @@
     .bundle-shipping {
       font-size: 14px;
     }
+
+    .deal-item {
+      margin-bottom: 15px;
+    }
+
+    .loading-deals,
+    .no-deals {
+      padding: 30px 15px;
+      font-size: 16px;
+    }
   }
 </style>
 
-<div class="bundle-deals-banner">
-  <div class="bundle-container">
-    <div class="bundle-left">
-      <h1 class="bundle-title">Bundle deals</h1>
-      <div class="bundle-shipping">
-        <svg class="shipping-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M18 18.5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m1.5-9 1.96 2.5H17V9.5m-11 9A1.5 1.5 0 0 1 4.5 17 1.5 1.5 0 0 1 6 15.5 1.5 1.5 0 0 1 7.5 17 1.5 1.5 0 0 1 6 18.5M20 8h-3V4H3c-1.11 0-2 .89-2 2v11h2a3 3 0 0 0 3 3 3 3 0 0 0 3-3h6a3 3 0 0 0 3 3 3 3 0 0 0 3-3h2v-5l-3-4Z"/>
-        </svg>
-        <span>Free shipping on 3+ items</span>
-        <span class="bundle-arrow">›</span>
-      </div>
-    </div>
-
-    <div class="bundle-center">
-      <div class="basket-icon-wrapper">
-        <svg class="basket-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M17,18A2,2 0 0,1 19,20A2,2 0 0,1 17,22C15.89,22 15,21.1 15,20C15,18.89 15.89,18 17,18M1,2H4.27L5.21,4H20A1,1 0 0,1 21,5C21,5.17 20.95,5.34 20.88,5.5L17.3,11.97C16.96,12.58 16.3,13 15.55,13H8.1L7.2,14.63L7.17,14.75A0.25,0.25 0 0,0 7.42,15H19V17H7C5.89,17 5,16.1 5,15C5,14.65 5.09,14.32 5.24,14.04L6.6,11.59L3,4H1V2M7,18A2,2 0 0,1 9,20A2,2 0 0,1 7,22C5.89,22 5,21.1 5,20C5,18.89 5.89,18 7,18M16,11L18.78,6H6.14L8.5,11H16Z"/>
-          <path d="M20,14L20,17L23,17L23,19L20,19L20,22L18,22L18,19L15,19L15,17L18,17L18,14M9,20A2,2 0 0,1 7,22A2,2 0 0,1 5,20A2,2 0 0,1 7,18A2,2 0 0,1 9,20Z" fill="rgba(255,255,255,0.5)"/>
-        </svg>
-      </div>
-    </div>
-
-    <div class="bundle-right">
-      <div class="bundle-badge">BLACK FRIDAY</div>
-      <div class="bundle-timer">Ends: Dec 4, 12:59 (GMT+5)</div>
-      <h2 class="bundle-offer">Extra 20% off &</h2>
-      <div class="bundle-subtext">Buy more save more</div>
-    </div>
-  </div>
+<div class="deals-wrapper" id="deals-wrapper">
+  <div class="loading-deals">Loading deals...</div>
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('Bundle Deals Banner loaded');
+  document.addEventListener('DOMContentLoaded', async function () {
+    const App_Domain = 'https://wheels-ecological-egg-some.trycloudflare.com';
+    const shop = Shopify.shop;
+    const dealsWrapper = document.getElementById('deals-wrapper');
+
+    try {
+      // Fetch all deals from API
+      const response = await fetch(`${App_Domain}/api/deals/${shop}`);
+      if (!response.ok) throw new Error('Failed to fetch deals');
+
+      const data = await response.json();
+
+      if (!data.ok || !data.deals || data.deals.length === 0) {
+        dealsWrapper.innerHTML = '<div class="no-deals">No active deals available at the moment.</div>';
+        return;
+      }
+
+      // Render all deals
+      dealsWrapper.innerHTML = data.deals
+        .map(
+          (deal) => `
+        <div class="deal-item">
+          <div class="bundle-deals-banner">
+            <div class="bundle-container">
+              <div class="bundle-left">
+                <h1 class="bundle-title">${deal.name || 'Bundle deals'}</h1>
+                <div class="bundle-shipping">
+                  <svg class="shipping-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M18 18.5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m1.5-9 1.96 2.5H17V9.5m-11 9A1.5 1.5 0 0 1 4.5 17 1.5 1.5 0 0 1 6 15.5 1.5 1.5 0 0 1 7.5 17 1.5 1.5 0 0 1 6 18.5M20 8h-3V4H3c-1.11 0-2 .89-2 2v11h2a3 3 0 0 0 3 3 3 3 0 0 0 3-3h6a3 3 0 0 0 3 3 3 3 0 0 0 3-3h2v-5l-3-4Z"/>
+                  </svg>
+                  <span>Free shipping on 3+ items</span>
+                  <span class="bundle-arrow">›</span>
+                </div>
+              </div>
+
+              <div class="bundle-center">
+                <div class="basket-icon-wrapper">
+                  <svg class="basket-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M17,18A2,2 0 0,1 19,20A2,2 0 0,1 17,22C15.89,22 15,21.1 15,20C15,18.89 15.89,18 17,18M1,2H4.27L5.21,4H20A1,1 0 0,1 21,5C21,5.17 20.95,5.34 20.88,5.5L17.3,11.97C16.96,12.58 16.3,13 15.55,13H8.1L7.2,14.63L7.17,14.75A0.25,0.25 0 0,0 7.42,15H19V17H7C5.89,17 5,16.1 5,15C5,14.65 5.09,14.32 5.24,14.04L6.6,11.59L3,4H1V2M7,18A2,2 0 0,1 9,20A2,2 0 0,1 7,22C5.89,22 5,21.1 5,20C5,18.89 5.89,18 7,18M16,11L18.78,6H6.14L8.5,11H16Z"/>
+                    <path d="M20,14L20,17L23,17L23,19L20,19L20,22L18,22L18,19L15,19L15,17L18,17L18,14M9,20A2,2 0 0,1 7,22A2,2 0 0,1 5,20A2,2 0 0,1 7,18A2,2 0 0,1 9,20Z" fill="rgba(255,255,255,0.5)"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="bundle-right">
+                <div class="bundle-badge">${deal.badge || 'SPECIAL DEAL'}</div>
+                <div class="bundle-timer">${deal.timer || ''}</div>
+                <h2 class="bundle-offer">${deal.offerText || 'Special Offer'}</h2>
+                <div class="bundle-subtext">${deal.subtext || 'Buy more save more'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+        )
+        .join('');
+
+      console.log('Bundle Deals loaded:', data.deals.length, 'deals');
+    } catch (error) {
+      console.error('Error loading deals:', error);
+      dealsWrapper.innerHTML = '<div class="no-deals">Unable to load deals. Please try again later.</div>';
+    }
   });
 </script>
 

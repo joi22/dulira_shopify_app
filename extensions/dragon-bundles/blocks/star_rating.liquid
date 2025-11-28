@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://rivers-servers-garden-blades.trycloudflare.com';
+  const App_Domain = 'https://wheels-ecological-egg-some.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (progressPercent >= 100) {
       // ✅ Fix smart variables replacement for achieved goal
       const rewardDescription = offer.rewardType === 'discount' 
-        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '%' : '€'} Discount`
+        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '% Off!' : '€ Off!'}`
         : offer.rewardType === 'shipping' 
           ? 'Free Shipping'
           : 'Free Gift';
@@ -89,10 +89,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? `${offer.goalquantity || 0} items`
         : `€${offer.goalAmount || 0}`;
 
-      // Replace smart variables in goal achieved text
+      // Replace smart variables in goal achieved text (global replacement)
       let goalAchievedText = offer.goalTextAfter || '🎉 You\'ve unlocked {{reward}}!';
-      goalAchievedText = goalAchievedText.replace('{{reward}}', rewardDescription);
-      goalAchievedText = goalAchievedText.replace('{{goal}}', goal);
+      goalAchievedText = goalAchievedText.replace(/\{\{reward\}\}/g, rewardDescription);
+      goalAchievedText = goalAchievedText.replace(/\{\{goal\}\}/g, goal);
+      goalAchievedText = goalAchievedText.replace(/\{\{amount_left\}\}/g, '0');
 
       unlockText.innerText = goalAchievedText;
       freeShippingBanner.style.display = 'block';
@@ -104,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     } else {
       // ✅ Fix smart variables replacement
       const rewardDescription = offer.rewardType === 'discount' 
-        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '%' : '€'} Discount`
+        ? `${offer.discountCode}${offer.discountType === 'percentage' ? '% Off!' : '€ Off!'}`
         : offer.rewardType === 'shipping' 
           ? 'Free Shipping'
           : 'Free Gift';
@@ -117,11 +118,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? `${offer.goalquantity || 0} items`
         : `€${offer.goalAmount || 0}`;
 
-      // Replace smart variables in goal text
+      // Replace smart variables in goal text (global replacement)
       let goalText = offer.goalTextBefore || 'Add {{amount_left}} to unlock {{reward}}!';
-      goalText = goalText.replace('{{amount_left}}', amountLeft);
-      goalText = goalText.replace('{{reward}}', rewardDescription);
-      goalText = goalText.replace('{{goal}}', goal);
+      goalText = goalText.replace(/\{\{amount_left\}\}/g, amountLeft);
+      goalText = goalText.replace(/\{\{reward\}\}/g, rewardDescription);
+      goalText = goalText.replace(/\{\{goal\}\}/g, goal);
 
       unlockText.innerText = goalText;
 
@@ -134,6 +135,25 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
 
+
+  // --- GET OFFER ICON ---
+  function getOfferIcon(offer) {
+    // Check for database-stored icon (badgeImageUrl)
+    const icon = offer.badgeImageUrl;
+    
+    // If icon exists and is a valid URL or data URI, display it
+    if (icon && icon.trim() !== '' && (icon.startsWith('http') || icon.startsWith('https') || icon.startsWith('data:') || icon.startsWith('/'))) {
+      return `<img src="${icon}" alt="Offer Icon" class="offer-icon-img" style="width: 30px; height: 30px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 8px;">`;
+    }
+    
+    // Fallback to default emoji icons based on reward type
+    if (offer.rewardType === 'discount') return '<span class="offer-icon-emoji">💰</span>';
+    if (offer.rewardType === 'shipping') return '<span class="offer-icon-emoji">🚚</span>';
+    if (offer.rewardType === 'gift') return '<span class="offer-icon-emoji">🎁</span>';
+    
+    // Default icon
+    return '<span class="offer-icon-emoji">⭐</span>';
+  }
 
   // --- RENDER OFFER ---
   async function renderOffer(campaign, offer, freeGiftProducts, triggerProducts) {
@@ -176,8 +196,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? `APPLY DISCOUNT`
         : 'REDEEM FREE GIFT';
 
+    const offerIcon = getOfferIcon(offer);
     const cardContent = `
       <div class="offer-cards">
+      <div class="offer-icon-container">${offerIcon}</div>
       <div class="unlock-text" id="unlock-text-${offer.id}"></div>
         <div class="progress-container">
           <div class="progress-bar">
@@ -404,6 +426,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     width: 5%;
     transition: width 0.5s ease;
     border-radius: 10px;
+  }
+
+  /* Offer Icon Container */
+  .offer-icon-container {
+    text-align: center;
+    margin: 15px 0 10px 0;
+  }
+
+  .offer-icon-img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .offer-icon-emoji {
+    font-size: 30px;
+    display: inline-block;
+    vertical-align: middle;
   }
 
   /* Unlock Text */

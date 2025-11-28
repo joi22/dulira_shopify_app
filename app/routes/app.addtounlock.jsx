@@ -468,6 +468,9 @@ export default function AddToUnlock() {
   const [placement, setPlacement] = useState("");
   const [blockProducts, setBlockProducts] = useState([]);
   const [blockProductSearch, setBlockProductSearch] = useState("");
+  const [blockProductSelectionType, setBlockProductSelectionType] =
+    useState("all"); // "all", "products", "collections"
+  const [blockProductCollections, setBlockProductCollections] = useState([]);
   const [formattedGoalText, setFormattedGoalText] = useState(
     "Spend $50 to unlock a free gift!",
   );
@@ -612,6 +615,7 @@ export default function AddToUnlock() {
         buyCollectionPicker: [],
         rewardProducts: [],
         rewardCollection: [],
+        rewardSelectionType: "all", // "all", "products", "collections"
         goalTextBefore: "👉🏻 Add {{amount_left}} to unlock {{reward}}!",
         goalTextAfter: "🎉 You've unlocked {{reward}}!",
       },
@@ -645,6 +649,7 @@ export default function AddToUnlock() {
       buyCollectionPicker: [],
       rewardProducts: [],
       rewardCollection: [],
+      rewardSelectionType: "all", // "all", "products", "collections"
       goalTextBefore: "🛍 Add {{amount_left}} to unlock {{reward}}!",
       goalTextAfter: "🎉 You've unlocked {{reward}}!",
     };
@@ -992,6 +997,46 @@ export default function AddToUnlock() {
     }
   };
 
+  const blockCollectionPicker = async () => {
+    try {
+      if (typeof window === "undefined" || !window.shopify) {
+        console.warn("Shopify resource picker not available");
+        return;
+      }
+      const selected_collections = await window.shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+        action: "select",
+        selectionIds: blockProductCollections.map((col) => col.id),
+      });
+
+      if (selected_collections) {
+        const collections = selected_collections.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+        }));
+
+        const uniqueCollections = collections.filter(
+          (newColl) =>
+            !blockProductCollections.some(
+              (existing) => existing.id === newColl.id,
+            ),
+        );
+        setBlockProductCollections((prev) => [...prev, ...uniqueCollections]);
+      }
+    } catch (error) {
+      console.error("Error in block collection picker:", error);
+      shopify.toast.show("Failed to select block collections.", {
+        isError: true,
+      });
+    }
+  };
+
+  const removeBlockCollection = (id) => {
+    setBlockProductCollections((prev) => prev.filter((col) => col.id !== id));
+  };
+
   const rewardPicker = async (offerId) => {
     const currentOffer = offers.find((o) => o.id === offerId);
     if (!currentOffer) return;
@@ -1138,6 +1183,77 @@ export default function AddToUnlock() {
     }
   };
 
+  const rewardCollectionPicker = async (offerId) => {
+    const currentOffer = offers.find((o) => o.id === offerId);
+    if (!currentOffer) return;
+
+    try {
+      if (typeof window === "undefined" || !window.shopify) {
+        console.warn("Shopify resource picker not available");
+        return;
+      }
+
+      const selectedItems = await window.shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+        action: "select",
+        selectionIds: currentOffer.rewardCollection?.map((col) => col.id) || [],
+      });
+
+      if (selectedItems) {
+        const collections = selectedItems.map((item) => ({
+          id: item.id.split("/").pop(),
+          title: item.title,
+          handle: item.handle,
+        }));
+
+        // Filter out duplicates
+        const newCollections = collections.filter(
+          (c) => !currentOffer.rewardCollection?.some((rc) => rc.id === c.id),
+        );
+
+        setOffers((prev) =>
+          prev.map((offer) =>
+            offer.id === offerId
+              ? {
+                  ...offer,
+                  rewardCollection: [
+                    ...(currentOffer.rewardCollection || []),
+                    ...newCollections,
+                  ],
+                }
+              : offer,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Error in reward collection picker:", error);
+      if (
+        typeof window !== "undefined" &&
+        window.shopify &&
+        window.shopify.toast
+      ) {
+        window.shopify.toast.show("Failed to select reward collections.", {
+          isError: true,
+        });
+      }
+    }
+  };
+
+  const removeRewardCollection = (offerId, id) => {
+    setOffers((prev) =>
+      prev.map((offer) =>
+        offer.id === offerId
+          ? {
+              ...offer,
+              rewardCollection:
+                offer.rewardCollection?.filter((item) => item.id !== id) || [],
+            }
+          : offer,
+      ),
+    );
+  };
+
   const removeRewardProduct = (offerId, id) => {
     setOffers((prev) => {
       const currentOffer = prev.find((o) => o.id === offerId);
@@ -1203,6 +1319,8 @@ export default function AddToUnlock() {
     upsellselectedItems,
     selectedCollections,
     blockProducts,
+    blockProductSelectionType,
+    blockProductCollections,
     placement,
     offers,
     status,
@@ -1406,9 +1524,24 @@ export default function AddToUnlock() {
           currentDealType === "flame" || offer.rewardMode === "flame";
 
         if (isFixedDeal) {
-          if (offer.rewardProducts.length !== 1) {
+          // For fixed deal, if using specific products, must have exactly 1
+          if (
+            offer.rewardSelectionType === "products" &&
+            offer.rewardProducts.length !== 1
+          ) {
             shopify.toast.show(
-              `Offer ${index + 1}: Fixed Deal requires exactly 1 reward product. Currently ${offer.rewardProducts.length} product(s) selected.`,
+              `Offer ${index + 1}: Fixed Deal requires exactly 1 reward product when using Specific Products. Currently ${offer.rewardProducts.length} product(s) selected.`,
+              { isError: true },
+            );
+            return;
+          }
+          // For fixed deal with collections, at least 1 collection is required
+          if (
+            offer.rewardSelectionType === "collections" &&
+            (!offer.rewardCollection || offer.rewardCollection.length === 0)
+          ) {
+            shopify.toast.show(
+              `Offer ${index + 1}: Fixed Deal requires at least 1 reward collection when using Specific Collections.`,
               { isError: true },
             );
             return;
@@ -1416,12 +1549,17 @@ export default function AddToUnlock() {
         }
 
         if (isFlameMatch) {
-          if (
-            offer.rewardProducts.length < 2 &&
-            offer.rewardCollection.length === 0
-          ) {
+          const hasEnoughRewards =
+            offer.rewardSelectionType === "all" ||
+            (offer.rewardSelectionType === "products" &&
+              offer.rewardProducts.length >= 2) ||
+            (offer.rewardSelectionType === "collections" &&
+              offer.rewardCollection &&
+              offer.rewardCollection.length > 0);
+
+          if (!hasEnoughRewards) {
             shopify.toast.show(
-              `Offer ${index + 1}: Flame Match requires at least 2 reward products. Currently ${offer.rewardProducts.length} product(s) selected.`,
+              `Offer ${index + 1}: Flame Match requires at least 2 reward products or 1+ collection(s). Currently ${offer.rewardSelectionType === "products" ? offer.rewardProducts.length : offer.rewardCollection?.length || 0} selected.`,
               { isError: true },
             );
             return;
@@ -1499,8 +1637,13 @@ export default function AddToUnlock() {
       formData.append("upsell_allproducts", "true");
     }
 
-    // Append block products
+    // Append block products and selection type
     formData.append("blockProducts", JSON.stringify(blockProducts));
+    formData.append("blockProductSelectionType", blockProductSelectionType);
+    formData.append(
+      "blockProductCollections",
+      JSON.stringify(blockProductCollections),
+    );
 
     // Append offers (including gift items)
     formData.append("offers", JSON.stringify(offers));
@@ -3123,12 +3266,15 @@ ${
                 <Card>
                   <BlockStack gap="200">
                     <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Block Products
+                      Block Products{" "}
+                      <Text tone="subdued" variant="bodySm">
+                        (Optional)
+                      </Text>
                     </Text>
                     <Text as="p">
                       Choose which products will appear in the upsell block.
                       These are the products customers will see in the upsell
-                      widget.
+                      widget. If not selected, trigger products will be shown.
                     </Text>
                     {!placement && (
                       <Banner tone="info">
@@ -3146,69 +3292,168 @@ ${
                         </Text>
                       </Banner>
                     )}
-                    <Box padding="200" borderStyle="base">
-                      <BlockStack gap="200">
-                        <Text as="h3" variant="headingSm" fontWeight="bold">
-                          Selected Block Products
-                        </Text>
-                        <InlineStack gap="200">
-                          <Button
-                            onClick={blockProductPicker}
-                            size="medium"
-                            disabled={
-                              !placement || (!dealType && !dealTypeFromUrl)
-                            }
-                            accessibilityLabel="Browse products for upsell block"
-                          >
-                            Browse Block Products
-                          </Button>
-                        </InlineStack>
-                        {filteredBlockProducts.length > 0 ? (
-                          <ResourceList
-                            resourceName={{
-                              singular: "block product",
-                              plural: "block products",
-                            }}
-                            items={filteredBlockProducts}
-                            renderItem={(item) => {
-                              const { id, title, handle, price, media } = item;
-                              return (
-                                <ResourceItem id={id}>
-                                  <InlineStack align="space-between" gap="300">
-                                    <InlineStack gap="300" align="center">
-                                      {media && (
-                                        <Image
-                                          source={media}
-                                          alt={title}
-                                          width="60px"
-                                        />
-                                      )}
+                    <InlineStack gap="200">
+                      <RadioButton
+                        label="All Products"
+                        checked={blockProductSelectionType === "all"}
+                        name="blockProductType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => {
+                          setBlockProductSelectionType("all");
+                          setBlockProducts([]);
+                          setBlockProductCollections([]);
+                        }}
+                      />
+                      <RadioButton
+                        label="Specific Products"
+                        checked={blockProductSelectionType === "products"}
+                        name="blockProductType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => {
+                          setBlockProductSelectionType("products");
+                          setBlockProductCollections([]);
+                        }}
+                      />
+                      <RadioButton
+                        label="Specific Collections"
+                        checked={blockProductSelectionType === "collections"}
+                        name="blockProductType"
+                        disabled={!placement || (!dealType && !dealTypeFromUrl)}
+                        onChange={() => {
+                          setBlockProductSelectionType("collections");
+                          setBlockProducts([]);
+                        }}
+                      />
+                    </InlineStack>
+                    {blockProductSelectionType === "products" && (
+                      <Box padding="200" borderStyle="base">
+                        <BlockStack gap="200">
+                          <Text as="h3" variant="headingSm" fontWeight="bold">
+                            Selected Block Products
+                          </Text>
+                          <InlineStack gap="200">
+                            <Button
+                              onClick={blockProductPicker}
+                              size="medium"
+                              disabled={
+                                !placement || (!dealType && !dealTypeFromUrl)
+                              }
+                              accessibilityLabel="Browse products for upsell block"
+                            >
+                              Browse Block Products
+                            </Button>
+                          </InlineStack>
+                          {filteredBlockProducts.length > 0 ? (
+                            <ResourceList
+                              resourceName={{
+                                singular: "block product",
+                                plural: "block products",
+                              }}
+                              items={filteredBlockProducts}
+                              renderItem={(item) => {
+                                const { id, title, handle, price, media } =
+                                  item;
+                                return (
+                                  <ResourceItem id={id}>
+                                    <InlineStack
+                                      align="space-between"
+                                      gap="300"
+                                    >
+                                      <InlineStack gap="300" align="center">
+                                        {media && (
+                                          <Image
+                                            source={media}
+                                            alt={title}
+                                            width="60px"
+                                          />
+                                        )}
+                                        <BlockStack>
+                                          <Text fontWeight="bold">{title}</Text>
+                                          <Text>Price: ${price}</Text>
+                                          <Text>Handle: {handle}</Text>
+                                        </BlockStack>
+                                      </InlineStack>
+                                      <Button
+                                        tone="critical"
+                                        onClick={() => removeBlockProduct(id)}
+                                        size="medium"
+                                      >
+                                        Remove
+                                      </Button>
+                                    </InlineStack>
+                                  </ResourceItem>
+                                );
+                              }}
+                            />
+                          ) : (
+                            <Text>
+                              No block products selected. Products shown in the
+                              upsell block will be the trigger products.
+                            </Text>
+                          )}
+                        </BlockStack>
+                      </Box>
+                    )}
+                    {blockProductSelectionType === "collections" && (
+                      <Box padding="200" borderStyle="base">
+                        <BlockStack gap="200">
+                          <Text as="h3" variant="headingSm" fontWeight="bold">
+                            Selected Block Collections
+                          </Text>
+                          <InlineStack gap="200">
+                            <Button
+                              onClick={blockCollectionPicker}
+                              size="medium"
+                              disabled={
+                                !placement || (!dealType && !dealTypeFromUrl)
+                              }
+                              accessibilityLabel="Browse collections for upsell block"
+                            >
+                              Browse Block Collections
+                            </Button>
+                          </InlineStack>
+                          {blockProductCollections.length > 0 ? (
+                            <ResourceList
+                              resourceName={{
+                                singular: "block collection",
+                                plural: "block collections",
+                              }}
+                              items={blockProductCollections}
+                              renderItem={(item) => {
+                                const { id, title, handle } = item;
+                                return (
+                                  <ResourceItem id={id}>
+                                    <InlineStack
+                                      align="space-between"
+                                      gap="300"
+                                    >
                                       <BlockStack>
                                         <Text fontWeight="bold">{title}</Text>
-                                        <Text>Price: ${price}</Text>
                                         <Text>Handle: {handle}</Text>
                                       </BlockStack>
+                                      <Button
+                                        tone="critical"
+                                        onClick={() =>
+                                          removeBlockCollection(id)
+                                        }
+                                        size="medium"
+                                      >
+                                        Remove
+                                      </Button>
                                     </InlineStack>
-                                    <Button
-                                      tone="critical"
-                                      onClick={() => removeBlockProduct(id)}
-                                      size="medium"
-                                    >
-                                      Remove
-                                    </Button>
-                                  </InlineStack>
-                                </ResourceItem>
-                              );
-                            }}
-                          />
-                        ) : (
-                          <Text>
-                            No block products selected. Products shown in the
-                            upsell block will be the trigger products.
-                          </Text>
-                        )}
-                      </BlockStack>
-                    </Box>
+                                  </ResourceItem>
+                                );
+                              }}
+                            />
+                          ) : (
+                            <Text>
+                              No block collections selected. Products shown in
+                              the upsell block will be the trigger products.
+                            </Text>
+                          )}
+                        </BlockStack>
+                      </Box>
+                    )}
                   </BlockStack>
                 </Card>
 
@@ -3819,10 +4064,23 @@ ${
                                           </Text>
                                           <Text tone="subdued" variant="bodySm">
                                             Selected:{" "}
-                                            {offer.rewardProducts.length}/1
+                                            {offer.rewardSelectionType ===
+                                            "products"
+                                              ? `${offer.rewardProducts.length}/1`
+                                              : offer.rewardSelectionType ===
+                                                  "collections"
+                                                ? `${offer.rewardCollection?.length || 0} collection(s)`
+                                                : "All Products"}
                                           </Text>
-                                          {offer.rewardProducts.length ===
-                                            0 && (
+                                          {(offer.rewardSelectionType ===
+                                            "products" &&
+                                            offer.rewardProducts.length ===
+                                              0) ||
+                                          (offer.rewardSelectionType ===
+                                            "collections" &&
+                                            (!offer.rewardCollection ||
+                                              offer.rewardCollection.length ===
+                                                0)) ? (
                                             <Text
                                               tone="subdued"
                                               variant="bodySm"
@@ -3832,13 +4090,21 @@ ${
                                               the free gift will apply to
                                               trigger products.
                                             </Text>
-                                          )}
+                                          ) : null}
                                         </Banner>
                                       )}
                                       {isFlameMatch && (
                                         <Banner
                                           tone={
-                                            offer.rewardProducts.length >= 2
+                                            (offer.rewardSelectionType ===
+                                              "products" &&
+                                              offer.rewardProducts.length >=
+                                                2) ||
+                                            (offer.rewardSelectionType ===
+                                              "collections" &&
+                                              offer.rewardCollection?.length >
+                                                0) ||
+                                            offer.rewardSelectionType === "all"
                                               ? "success"
                                               : "warning"
                                           }
@@ -3850,11 +4116,23 @@ ${
                                           </Text>
                                           <Text tone="subdued" variant="bodySm">
                                             Selected:{" "}
-                                            {offer.rewardProducts.length}/2
-                                            (minimum)
+                                            {offer.rewardSelectionType ===
+                                            "products"
+                                              ? `${offer.rewardProducts.length}/2 (minimum)`
+                                              : offer.rewardSelectionType ===
+                                                  "collections"
+                                                ? `${offer.rewardCollection?.length || 0} collection(s)`
+                                                : "All Products"}
                                           </Text>
-                                          {offer.rewardProducts.length ===
-                                            0 && (
+                                          {(offer.rewardSelectionType ===
+                                            "products" &&
+                                            offer.rewardProducts.length ===
+                                              0) ||
+                                          (offer.rewardSelectionType ===
+                                            "collections" &&
+                                            (!offer.rewardCollection ||
+                                              offer.rewardCollection.length ===
+                                                0)) ? (
                                             <Text
                                               tone="subdued"
                                               variant="bodySm"
@@ -3864,67 +4142,171 @@ ${
                                               the free gift will apply to
                                               trigger products.
                                             </Text>
-                                          )}
+                                          ) : null}
                                         </Banner>
                                       )}
                                     </>
                                   );
                                 })()}
-                                <Button
-                                  onClick={() => rewardPicker(offer.id)}
-                                  variant="primary"
-                                  size="medium"
-                                  disabled={
-                                    (dealType === "fixed" ||
-                                      offer.rewardMode === "fixed") &&
-                                    offer.rewardProducts.length >= 1
-                                  }
-                                >
-                                  {(() => {
-                                    const currentDealType =
-                                      dealType || offer.rewardMode;
-                                    const isFixedDeal =
-                                      currentDealType === "fixed" ||
-                                      offer.rewardMode === "fixed";
-                                    if (
-                                      isFixedDeal &&
-                                      offer.rewardProducts.length >= 1
-                                    ) {
-                                      return "1 Product Selected (Max Reached)";
+
+                                <Text variant="bodySm" fontWeight="medium">
+                                  Choose what to include in the reward
+                                  selection:
+                                </Text>
+                                <InlineStack gap="200">
+                                  <RadioButton
+                                    label="All Products"
+                                    checked={
+                                      offer.rewardSelectionType === "all"
                                     }
-                                    return "Select Free Products";
-                                  })()}
-                                </Button>
-                                {offer.rewardProducts.length > 0 && (
-                                  <Box paddingBlockStart="200">
-                                    <Text fontWeight="semibold">
-                                      Selected Free Products (
-                                      {offer.rewardProducts.length}):
-                                    </Text>
-                                    <BlockStack gap="100">
-                                      {offer.rewardProducts.map((item) => (
-                                        <InlineStack
-                                          key={item.id}
-                                          align="space-between"
-                                          blockAlign="center"
-                                        >
-                                          <Text>{item.title}</Text>
-                                          <Button
-                                            tone="critical"
-                                            size="medium"
-                                            onClick={() =>
-                                              removeRewardProduct(
-                                                offer.id,
-                                                item.id,
-                                              )
-                                            }
-                                          >
-                                            Remove
-                                          </Button>
-                                        </InlineStack>
-                                      ))}
-                                    </BlockStack>
-                                  </Box>
+                                    name={`rewardSelectionType-${offer.id}`}
+                                    onChange={() => {
+                                      updateOffer(
+                                        offer.id,
+                                        "rewardSelectionType",
+                                        "all",
+                                      );
+                                    }}
+                                  />
+                                  <RadioButton
+                                    label="Specific Products"
+                                    checked={
+                                      offer.rewardSelectionType === "products"
+                                    }
+                                    name={`rewardSelectionType-${offer.id}`}
+                                    onChange={() => {
+                                      updateOffer(
+                                        offer.id,
+                                        "rewardSelectionType",
+                                        "products",
+                                      );
+                                    }}
+                                  />
+                                  <RadioButton
+                                    label="Specific Collections"
+                                    checked={
+                                      offer.rewardSelectionType ===
+                                      "collections"
+                                    }
+                                    name={`rewardSelectionType-${offer.id}`}
+                                    onChange={() => {
+                                      updateOffer(
+                                        offer.id,
+                                        "rewardSelectionType",
+                                        "collections",
+                                      );
+                                    }}
+                                  />
+                                </InlineStack>
+
+                                {offer.rewardSelectionType === "products" && (
+                                  <>
+                                    <Button
+                                      onClick={() => rewardPicker(offer.id)}
+                                      variant="primary"
+                                      size="medium"
+                                      disabled={
+                                        (dealType === "fixed" ||
+                                          offer.rewardMode === "fixed") &&
+                                        offer.rewardProducts.length >= 1
+                                      }
+                                    >
+                                      {(() => {
+                                        const currentDealType =
+                                          dealType || offer.rewardMode;
+                                        const isFixedDeal =
+                                          currentDealType === "fixed" ||
+                                          offer.rewardMode === "fixed";
+                                        if (
+                                          isFixedDeal &&
+                                          offer.rewardProducts.length >= 1
+                                        ) {
+                                          return "1 Product Selected (Max Reached)";
+                                        }
+                                        return "Select Reward Products";
+                                      })()}
+                                    </Button>
+                                    {offer.rewardProducts.length > 0 && (
+                                      <Box paddingBlockStart="200">
+                                        <Text fontWeight="semibold">
+                                          Selected Reward Products (
+                                          {offer.rewardProducts.length}):
+                                        </Text>
+                                        <BlockStack gap="100">
+                                          {offer.rewardProducts.map((item) => (
+                                            <InlineStack
+                                              key={item.id}
+                                              align="space-between"
+                                              blockAlign="center"
+                                            >
+                                              <Text>{item.title}</Text>
+                                              <Button
+                                                tone="critical"
+                                                size="medium"
+                                                onClick={() =>
+                                                  removeRewardProduct(
+                                                    offer.id,
+                                                    item.id,
+                                                  )
+                                                }
+                                              >
+                                                Remove
+                                              </Button>
+                                            </InlineStack>
+                                          ))}
+                                        </BlockStack>
+                                      </Box>
+                                    )}
+                                  </>
+                                )}
+
+                                {offer.rewardSelectionType ===
+                                  "collections" && (
+                                  <>
+                                    <Button
+                                      onClick={() =>
+                                        rewardCollectionPicker(offer.id)
+                                      }
+                                      variant="primary"
+                                      size="medium"
+                                    >
+                                      Select Reward Collections
+                                    </Button>
+                                    {offer.rewardCollection &&
+                                      offer.rewardCollection.length > 0 && (
+                                        <Box paddingBlockStart="200">
+                                          <Text fontWeight="semibold">
+                                            Selected Reward Collections (
+                                            {offer.rewardCollection.length}):
+                                          </Text>
+                                          <BlockStack gap="100">
+                                            {offer.rewardCollection.map(
+                                              (item) => (
+                                                <InlineStack
+                                                  key={item.id}
+                                                  align="space-between"
+                                                  blockAlign="center"
+                                                >
+                                                  <Text>{item.title}</Text>
+                                                  <Button
+                                                    tone="critical"
+                                                    size="medium"
+                                                    onClick={() =>
+                                                      removeRewardCollection(
+                                                        offer.id,
+                                                        item.id,
+                                                      )
+                                                    }
+                                                  >
+                                                    Remove
+                                                  </Button>
+                                                </InlineStack>
+                                              ),
+                                            )}
+                                          </BlockStack>
+                                        </Box>
+                                      )}
+                                  </>
                                 )}
                               </BlockStack>
                             )}

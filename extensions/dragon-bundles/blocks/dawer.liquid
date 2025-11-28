@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://rivers-servers-garden-blades.trycloudflare.com';
+    const App_Domain = 'https://wheels-ecological-egg-some.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -220,13 +220,24 @@
     }
 
     function getOfferIcon(offer) {
+      // Check for database-stored icon (badgeImageUrl)
       const icon = offer.badgeImageUrl;
-      if (icon && (icon.startsWith('http') || icon.startsWith('data:'))) {
-        return `<img src="${icon}" alt="Offer Icon" style="width: 25px; position: relative; top: 5px;">`;
+
+      // If icon exists and is a valid URL or data URI, display it
+      if (
+        icon &&
+        icon.trim() !== '' &&
+        (icon.startsWith('http') || icon.startsWith('https') || icon.startsWith('data:') || icon.startsWith('/'))
+      ) {
+        return `<img src="${icon}" alt="Offer Icon" style="width: 25px; height: 25px; object-fit: contain; display: block; margin: 0 auto;">`;
       }
+
+      // Fallback to default emoji icons based on reward type
       if (offer.rewardType === 'discount') return '💰';
       if (offer.rewardType === 'shipping') return '🚚';
       if (offer.rewardType === 'gift') return '🎁';
+
+      // Default icon
       return '⭐';
     }
 
@@ -395,7 +406,96 @@
       });
     }
 
-    function renderSegmentProgressBar(container, offers, cartData, customization, Gifts) {
+    function renderTriggerProducts(drawer, triggerProducts, cartData) {
+      if (!triggerProducts || !triggerProducts.length) return;
+      if (!drawer) return;
+
+      // Find or create trigger products container after cart items
+      const cartItems = drawer.querySelector('cart-drawer-items') || drawer.querySelector('.cart-drawer-items');
+      if (!cartItems) return;
+
+      let triggerBox = drawer.querySelector('.trigger_products_box');
+      if (!triggerBox) {
+        triggerBox = document.createElement('div');
+        triggerBox.className = 'trigger_products_box';
+        // Insert after cart items
+        cartItems.parentNode.insertBefore(triggerBox, cartItems.nextSibling);
+      }
+
+      triggerBox.style.display = 'block';
+
+      let gridHtml = `
+      <div class="gift-section">
+        <div class="gift-section-title">💰 Discount Products</div>
+        <div class="gift-items-container">
+    `;
+      triggerProducts.forEach((prod) => {
+        gridHtml += `
+        <div class="gift-item">
+          <div class="gift-item-image">
+            <img src="${prod.media || 'https://via.placeholder.com/150'}" alt="${
+          prod.productTitle || prod.title || 'Product'
+        }">
+          </div>
+          <div class="gift-item-details">
+            <div class="gift-item-title">
+              ${prod.productTitle || prod.title || 'Product'}
+            </div>
+            <div class="gift-item-actions">
+              <button class="add-to-cart-btn" data-variant="${prod.variantId}">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      });
+
+      gridHtml += `</div></div>`;
+      triggerBox.innerHTML = gridHtml;
+
+      triggerBox.querySelectorAll('.add-to-cart-btn').forEach((btn) => {
+        btn.addEventListener('click', async function () {
+          const variantId = this.getAttribute('data-variant');
+          this.disabled = true;
+          this.innerText = 'Adding...';
+          try {
+            const response = await fetch('/cart/add.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: variantId, quantity: 1 }),
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to add product to cart');
+            }
+
+            // Wait for cart to update
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            // Update progress bar
+            await updateProgressBar();
+
+            // Trigger all cart refresh methods
+            await Promise.all([refreshCartDrawer(), updateCartCount(), triggerCartEvents()]);
+
+            // Force refresh after small delay
+            setTimeout(() => {
+              forceCartDrawerRefresh();
+            }, 200);
+
+            this.innerText = 'Added ✓';
+          } catch (err) {
+            console.error('Error adding trigger product:', err);
+            this.disabled = false;
+            this.innerText = 'Add';
+            alert('Failed to add product to cart. Please try again.');
+          }
+        });
+      });
+    }
+
+    function renderSegmentProgressBar(container, offers, cartData, customization, Gifts, triggerProducts) {
       // Parse customization object - barColors is stored as JSON string
       let barColors = {};
       let barRadius = 'round';
@@ -433,11 +533,6 @@
 
       // ✅ Check if cart just became complete
       const isComplete = isCartComplete(offers, cartData);
-
-      // Trigger confetti when cart becomes complete
-      if (isComplete && !wasComplete && typeof confetti !== 'undefined') {
-        triggerConfetti();
-      }
 
       wasComplete = isComplete;
 
@@ -483,7 +578,34 @@
             rawGoalText = 'Unlock your reward!';
           }
 
+          // Replace smart variables
           goalText = rawGoalText.replace(/\{\{\s*reward\s*\}\}/g, reward);
+
+          // Replace amount_left and goal variables if not goal reached
+          if (!isGoalReached) {
+            const amountLeft =
+              activeOffer.goalType === 'quantity'
+                ? `${Math.max(parseFloat(activeOffer.goalQuantity || 0) - (cartData.item_count || 0), 0)} items`
+                : `€${Math.max(
+                    parseFloat(activeOffer.goalAmount || 0) - (parseFloat(cartData.total_price) / 100 || 0),
+                    0
+                  ).toFixed(2)}`;
+            const goal =
+              activeOffer.goalType === 'quantity'
+                ? `${activeOffer.goalQuantity || 0} items`
+                : `€${activeOffer.goalAmount || 0}`;
+
+            goalText = goalText.replace(/\{\{\s*amount_left\s*\}\}/g, amountLeft);
+            goalText = goalText.replace(/\{\{\s*goal\s*\}\}/g, goal);
+          } else {
+            // Goal reached - replace goal variable
+            const goal =
+              activeOffer.goalType === 'quantity'
+                ? `${activeOffer.goalQuantity || 0} items`
+                : `€${activeOffer.goalAmount || 0}`;
+            goalText = goalText.replace(/\{\{\s*goal\s*\}\}/g, goal);
+            goalText = goalText.replace(/\{\{\s*amount_left\s*\}\}/g, '0');
+          }
         }
       }
 
@@ -522,12 +644,20 @@
         </div>
       `;
 
-        if (unlocked && (offer.rewardType === 'gift' || offer.rewardType === 'product')) {
-          if (Gifts && Gifts.length) {
-            // Pass the drawer container to render gifts
-            const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
-            if (drawer) {
-              renderRewardProducts(drawer, Gifts, cartData);
+        // Show products based on reward type
+        if (unlocked) {
+          const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
+          if (drawer) {
+            if (offer.rewardType === 'discount') {
+              // For discount rewards, show trigger products
+              if (triggerProducts && triggerProducts.length) {
+                renderTriggerProducts(drawer, triggerProducts, cartData);
+              }
+            } else if (offer.rewardType === 'gift' || offer.rewardType === 'product') {
+              // For gift/product rewards, show reward products
+              if (Gifts && Gifts.length) {
+                renderRewardProducts(drawer, Gifts, cartData);
+              }
             }
           }
         }
@@ -562,6 +692,7 @@
         const Offers = currentCampaignData.offers || [];
         const customization = currentCustomization;
         const Gifts = currentCampaignData.rewardProducts || [];
+        const triggerProducts = currentCampaignData.triggerProducts || [];
 
         // Store gifts globally for use in gift buttons
         currentGifts = Gifts;
@@ -595,7 +726,7 @@
         // Don't manipulate display, let CSS handle it
 
         if (currentCampaignData.type === 'add_to_unlock') {
-          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts);
+          renderSegmentProgressBar(upsellContainer, Offers, cartData, customization, Gifts, triggerProducts);
         }
       } catch (err) {
         console.error('Error updating progress bar:', err);
@@ -750,51 +881,7 @@
       document.addEventListener('cart-drawer:close', updateProgressBar);
     }
 
-    // Load confetti library
-    function loadConfettiLibrary() {
-      if (typeof confetti === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
-        script.onload = () => console.log('Confetti library loaded');
-        document.head.appendChild(script);
-      }
-    }
-
-    // Trigger confetti animation when goal is completed
-    function triggerConfetti() {
-      if (typeof confetti === 'undefined') {
-        console.log('Confetti library not loaded yet');
-        return;
-      }
-
-      // Create multiple bursts for a more impressive effect
-      const duration = 3000;
-      const end = Date.now() + duration;
-
-      (function frame() {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336'],
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336'],
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      })();
-    }
-
     // Initialize
-    loadConfettiLibrary();
     waitForDrawer(() => {
       const drawer = document.querySelector('cart-drawer') || document.querySelector('.cart-drawer');
 
@@ -834,7 +921,7 @@
     background: white;
     padding: 20px;
     border-radius: 10px;
-    /* FIX: Ensure it doesn't interfere with scrolling and stays above confetti */
+    /* FIX: Ensure it doesn't interfere with scrolling */
     position: relative;
     z-index: 1001;
     /* FIX: Always keep progress bar visible */
@@ -892,6 +979,18 @@
     background: #ddd;
     color: #000;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .progress_step .circle img {
+    width: 25px;
+    height: 25px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
   }
 
   .progress_step .step_goal {
@@ -1024,7 +1123,8 @@
     max-height: calc(100% - 200px);
   }
 
-  .gift_box {
+  .gift_box,
+  .trigger_products_box {
     /* FIX: Ensure gift section doesn't break layout */
     width: 100%;
     box-sizing: border-box;

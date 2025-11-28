@@ -1,9 +1,11 @@
 import prisma from "../../db.server";
 
-
-const Reward_collection = async (reward_collection, shop, accessToken, campaignId) => {
-
-
+const Reward_collection = async (
+  reward_collection,
+  shop,
+  accessToken,
+  campaignId,
+) => {
   for (const colId of reward_collection.map((items) => items.id)) {
     const gid = `gid://shopify/Collection/${colId}`;
     const gql = `
@@ -45,14 +47,17 @@ const Reward_collection = async (reward_collection, shop, accessToken, campaignI
       }
     `;
 
-    const response = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken,
+    const response = await fetch(
+      `https://${shop}/admin/api/2024-10/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+        body: JSON.stringify({ query: gql }),
       },
-      body: JSON.stringify({ query: gql }),
-    });
+    );
 
     const result = await response.json();
     const products = result?.data?.collection?.products?.edges || [];
@@ -61,9 +66,9 @@ const Reward_collection = async (reward_collection, shop, accessToken, campaignI
       campaignId,
       productId: node.id.split("/").pop(),
       title: node.title,
-      price: node.variants?.edges?.[0]?.node?.price || '0.00',
-      variantId: node.variants?.edges?.[0]?.node?.id.split("/").pop() || '',
-      media: node.media?.edges?.[0]?.node?.preview?.image?.url || '',
+      price: node.variants?.edges?.[0]?.node?.price || "0.00",
+      variantId: node.variants?.edges?.[0]?.node?.id.split("/").pop() || "",
+      media: node.media?.edges?.[0]?.node?.preview?.image?.url || "",
     }));
 
     if (productData.length > 0) {
@@ -75,7 +80,6 @@ const Reward_collection = async (reward_collection, shop, accessToken, campaignI
   }
 };
 
-
 export const add_to_unlock_ = async (
   shop,
   accessToken,
@@ -84,7 +88,6 @@ export const add_to_unlock_ = async (
   offers,
   admin,
 ) => {
-
   console.log(
     shop,
     accessToken,
@@ -92,7 +95,7 @@ export const add_to_unlock_ = async (
     selectedProducts,
     offers,
     admin,
-  )
+  );
   try {
     let discountIds = [];
 
@@ -119,7 +122,8 @@ export const add_to_unlock_ = async (
 
       if (rewardType === "gift") {
         // ✅ Handle gift BXGY
-        const discount = await admin.graphql(`
+        const discount = await admin.graphql(
+          `
         mutation CreateBxgyDiscount($automaticBxgyDiscount: DiscountAutomaticBxgyInput!) {
           discountAutomaticBxgyCreate(automaticBxgyDiscount: $automaticBxgyDiscount) {
             automaticDiscountNode {
@@ -129,55 +133,104 @@ export const add_to_unlock_ = async (
             userErrors { field message }
           }
         }
-      `, {
-          variables: {
-            automaticBxgyDiscount: {
-              title: `Offer-${offerId}-${Date.now()}`,
-              startsAt: new Date().toISOString(),
-              customerBuys: {
-                value: goalquantity
-                  ? { quantity: String(goalquantity) }
-                  : { amount: String(goalAmount) },
-                items: selectedProducts?.length
-                  ? {
-                    products: {
-                      productsToAdd: selectedProducts.map(
-                        (item) => `gid://shopify/Product/${item.id}`
-                      ),
-                    },
-                  }
-                  : {
-                    collections: {
-                      add: buyCollectionPicker.map(
-                        (c) => `gid://shopify/Collection/${c.id}`
-                      ),
+      `,
+          {
+            variables: {
+              automaticBxgyDiscount: {
+                title: `Offer-${offerId}-${Date.now()}`,
+                startsAt: new Date().toISOString(),
+                customerBuys: {
+                  value: goalquantity
+                    ? { quantity: String(goalquantity) }
+                    : { amount: String(goalAmount) },
+                  items: selectedProducts?.length
+                    ? {
+                        products: {
+                          productsToAdd: selectedProducts.map(
+                            (item) => `gid://shopify/Product/${item.id}`,
+                          ),
+                        },
+                      }
+                    : {
+                        collections: {
+                          add: buyCollectionPicker.map(
+                            (c) => `gid://shopify/Collection/${c.id}`,
+                          ),
+                        },
+                      },
+                  isOneTimePurchase: true,
+                  isSubscription: false,
+                },
+                customerGets: {
+                  value: {
+                    discountOnQuantity: {
+                      quantity: "1",
+                      effect: { percentage: 1.0 },
                     },
                   },
-                isOneTimePurchase: true,
-                isSubscription: false,
-              },
-              customerGets: {
-                value: { discountOnQuantity: { quantity: "1", effect: { percentage: 1.0 } } },
-                items: {
-                  products: {
-                    productsToAdd: rewardProducts.map(
-                      (p) => `gid://shopify/Product/${p.id}`
-                    ),
+                  items: {
+                    products: {
+                      productsToAdd: rewardProducts.map(
+                        (p) => `gid://shopify/Product/${p.id}`,
+                      ),
+                    },
                   },
                 },
               },
             },
           },
-        });
+        );
 
         const response = await discount.json();
         discountId =
-          response?.data?.discountAutomaticBxgyCreate?.automaticDiscountNode?.id;
+          response?.data?.discountAutomaticBxgyCreate?.automaticDiscountNode
+            ?.id;
 
-        console.log(response?.data?.discountAutomaticBxgyCreate, " ,✅ Gift BXGY created for offer", offerId, discountId);
+        console.log(
+          response?.data?.discountAutomaticBxgyCreate,
+          " ,✅ Gift BXGY created for offer",
+          offerId,
+          discountId,
+        );
       } else if (rewardType === "discount") {
-        // ✅ Handle discount offer
-        const discount = await admin.graphql(`
+        // ✅ Handle discount offer - Apply discount to reward products/collections only, not trigger or block products
+        // Determine what to apply discount to: reward products or reward collections
+        const hasRewardProducts = rewardProducts && rewardProducts.length > 0;
+        const hasRewardCollections =
+          rewardCollection && rewardCollection.length > 0;
+
+        // If no reward products or collections, skip creating discount
+        if (!hasRewardProducts && !hasRewardCollections) {
+          console.warn(
+            `⚠️ No reward products or collections found for discount offer ${offerId}. Skipping discount creation.`,
+          );
+          continue;
+        }
+
+        // Build items object based on what's available
+        let discountItems = {};
+        if (hasRewardProducts) {
+          // Apply discount to reward products
+          discountItems = {
+            products: {
+              productsToAdd: rewardProducts.map(
+                (p) => `gid://shopify/Product/${p.id}`,
+              ),
+            },
+          };
+        } else if (hasRewardCollections) {
+          // Apply discount to reward collections
+          discountItems = {
+            collections: {
+              add: rewardCollection.map(
+                (c) => `gid://shopify/Collection/${c.id}`,
+              ),
+            },
+          };
+        }
+
+        const discount = await admin.graphql(
+          `
         mutation discountAutomaticBasicCreate($automaticBasicDiscount: DiscountAutomaticBasicInput!) {
           discountAutomaticBasicCreate(automaticBasicDiscount: $automaticBasicDiscount) {
             automaticDiscountNode { id }
@@ -191,38 +244,47 @@ export const add_to_unlock_ = async (
                 startsAt: new Date().toISOString(),
                 minimumRequirement:
                   goalType === "quantity"
-                    ? { quantity: { greaterThanOrEqualToQuantity: String(goalquantity) } }
-                    : { subtotal: { greaterThanOrEqualToSubtotal: parseFloat(goalAmount).toFixed(2) } },
+                    ? {
+                        quantity: {
+                          greaterThanOrEqualToQuantity: String(goalquantity),
+                        },
+                      }
+                    : {
+                        subtotal: {
+                          greaterThanOrEqualToSubtotal:
+                            parseFloat(goalAmount).toFixed(2),
+                        },
+                      },
                 customerGets: {
                   value:
                     rewardMode === "fixed"
                       ? discountType === "percentage"
                         ? { percentage: parseFloat(discountCode) / 100 }
                         : {
-                          discountAmount: {
-                            amount: parseFloat(discountCode),
-                            appliesOnEachItem: false,
-                          },
-                        }
+                            discountAmount: {
+                              amount: parseFloat(discountCode),
+                              appliesOnEachItem: false,
+                            },
+                          }
                       : { percentage: 1.0 },
-                  items: {
-                    products: {
-                      productsToAdd: selectedProducts.map(
-                        (p) => `gid://shopify/Product/${p.id}`
-                      ),
-                    },
-                  },
+                  items: discountItems,
                 },
               },
             },
-          }
+          },
         );
 
         const response = await discount.json();
         discountId =
-          response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode?.id;
+          response?.data?.discountAutomaticBasicCreate?.automaticDiscountNode
+            ?.id;
 
-        console.log(response?.data?.discountAutomaticBasicCreate, "✅ Discount created for offer", offerId, discountId);
+        console.log(
+          response?.data?.discountAutomaticBasicCreate,
+          "✅ Discount created for offer",
+          offerId,
+          discountId,
+        );
       } else if (rewardType === "shipping") {
         // ✅ Handle free shipping
         const shippingDiscount = await admin.graphql(`
@@ -231,10 +293,11 @@ export const add_to_unlock_ = async (
             freeShippingAutomaticDiscount: {
               title: "Offer-${offerId}-FreeShipping-${Date.now()}",
               startsAt: "${new Date().toISOString()}",
-              minimumRequirement: ${goalType === "quantity"
-            ? `{ quantity: { greaterThanOrEqualToQuantity: "${goalquantity}" } }`
-            : `{ subtotal: { greaterThanOrEqualToSubtotal: ${parseFloat(goalAmount).toFixed(2)} } }`
-          },
+              minimumRequirement: ${
+                goalType === "quantity"
+                  ? `{ quantity: { greaterThanOrEqualToQuantity: "${goalquantity}" } }`
+                  : `{ subtotal: { greaterThanOrEqualToSubtotal: ${parseFloat(goalAmount).toFixed(2)} } }`
+              },
               destination: { all: true }
             }
           ) {
@@ -246,9 +309,15 @@ export const add_to_unlock_ = async (
 
         const response = await shippingDiscount.json();
         discountId =
-          response?.data?.discountAutomaticFreeShippingCreate?.automaticDiscountNode?.id;
+          response?.data?.discountAutomaticFreeShippingCreate
+            ?.automaticDiscountNode?.id;
 
-        console.log(response?.data?.discountAutomaticFreeShippingCreate, "✅ Free Shipping created for offer", offerId, discountId);
+        console.log(
+          response?.data?.discountAutomaticFreeShippingCreate,
+          "✅ Free Shipping created for offer",
+          offerId,
+          discountId,
+        );
       }
 
       // Store each discountId
@@ -270,8 +339,4 @@ export const add_to_unlock_ = async (
       discounts: [],
     };
   }
-
 };
-
-
-

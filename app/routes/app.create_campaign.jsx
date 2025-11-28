@@ -349,6 +349,22 @@ const Placment_Postion = [
   },
 ];
 
+const getAvailablePlacements = (campaignType) => {
+  const allPlacements = Placment_Postion;
+
+  switch (campaignType) {
+    case "post_purchase":
+      return allPlacements.filter(
+        (p) => p.title === "Page" || p.title === "Cart",
+      );
+    case "checkout_upsell":
+    case "order_bump":
+      return allPlacements.filter((p) => p.title === "Cart");
+    default:
+      return allPlacements;
+  }
+};
+
 export default function CreateCampaign() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -357,21 +373,30 @@ export default function CreateCampaign() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [placement, setPlacement] = useState("");
   const [dealType, setDealType] = useState("");
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [currentProgress] = useState(1); // Mock progress for preview
-
-  const handleNext = () => {
-    if (step === 1 && selectedCategory) {
-      setStep(2);
-    } else if (step === 2 && selectedCard) {
-      setStep(3);
-    }
-  };
 
   // Debug effect
   useEffect(() => {
     console.log("selectedCategory changed:", selectedCategory);
   }, [selectedCategory]);
+
+  // Reset placement when campaign type changes
+  useEffect(() => {
+    if (selectedCard) {
+      const availablePlacements = getAvailablePlacements(selectedCard.type);
+      // Reset placement if current selection is not available for new campaign type
+      if (
+        placement &&
+        !availablePlacements.some((p) => {
+          const placementValue =
+            p.title === "Home" ? "home" : p.title === "Page" ? "Page" : "cart";
+          return placement === placementValue;
+        })
+      ) {
+        setPlacement("");
+      }
+    }
+  }, [selectedCard, placement]);
 
   const handleBack = () => {
     if (step === 2) {
@@ -380,6 +405,9 @@ export default function CreateCampaign() {
     } else if (step === 3) {
       setStep(2);
       setSelectedCard(null);
+      setPlacement("");
+      setDealType("");
+      setCampaignName("");
     }
   };
 
@@ -387,7 +415,7 @@ export default function CreateCampaign() {
     console.log("Campaign card selected:", card);
     console.log("Card type:", card.type);
     setSelectedCard(card);
-    setStep(3); // Now goes to combined step with Offer Type, Campaign Name & Placement
+    setStep(3); // Goes to configuration page
   };
 
   const handleFinalSubmit = () => {
@@ -722,6 +750,15 @@ export default function CreateCampaign() {
         .Polaris-Layout {
           background-color: #f5f5f5;
         }
+        @media (max-width: 1200px) {
+          .config-layout {
+            grid-template-columns: 1fr !important;
+          }
+          .preview-column {
+            position: relative !important;
+            top: 0 !important;
+          }
+        }
       `}</style>
       <Layout sectioned padding="400">
         <Layout.Section>
@@ -846,6 +883,16 @@ export default function CreateCampaign() {
                           >
                             {cat.title}
                           </Text>
+                          <Text
+                            variant="bodySm"
+                            tone="subdued"
+                            style={{
+                              color: "#6d7175",
+                              lineHeight: "1.4",
+                            }}
+                          >
+                            {cat.description}
+                          </Text>
                         </div>
                       </div>
                     );
@@ -901,7 +948,10 @@ export default function CreateCampaign() {
           {step === 3 && (
             <div>
               <div style={{ marginBottom: "20px" }}>
-                <InlineStack align="end" gap="200">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Button variant="plain" onClick={handleBack}>
+                    ← Back
+                  </Button>
                   <Button
                     variant="primary"
                     onClick={handleFinalSubmit}
@@ -911,17 +961,25 @@ export default function CreateCampaign() {
                   </Button>
                 </InlineStack>
               </div>
-              <Card sectioned>
-                <BlockStack gap="400">
-                  <InlineStack align="space-between" blockAlign="center">
-                    <Button variant="plain" onClick={handleBack}>
-                      ← Back
-                    </Button>
-                    <Text variant="headingMd" fontWeight="bold">
-                      Step 3: Offer Type, Campaign Name & Placement
-                    </Text>
-                  </InlineStack>
 
+              {/* Two-column layout: Configuration on left, Preview on right */}
+              <div
+                className="config-layout"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 1fr",
+                  gap: "24px",
+                  alignItems: "start",
+                }}
+              >
+                {/* Left Column: Configuration Options */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "20px",
+                  }}
+                >
                   <Card sectioned>
                     <BlockStack gap="300">
                       <Text variant="headingSm" fontWeight="bold">
@@ -936,16 +994,23 @@ export default function CreateCampaign() {
                       />
                     </BlockStack>
                   </Card>
+
                   <Card sectioned>
                     <BlockStack gap="300">
                       <InlineStack align="space-between" blockAlign="center">
-
-                      <Text variant="headingSm" fontWeight="bold">
-                        Campaign Placement
-                      </Text>
-                      <Button variant="primary" onClick={() => setShowPreviewModal(true)}>
-                        Preview
-                      </Button>
+                        <Text variant="headingSm" fontWeight="bold">
+                          Campaign Placement
+                        </Text>
+                        <Text
+                          variant="bodySm"
+                          tone="subdued"
+                          style={{
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Need help? Learn when each funnel shows.
+                        </Text>
                       </InlineStack>
                       <Text variant="bodySm" tone="subdued">
                         Select where you want to display this campaign
@@ -954,152 +1019,114 @@ export default function CreateCampaign() {
                         style={{
                           display: "grid",
                           gridTemplateColumns:
-                            "repeat(auto-fit, minmax(280px, 1fr))",
-                          gap: "24px",
+                            "repeat(auto-fit, minmax(140px, 1fr))",
+                          gap: "12px",
                           width: "100%",
                           padding: "20px 0",
                         }}
                       >
-                        {Placment_Postion.map((item) => {
-                          // Map array titles to placement values
-                          const placementValue =
-                            item.title === "Home"
-                              ? "home"
-                              : item.title === "Page"
-                                ? "Page"
-                                : "cart";
-                          const isSelected = placement === placementValue;
-                          return (
-                            <div
-                              key={item.id}
-                              onClick={() => setPlacement(placementValue)}
-                              style={{
-                                cursor: "pointer",
-                                position: "relative",
-                                borderRadius: "8px",
-                                overflow: "hidden",
-                                transition: "all 0.3s ease",
-                                transform: isSelected
-                                  ? "translateY(-4px)"
-                                  : "translateY(0)",
-                                boxShadow: isSelected
-                                  ? "0 8px 16px rgba(92, 106, 196, 0.2)"
-                                  : "0 2px 8px rgba(0, 0, 0, 0.08)",
-                                border: isSelected
-                                  ? "2px solid #5c6ac4"
-                                  : "2px solid transparent",
-                                background: "transparent",
-                              }}
-                            >
-                              {/* Preview Icon */}
+                        {getAvailablePlacements(selectedCard?.type).map(
+                          (item) => {
+                            // Map array titles to placement values
+                            const placementValue =
+                              item.title === "Home"
+                                ? "home"
+                                : item.title === "Page"
+                                  ? "Page"
+                                  : "cart";
+                            const isSelected = placement === placementValue;
+                            return (
                               <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item.preview_link) {
-                                    window.open(item.preview_link, "_blank");
-                                  } else {
-                                    setPlacement(placementValue);
-                                    setShowPreviewModal(true);
-                                  }
-                                }}
+                                key={item.id}
+                                onClick={() => setPlacement(placementValue)}
                                 style={{
-                                  position: "absolute",
-                                  top: "12px",
-                                  right: "12px",
-                                  zIndex: 10,
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "rgba(255, 255, 255, 0.9)",
+                                  cursor: "pointer",
+                                  position: "relative",
+                                  borderRadius: "8px",
+                                  border: isSelected
+                                    ? "2px solid #5c6ac4"
+                                    : "1px solid #e1e3e5",
+                                  background: "#ffffff",
+                                  padding: "20px 16px",
                                   display: "flex",
+                                  flexDirection: "column",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  cursor: "pointer",
-                                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                                  gap: "12px",
                                   transition: "all 0.2s ease",
+                                  minHeight: "120px",
+                                  boxShadow: isSelected
+                                    ? "0 2px 8px rgba(92, 106, 196, 0.15)"
+                                    : "none",
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "#fff";
-                                  e.currentTarget.style.transform =
-                                    "scale(1.1)";
+                                  if (!isSelected) {
+                                    e.currentTarget.style.borderColor =
+                                      "#c9cccf";
+                                    e.currentTarget.style.boxShadow =
+                                      "0 1px 3px rgba(0, 0, 0, 0.1)";
+                                  }
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "rgba(255, 255, 255, 0.9)";
-                                  e.currentTarget.style.transform = "scale(1)";
+                                  if (!isSelected) {
+                                    e.currentTarget.style.borderColor =
+                                      "#e1e3e5";
+                                    e.currentTarget.style.boxShadow = "none";
+                                  }
                                 }}
                               >
-                                <InfoIcon width={18} height={18} />
-                              </div>
-                              <div
-                                style={{
-                                  width: "100%",
-                                  height: "280px",
-                                  overflow: "hidden",
-                                  position: "relative",
-                                  backgroundColor: "#f5f5f5",
-                                }}
-                              >
-                                <img
-                                  src={item.icon}
-                                  alt={item.title}
+                                {/* Icon */}
+                                <div
                                   style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    transition: "transform 0.3s ease",
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform =
-                                      "scale(1.05)";
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform =
-                                      "scale(1)";
-                                  }}
-                                />
-                              </div>
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  background:
-                                    "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                                  padding: "20px 16px 16px",
-                                  color: "#fff",
-                                }}
-                              >
-                                <Text
-                                  variant="headingLg"
-                                  fontWeight="bold"
-                                  style={{
-                                    color: "#fff",
-                                    marginBottom: "8px",
-                                    textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                                    width: "48px",
+                                    height: "48px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "#202223",
                                   }}
                                 >
-                                  {item.title}
-                                </Text>
+                                  {item.thumbnail ? (
+                                    <span style={{ fontSize: "32px" }}>
+                                      {item.thumbnail}
+                                    </span>
+                                  ) : (
+                                    <img
+                                      src={item.icon}
+                                      alt={item.title}
+                                      style={{
+                                        width: "48px",
+                                        height: "48px",
+                                        objectFit: "contain",
+                                        filter:
+                                          "grayscale(100%) brightness(0.3)",
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                                {/* Label */}
                                 <Text
-                                  variant="bodyMd"
+                                  variant="bodySm"
+                                  fontWeight="medium"
                                   style={{
-                                    color: "rgba(255,255,255,0.9)",
-                                    lineHeight: "1.4",
-                                    textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                                    color: "#202223",
+                                    textAlign: "center",
                                   }}
                                 >
-                                  {item.description}
+                                  {item.title === "Page"
+                                    ? "Product Page"
+                                    : item.title === "Cart"
+                                      ? "Cart Page"
+                                      : item.title + " Page"}
                                 </Text>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          },
+                        )}
                       </div>
                     </BlockStack>
                   </Card>
+
                   <Card sectioned>
                     <BlockStack gap="300">
                       <Text variant="headingSm" fontWeight="bold">
@@ -1213,31 +1240,43 @@ export default function CreateCampaign() {
                       </div>
                     </BlockStack>
                   </Card>
-                </BlockStack>
-              </Card>
-            </div>
-          )}
+                </div>
 
-          {/* Preview Modal */}
-          {showPreviewModal && (
-            <Modal
-              open={showPreviewModal}
-              onClose={() => setShowPreviewModal(false)}
-              title={`Preview - ${placement === "home" ? "Homepage" : placement === "Page" ? "Product Page" : "Cart Page"}`}
-              large
-            >
-              <Modal.Section>
+                {/* Right Column: Sticky Live Preview */}
                 <div
+                  className="preview-column"
                   style={{
-                    maxHeight: "70vh",
+                    position: "sticky",
+                    top: "20px",
+                    maxHeight: "calc(100vh - 40px)",
                     overflowY: "auto",
-                    padding: "10px",
                   }}
                 >
-                  {renderPreview()}
+                  <Card sectioned>
+                    <BlockStack gap="300">
+                      <Text variant="headingSm" fontWeight="bold">
+                        Live Preview
+                      </Text>
+                      <Text variant="bodySm" tone="subdued">
+                        {placement
+                          ? `Preview: ${placement === "home" ? "Homepage" : placement === "Page" ? "Product Page" : "Cart Page"}`
+                          : "Select a placement to see the preview"}
+                      </Text>
+                      <div
+                        style={{
+                          minHeight: "400px",
+                          backgroundColor: "#f9f9f9",
+                          borderRadius: "8px",
+                          padding: "10px",
+                        }}
+                      >
+                        {renderPreview()}
+                      </div>
+                    </BlockStack>
+                  </Card>
                 </div>
-              </Modal.Section>
-            </Modal>
+              </div>
+            </div>
           )}
         </Layout.Section>
       </Layout>
