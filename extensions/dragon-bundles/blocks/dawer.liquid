@@ -1,6 +1,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
-    const App_Domain = 'https://wheels-ecological-egg-some.trycloudflare.com';
+    const App_Domain = 'https://partition-gained-node-meaningful.trycloudflare.com';
     const shop = Shopify.shop;
     const productId = '{{ product.id }}';
     const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
@@ -232,13 +232,7 @@
         return `<img src="${icon}" alt="Offer Icon" style="width: 25px; height: 25px; object-fit: contain; display: block; margin: 0 auto;">`;
       }
 
-      // Fallback to default emoji icons based on reward type
-      if (offer.rewardType === 'discount') return '💰';
-      if (offer.rewardType === 'shipping') return '🚚';
-      if (offer.rewardType === 'gift') return '🎁';
-
-      // Default icon
-      return '⭐';
+      return '';
     }
 
     function calculateProgress(offers, cartData) {
@@ -970,6 +964,7 @@
   }
 
   .progress_step .circle {
+    display: none;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -996,6 +991,7 @@
   .progress_step .step_goal {
     font-size: 12px;
     color: #666;
+    display: none;
     margin-top: 4px;
   }
 

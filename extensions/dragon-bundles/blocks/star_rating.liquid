@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   const main_container = document.createElement('div');
   main_container.className = 'main_container';
 
-  // --- PROGRESS HANDLER ---
+  
   async function progressBardynamic(campaign, offer) {
     const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
     let cartTotal = 0;
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         : `€${offer.goalAmount || 0}`;
 
       // Replace smart variables in goal achieved text (global replacement)
-      let goalAchievedText = offer.goalTextAfter || '🎉 You\'ve unlocked {{reward}}!';
+      let goalAchievedText = offer.goalTextAfter || 'You\'ve unlocked {{reward}}!';
       goalAchievedText = goalAchievedText.replace(/\{\{reward\}\}/g, rewardDescription);
       goalAchievedText = goalAchievedText.replace(/\{\{goal\}\}/g, goal);
       goalAchievedText = goalAchievedText.replace(/\{\{amount_left\}\}/g, '0');
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         </div>
         <div class="product-grids">${productCardsHTML}</div>
         <div class="free-shipping-banner" id="free-shipping-banner-${offer.id}" style="display:none;">
-          🎉 You've unlocked ${offer.rewardType}!
+          You've unlocked ${offer.rewardType}!
         </div>
         <div class="action-button-container">
           <button class="action-btn" id="action-btn-${offer.id}" disabled>${buttonLabel}</button>

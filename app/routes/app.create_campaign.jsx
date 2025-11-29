@@ -978,6 +978,7 @@ export default function CreateCampaign() {
                     display: "flex",
                     flexDirection: "column",
                     gap: "20px",
+                    marginBottom:"20px"
                   }}
                 >
                   <Card sectioned>
@@ -1126,6 +1127,7 @@ export default function CreateCampaign() {
                       </div>
                     </BlockStack>
                   </Card>
+<div style={{marginBottom:"20px"}}>
 
                   <Card sectioned>
                     <BlockStack gap="300">
@@ -1240,6 +1242,7 @@ export default function CreateCampaign() {
                       </div>
                     </BlockStack>
                   </Card>
+</div>
                 </div>
 
                 {/* Right Column: Sticky Live Preview */}
@@ -1251,8 +1254,8 @@ export default function CreateCampaign() {
                     maxHeight: "calc(100vh - 40px)",
                     overflowY: "auto",
                   }}
-                >
-                  <Card sectioned>
+                 >
+                  <Card sectioned >
                     <BlockStack gap="300">
                       <Text variant="headingSm" fontWeight="bold">
                         Live Preview
