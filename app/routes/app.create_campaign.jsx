@@ -911,7 +911,7 @@ export default function CreateCampaign() {
                       ← Back to Category
                     </Button>
                     <Text variant="headingMd" fontWeight="bold">
-                      Step 2: Choose Campaign Type
+                      Step 2: Choose feature
                     </Text>
                     <div style={{ width: "80px" }}></div>
                   </InlineStack>
@@ -978,7 +978,7 @@ export default function CreateCampaign() {
                     display: "flex",
                     flexDirection: "column",
                     gap: "20px",
-                    marginBottom:"20px"
+                    marginBottom: "20px"
                   }}
                 >
                   <Card sectioned>
@@ -1127,122 +1127,121 @@ export default function CreateCampaign() {
                       </div>
                     </BlockStack>
                   </Card>
-<div style={{marginBottom:"20px"}}>
+                  <div style={{ marginBottom: "20px" }}>
 
-                  <Card sectioned>
-                    <BlockStack gap="300">
-                      <Text variant="headingSm" fontWeight="bold">
-                        Offer Type
-                      </Text>
-                      <Text variant="bodySm" tone="subdued">
-                        Choose the type of deal you want to create. This will
-                        determine how rewards are configured.
-                      </Text>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "20px",
-                          marginTop: "10px",
-                        }}
-                      >
-                        {/* Fixed Deal Card */}
+                    <Card sectioned>
+                      <BlockStack gap="300">
+                        <Text variant="headingSm" fontWeight="bold">
+                          Offer Type
+                        </Text>
+                        <Text variant="bodySm" tone="subdued">
+                          Choose the type of deal you want to create. This will
+                          determine how rewards are configured.
+                        </Text>
                         <div
                           style={{
-                            background: "#fff",
-                            border:
-                              dealType === "fixed"
-                                ? "2px solid #5c6ac4"
-                                : "2px solid #e1e1e1",
-                            borderRadius: "14px",
-                            padding: "20px",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            textAlign: "center",
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "20px",
+                            marginTop: "10px",
                           }}
-                          onClick={() => setDealType("fixed")}
                         >
+                          {/* Fixed Deal Card */}
                           <div
                             style={{
-                              width: "70px",
-                              height: "70px",
-                              borderRadius: "10px",
-                              background:
-                                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                              background: "#fff",
+                              border:
+                                dealType === "fixed"
+                                  ? "2px solid #5c6ac4"
+                                  : "2px solid #e1e1e1",
+                              borderRadius: "14px",
+                              padding: "20px",
                               display: "flex",
+                              flexDirection: "column",
                               alignItems: "center",
-                              justifyContent: "center",
-                              color: "white",
-                              fontSize: "30px",
-                              marginBottom: "12px",
+                              justifyContent: "space-between",
+                              textAlign: "center",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
                             }}
+                            onClick={() => setDealType("fixed")}
                           >
-                            🔒
+                            <div
+                              style={{
+                                width: "70px",
+                                height: "70px",
+                                borderRadius: "10px",
+                                background:
+                                  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "white",
+                                fontSize: "30px",
+                                marginBottom: "12px",
+                              }}
+                            >
+                              🔒
+                            </div>
+                            <Text variant="headingSm">Fixed Deal</Text>
+                            <Text
+                              tone="subdued"
+                              variant="bodySm"
+                              alignment="center"
+                            >
+                              You choose specific items for customers
+                            </Text>
                           </div>
-                          <Text variant="headingSm">Fixed Deal</Text>
-                          <Text
-                            tone="subdued"
-                            variant="bodySm"
-                            alignment="center"
-                          >
-                            Set fixed discounts and offers
-                          </Text>
-                        </div>
 
-                        {/* Flame Match Card */}
-                        <div
-                          style={{
-                            background: "#fff",
-                            border:
-                              dealType === "flame"
-                                ? "2px solid #5c6ac4"
-                                : "2px solid #e1e1e1",
-                            borderRadius: "14px",
-                            padding: "20px",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            textAlign: "center",
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                          }}
-                          onClick={() => setDealType("flame")}
-                        >
+                          {/* Flame Match Card */}
                           <div
                             style={{
-                              width: "70px",
-                              height: "70px",
-                              borderRadius: "10px",
-                              background:
-                                "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                              background: "#fff",
+                              border:
+                                dealType === "flame"
+                                  ? "2px solid #5c6ac4"
+                                  : "2px solid #e1e1e1",
+                              borderRadius: "14px",
+                              padding: "20px",
                               display: "flex",
+                              flexDirection: "column",
                               alignItems: "center",
-                              justifyContent: "center",
-                              color: "white",
-                              fontSize: "30px",
-                              marginBottom: "12px",
+                              justifyContent: "space-between",
+                              textAlign: "center",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
                             }}
+                            onClick={() => setDealType("flame")}
                           >
-                            🔥
+                            <div
+                              style={{
+                                width: "70px",
+                                height: "70px",
+                                borderRadius: "10px",
+                                background:
+                                  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "white",
+                                fontSize: "30px",
+                                marginBottom: "12px",
+                              }}
+                            >
+                              🔥
+                            </div>
+                            <Text variant="headingSm">Flame Match</Text>
+                            <Text
+                              tone="subdued"
+                              variant="bodySm"
+                              alignment="center"
+                            >
+                              Allow customers to choose items from your selection
+                            </Text>
                           </div>
-                          <Text variant="headingSm">Flame Match</Text>
-                          <Text
-                            tone="subdued"
-                            variant="bodySm"
-                            alignment="center"
-                          >
-                            Dynamic matching and recommendations
-                          </Text>
                         </div>
-                      </div>
-                    </BlockStack>
-                  </Card>
-</div>
+                      </BlockStack>
+                    </Card></div>
                 </div>
 
                 {/* Right Column: Sticky Live Preview */}
@@ -1254,7 +1253,7 @@ export default function CreateCampaign() {
                     maxHeight: "calc(100vh - 40px)",
                     overflowY: "auto",
                   }}
-                 >
+                >
                   <Card sectioned >
                     <BlockStack gap="300">
                       <Text variant="headingSm" fontWeight="bold">
