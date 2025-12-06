@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://partition-gained-node-meaningful.trycloudflare.com';
+  const App_Domain = 'https://replies-hammer-timber-cohen.trycloudflare.com';
   const dealsWrapper = document.getElementById('deals-wrapper');
 
   if (!dealsWrapper) {

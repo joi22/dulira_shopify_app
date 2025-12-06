@@ -1,16 +1,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://wheels-ecological-egg-some.trycloudflare.com';
+  const App_Domain = 'https://trace-phd-header-thehun.trycloudflare.com';
   const shop = Shopify.shop;
   const productId = '{{ product.id }}';
   const Api = `${App_Domain}/api/add_unlock/${productId}/${shop}`;
   const variant = {{product.variants.first.id | json}};
   const cartdata = {{cart | json}};
   
-  // MAIN CONTAINER (only once)
   const main_container = document.createElement('div');
   main_container.className = 'main_container';
-
   
   async function progressBardynamic(campaign, offer) {
     const quantity_product = parseInt(document.querySelector('[name="quantity"]')?.value || 1);
@@ -29,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     let progressPercent = 10;
     let remaining = 1;
 
-    // ✅ Customization from DB
     const customization = campaign.customization || {};
     const { barColors = {}, barRadius = 'round', barStyle = 'normal' } = customization;
     const { backgroundColor = '#e0e0e0', primaryColor = '#4CAF50', goalCompleteColor = '#FF9800', secondaryColor = '#2196F3' } = barColors;
@@ -55,12 +52,9 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
 
-    // ✅ Progress bar fill
     progressBar.style.width = `${progressPercent}%`;
     progressBar.style.height = barHeight;
     progressBar.style.borderRadius = borderRadius;
-
-    // ✅ Set color dynamically
     if (progressPercent >= 100) {
       progressBar.style.background = goalCompleteColor;
     } else if (progressPercent >= 40) {
@@ -69,16 +63,13 @@ document.addEventListener('DOMContentLoaded', async function () {
       progressBar.style.background = primaryColor;
     }
 
-    // ✅ Progress container background
     if (progressBar.parentElement) {
       progressBar.parentElement.style.background = backgroundColor;
       progressBar.parentElement.style.height = barHeight;
       progressBar.parentElement.style.borderRadius = borderRadius;
     }
 
-    // ✅ Goal Achieved
     if (progressPercent >= 100) {
-      // ✅ Fix smart variables replacement for achieved goal
       const rewardDescription = offer.rewardType === 'discount' 
         ? `${offer.discountCode}${offer.discountType === 'percentage' ? '% Off!' : '€ Off!'}`
         : offer.rewardType === 'shipping' 
@@ -89,21 +80,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? `${offer.goalquantity || 0} items`
         : `€${offer.goalAmount || 0}`;
 
-      // Replace smart variables in goal achieved text (global replacement)
       let goalAchievedText = offer.goalTextAfter || 'You\'ve unlocked {{reward}}!';
-      goalAchievedText = goalAchievedText.replace(/\{\{reward\}\}/g, rewardDescription);
-      goalAchievedText = goalAchievedText.replace(/\{\{goal\}\}/g, goal);
-      goalAchievedText = goalAchievedText.replace(/\{\{amount_left\}\}/g, '0');
-
+      goalAchievedText = goalAchievedText.replace(/\{\{reward\}\}/g, rewardDescription).replace(/\{\{goal\}\}/g, goal).replace(/\{\{amount_left\}\}/g, '0');
       unlockText.innerText = goalAchievedText;
       freeShippingBanner.style.display = 'block';
       actionButton.disabled = false;
-
       if (offer.rewardType === 'gift') {
         document.querySelectorAll(`.add-btn[data-offer-id="${offer.id}"]`).forEach(btn => btn.disabled = false);
       }
     } else {
-      // ✅ Fix smart variables replacement
       const rewardDescription = offer.rewardType === 'discount' 
         ? `${offer.discountCode}${offer.discountType === 'percentage' ? '% Off!' : '€ Off!'}`
         : offer.rewardType === 'shipping' 
@@ -118,17 +103,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         ? `${offer.goalquantity || 0} items`
         : `€${offer.goalAmount || 0}`;
 
-      // Replace smart variables in goal text (global replacement)
       let goalText = offer.goalTextBefore || 'Add {{amount_left}} to unlock {{reward}}!';
-      goalText = goalText.replace(/\{\{amount_left\}\}/g, amountLeft);
-      goalText = goalText.replace(/\{\{reward\}\}/g, rewardDescription);
-      goalText = goalText.replace(/\{\{goal\}\}/g, goal);
-
+      goalText = goalText.replace(/\{\{amount_left\}\}/g, amountLeft).replace(/\{\{reward\}\}/g, rewardDescription).replace(/\{\{goal\}\}/g, goal);
       unlockText.innerText = goalText;
-
       freeShippingBanner.style.display = 'none';
       actionButton.disabled = true;
-
       if (offer.rewardType === 'gift') {
         document.querySelectorAll(`.add-btn[data-offer-id="${offer.id}"]`).forEach(btn => btn.disabled = true);
       }
@@ -136,35 +115,28 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
 
-  // --- GET OFFER ICON ---
   function getOfferIcon(offer) {
-    // Check for database-stored icon (badgeImageUrl)
     const icon = offer.badgeImageUrl;
-    
-    // If icon exists and is a valid URL or data URI, display it
     if (icon && icon.trim() !== '' && (icon.startsWith('http') || icon.startsWith('https') || icon.startsWith('data:') || icon.startsWith('/'))) {
-      return `<img src="${icon}" alt="Offer Icon" class="offer-icon-img" style="width: 30px; height: 30px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 8px;">`;
+      return `<img src="${icon}" alt="Offer Icon" class="offer-icon-img" style="width:30px;height:30px;object-fit:contain;display:inline-block;vertical-align:middle;margin-right:8px">`;
     }
-    
-    // Fallback to default emoji icons based on reward type
     if (offer.rewardType === 'discount') return '<span class="offer-icon-emoji">💰</span>';
     if (offer.rewardType === 'shipping') return '<span class="offer-icon-emoji">🚚</span>';
     if (offer.rewardType === 'gift') return '<span class="offer-icon-emoji">🎁</span>';
-    
-    // Default icon
     return '<span class="offer-icon-emoji">⭐</span>';
   }
-
-  // --- RENDER OFFER ---
   async function renderOffer(campaign, offer, freeGiftProducts, triggerProducts) {
     let productsToShow = [];
     let productCardsHTML = '';
-
-      if (offer.rewardType === "gift") {
-        productsToShow = freeGiftProducts;
-      } else {
+    if (offer.rewardType === "gift") {
+      productsToShow = freeGiftProducts;
+    } else {
+      if (campaign.blockProducts && Array.isArray(campaign.blockProducts) && campaign.blockProducts.length > 0) {
+        productsToShow = campaign.blockProducts;
+      } else if (triggerProducts && triggerProducts.length > 0) {
         productsToShow = triggerProducts;
       }
+    }
 
       if (productsToShow.length) {
         productCardsHTML = productsToShow
@@ -221,59 +193,47 @@ document.addEventListener('DOMContentLoaded', async function () {
     card.innerHTML = cardContent;
     main_container.appendChild(card);
 
-    // ✅ Attach handlers for each product add button
     card.querySelectorAll('.add-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (btn.disabled) return;
         const variantId = btn.dataset.variantId;
         const isGift = offer.rewardType === 'gift';
-
         if (isGift) {
-          // ✅ Handle gift selection
           const isSelected = btn.dataset.selected === 'true';
-          
           if (isSelected) {
-            // Deselect gift
             btn.dataset.selected = 'false';
             btn.innerText = 'SELECT FREE GIFT';
             btn.style.background = '#5c6ac4';
           } else {
-            // Select gift (only one at a time)
             card.querySelectorAll('.add-btn[data-offer-id="' + offer.id + '"]').forEach(otherBtn => {
               otherBtn.dataset.selected = 'false';
               otherBtn.innerText = 'SELECT FREE GIFT';
               otherBtn.style.background = '#5c6ac4';
             });
-            
             btn.dataset.selected = 'true';
             btn.innerText = 'SELECTED';
             btn.style.background = '#28a745';
           }
         } else {
-          // ✅ Handle regular product addition
           btn.innerText = 'Adding...';
           btn.disabled = true;
-
           try {
             await fetch('/cart/add.js', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
               body: JSON.stringify({ id: variantId, quantity: 1 }),
             });
-
             btn.innerText = 'Added!';
             document.dispatchEvent(new CustomEvent('cart:updated'));
             await progressBardynamic(campaign, offer);
           } catch (e) {
-            console.error('❌ Failed to add product:', e);
+            console.error('Failed to add product:', e);
             btn.innerText = 'ADD';
             btn.disabled = false;
           }
         }
       });
     });
-
-    // ✅ Main action button
     const actionButton = card.querySelector(`#action-btn-${offer.id}`);
     actionButton.addEventListener('click', async () => {
       if (actionButton.disabled) return;
@@ -284,57 +244,41 @@ document.addEventListener('DOMContentLoaded', async function () {
       try {
         actionButton.innerText = 'Processing...';
         actionButton.disabled = true;
-
         if (currentOffer.rewardType === 'gift') {
-          // ✅ Check if user has selected a gift product
           const selectedGiftButton = card.querySelector('.add-btn[data-offer-id="' + offer.id + '"][data-selected="true"]');
-          
           if (!selectedGiftButton) {
-            // ✅ Show message to select gift first
             alert('Please select a free gift product first!');
             actionButton.innerText = buttonLabel;
             actionButton.disabled = false;
             return;
           }
-
-          // ✅ Add selected gift product to cart
           const variantId = selectedGiftButton.dataset.variantId;
           await fetch('/cart/add.js', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({ id: variantId, quantity: 1 }),
           });
-
         } else if (currentOffer.rewardType === 'discount') {
-          // ✅ Apply discount code (if available)
           if (currentOffer.discountCode) {
-            // Redirect to checkout with discount applied
             window.location.href = `/checkout?discount=${currentOffer.discountCode}`;
             return;
           }
         } else if (currentOffer.rewardType === 'shipping') {
-          // ✅ Free shipping - just redirect to checkout
           window.location.href = '/checkout';
           return;
         }
-
-        // ✅ Redirect to checkout after processing
         setTimeout(() => {
           window.location.href = '/checkout';
         }, 1000);
-
       } catch (error) {
-        console.error('❌ Error processing offer:', error);
+        console.error('Error processing offer:', error);
         alert('Something went wrong. Please try again.');
         actionButton.innerText = buttonLabel;
         actionButton.disabled = false;
       }
     });
 
-  // ✅ Initial progress
   await progressBardynamic(campaign, offer);
-
-  // ✅ Recalculate progress when qty input changes
   const qtyInput = document.querySelector('[name="quantity"]');
   if (qtyInput) {
     qtyInput.addEventListener('change', async () => {
@@ -342,9 +286,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
   }
-
-
-  // --- MAIN LOADER ---
   async function renderUpsellcount() {
     try {
       const response = await fetch(Api);
@@ -353,26 +294,30 @@ document.addEventListener('DOMContentLoaded', async function () {
       const data = await response.json();
       const upsellTriggers = Array.isArray(data.upsellTriggerProduct) ? data.upsellTriggerProduct : [];
       if (upsellTriggers.length > 0) {
-        // 🔥 Take latest campaign only
-        const latestCampaign = upsellTriggers
-        .map((p) => p.campaign)
-        .filter(Boolean)
-        .pop();
-        
+        const latestCampaign = upsellTriggers.map((p) => p.campaign).filter(Boolean).pop();
         if (latestCampaign) {
-          const placement = JSON.parse(latestCampaign.placement || '[]');
+          let placement = [];
+          try {
+            const placementRaw = typeof latestCampaign.placement === 'string' 
+              ? JSON.parse(latestCampaign.placement) 
+              : latestCampaign.placement || [];
+            if (Array.isArray(placementRaw)) {
+              placement = placementRaw;
+            } else if (placementRaw && typeof placementRaw === 'object' && placementRaw.placements) {
+              placement = placementRaw.placements;
+            }
+          } catch (e) {
+            console.error('Error parsing placement:', e);
+            placement = [];
+          }
           const Offers = latestCampaign.offers || [];
           const gift_products = latestCampaign.rewardProducts || [];
           const triggerProducts = latestCampaign.triggerProducts || [];
           const addToCartBtn = document.querySelector('.main-dragon-container');
-
           if (latestCampaign.type === 'add_to_unlock' && placement.includes('Page')) {
-            // Render only first offer (or loop if needed)
-            console.log(latestCampaign, Offers, "This To All Get");
             for (const offer of Offers) {
               await renderOffer(latestCampaign, offer, gift_products, triggerProducts);
             }
-            // Insert container
             if (!document.querySelector('.main_container')) {
               addToCartBtn.appendChild(main_container);
             }
@@ -380,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
       }
     } catch (err) {
-      console.error('❌ Error loading upsell:', err);
+      console.error('Error loading upsell:', err);
     }
   }
 
@@ -389,29 +334,23 @@ document.addEventListener('DOMContentLoaded', async function () {
 </script>
 
 <style>
-  /* Main Container */
   .main_container {
     width: 100%;
     max-width: 900px;
     margin: 20px auto;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   }
-
-  /* Card Styling */
   .card {
-    background: white;
+    background: #fff;
     border-radius: 12px;
     padding: 20px;
     margin: 15px 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border: 1px solid #eaeaea;
   }
-
-  /* Progress Bar */
   .progress-container {
     margin: 15px 0;
   }
-
   .progress-bar {
     width: 100%;
     height: 12px;
@@ -419,7 +358,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     border-radius: 10px;
     overflow: hidden;
   }
-
   .progress {
     height: 100%;
     background: linear-gradient(90deg, #4caf50, #2e7d32);
@@ -427,13 +365,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     transition: width 0.5s ease;
     border-radius: 10px;
   }
-
-  /* Offer Icon Container */
   .offer-icon-container {
     text-align: center;
     margin: 15px 0 10px 0;
   }
-
   .offer-icon-img {
     width: 30px;
     height: 30px;
@@ -441,14 +376,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     display: inline-block;
     vertical-align: middle;
   }
-
   .offer-icon-emoji {
     font-size: 30px;
     display: inline-block;
     vertical-align: middle;
   }
-
-  /* Unlock Text */
   .unlock-text {
     text-align: center;
     font-size: 16px;
@@ -457,19 +389,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     font-weight: 500;
     line-height: 1.4;
   }
-
-  /* Product Grid - Inline Flex Layout */
   .product-grids {
     display: flex;
-    /* flex-wrap: wrap; */
     justify-content: start;
     gap: 15px;
     margin: 20px 0;
     width: 100%;
     overflow: auto;
   }
-
-  /* Product Card */
   .product-card {
     display: flex;
     flex-direction: column;
@@ -481,12 +408,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     flex: 0 0 auto;
     width: 150px;
   }
-
   .product-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
-
   .product-image-container {
     width: 100px;
     height: 100px;
@@ -516,7 +441,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     object-fit: contain;
     border-radius: 8px;
   }
-
   .product-title {
     font-size: 14px;
     text-align: center;
@@ -530,19 +454,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
-
   .product-price {
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 700;
     color: #2c5aa0;
     margin-bottom: 12px;
   }
-
-  /* Buttons */
   .add-btn {
     padding: 10px 15px;
     background: #000;
-    color: white;
+    color: #fff;
     border: none;
     border-radius: 6px;
     font-size: 12px;
@@ -551,27 +472,23 @@ document.addEventListener('DOMContentLoaded', async function () {
     transition: all 0.2s ease;
     width: 100%;
   }
-
   .add-btn:hover:not(:disabled) {
     background: #333;
     transform: translateY(-2px);
   }
-
   .add-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
   }
-
   .action-button-container {
     display: flex;
     justify-content: center;
     margin-top: 15px;
   }
-
   .action-btn {
     padding: 12px 30px;
     background: #2c5aa0;
-    color: white;
+    color: #fff;
     border: none;
     border-radius: 6px;
     font-size: 16px;
@@ -579,18 +496,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     cursor: pointer;
     transition: all 0.2s ease;
   }
-
   .action-btn:hover:not(:disabled) {
     background: #1e3f73;
     transform: translateY(-2px);
   }
-
   .action-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
   }
-
-  /* Free Shipping Banner */
   .free-shipping-banner {
     text-align: center;
     padding: 12px;
@@ -600,83 +513,57 @@ document.addEventListener('DOMContentLoaded', async function () {
     color: #2e7d32;
     font-weight: 500;
   }
-
-  .progress {
-    height: 100%;
-    width: 0%;
-    transition: width 0.5s ease, background 0.5s ease;
-    border-radius: 10px;
-  }
-
-  /* Default (empty) */
   .progress.low {
-    background: linear-gradient(90deg, #e53935, #c62828); /* red shades */
+    background: linear-gradient(90deg, #e53935, #c62828);
   }
-
-  /* Mid progress */
   .progress.mid {
-    background: linear-gradient(90deg, #fbc02d, #f57f17); /* yellow shades */
+    background: linear-gradient(90deg, #fbc02d, #f57f17);
   }
-
-  /* Goal reached */
   .progress.high {
-    background: linear-gradient(90deg, #4caf50, #2e7d32); /* green shades */
+    background: linear-gradient(90deg, #4caf50, #2e7d32);
   }
-
-  /* Responsive Design */
   @media (max-width: 768px) {
     .main_container {
       padding: 0 10px;
     }
-
     .card {
       padding: 15px;
     }
-
     .product-grids {
       gap: 10px;
       justify-content: space-around;
     }
-
     .product-card {
       width: 140px;
       padding: 12px;
     }
-
     .product-image-container {
       width: 80px;
       height: 80px;
     }
-
     .product-title {
       font-size: 13px;
     }
-
     .unlock-text {
       font-size: 14px;
     }
-
     .action-btn {
       padding: 10px 20px;
       font-size: 14px;
     }
   }
-
   @media (max-width: 480px) {
     .product-grids {
       gap: 8px;
     }
-
     .product-card {
       width: calc(50% - 16px);
       padding: 10px;
     }
-
     .product-image-container {
       width: 70px;
       height: 70px;
     }
-
     .add-btn {
       padding: 8px 12px;
       font-size: 11px;

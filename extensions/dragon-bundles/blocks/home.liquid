@@ -1,6 +1,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-  const domain = 'https://roulette-ceremony-attempting-principal.trycloudflare.com';
+  const domain = 'https://replies-hammer-timber-cohen.trycloudflare.com';
   const shop = {{ shop.permanent_domain | json }};
   const apiUrl = `${domain}/api/home/${shop}`;
   let titleOffer = "Bundle Deals"
@@ -20,7 +20,22 @@ document.addEventListener('DOMContentLoaded', async function () {
       }
 
       const campaign = upsellTriggers.campaign;
-      const placements = JSON.parse(campaign?.placement || "[]");
+      // Handle both old array format and new object format
+      let placements = [];
+      try {
+        const placementRaw = typeof campaign?.placement === 'string' 
+          ? JSON.parse(campaign.placement) 
+          : campaign?.placement || [];
+        
+        if (Array.isArray(placementRaw)) {
+          placements = placementRaw;
+        } else if (placementRaw && typeof placementRaw === 'object' && placementRaw.placements) {
+          placements = placementRaw.placements;
+        }
+      } catch (e) {
+        console.error('Error parsing placement:', e);
+        placements = [];
+      }
 
       if (!placements.includes("home")) return;
 
@@ -33,9 +48,28 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       model_render.innerHTML = ""; // clear old products
 
-      if (campaign.type === "add_to_unlock" && Array.isArray(campaign.triggerProducts)) {
-        // All products from campaign
-        const allProducts = campaign.triggerProducts;
+      if (campaign.type === "add_to_unlock") {
+        // Homepage: block products, reward products (NOT trigger products)
+        // Priority: block products > reward products > trigger products (fallback)
+        let allProducts = [];
+        
+        // First try block products (if available from API)
+        if (campaign.blockProducts && Array.isArray(campaign.blockProducts) && campaign.blockProducts.length > 0) {
+          allProducts = campaign.blockProducts;
+        } 
+        // Then try reward products
+        else if (campaign.rewardProducts && Array.isArray(campaign.rewardProducts) && campaign.rewardProducts.length > 0) {
+          allProducts = campaign.rewardProducts;
+        }
+        // Fallback to trigger products if nothing else available
+        else if (Array.isArray(campaign.triggerProducts) && campaign.triggerProducts.length > 0) {
+          allProducts = campaign.triggerProducts;
+        }
+        
+        if (allProducts.length === 0) {
+          console.log("No products available for homepage");
+          return;
+        }
         
         // Create cards with 2 products each
         const cards = [];

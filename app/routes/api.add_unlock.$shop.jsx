@@ -44,12 +44,38 @@ export const loader = async ({ request, params }) => {
   const enrichedCampaigns = await Promise.all(
     upsellTriggerProduct.map(async (trigger) => {
       const campaign = trigger.campaign;
-console.log("campaign ==========>>>>>>>>>>>>>", upsellTriggerProduct);
+      
+      // Extract block products from placement metadata
+      // Placement can be: array format ["Page"] or object format {placements: ["Page"], blockProducts: [...]}
+      let blockProducts = [];
+      try {
+        const placementRaw = typeof campaign.placement === 'string' 
+          ? JSON.parse(campaign.placement) 
+          : campaign.placement || [];
+        
+        // Handle both old array format and new object format
+        if (Array.isArray(placementRaw)) {
+          // Old format - no block products stored
+          blockProducts = [];
+        } else if (placementRaw && typeof placementRaw === 'object' && placementRaw.blockProducts) {
+          // New format with metadata
+          blockProducts = Array.isArray(placementRaw.blockProducts) ? placementRaw.blockProducts : [];
+        }
+      } catch (e) {
+        console.error('Error parsing block products from placement:', e);
+      }
+      
       if (
         !campaign.rewardCollections ||
         campaign.rewardCollections.length === 0
       ) {
-        return trigger;
+        return {
+          ...trigger,
+          campaign: {
+            ...campaign,
+            blockProducts: blockProducts, // Add block products even if no reward collections
+          },
+        };
       }
 
       const enrichedCollections = await Promise.all(
@@ -128,6 +154,7 @@ console.log("campaign ==========>>>>>>>>>>>>>", upsellTriggerProduct);
         campaign: {
           ...campaign,
           rewardCollectionsWithProducts: enrichedCollections,
+          blockProducts: blockProducts, // Add block products to campaign response
         },
       };
     }),
