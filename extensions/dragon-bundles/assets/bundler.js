@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async function () {
-  const App_Domain = 'https://replies-hammer-timber-cohen.trycloudflare.com';
+  const App_Domain = 'https://dans-tours-permissions-impose.trycloudflare.com';
   const dealsWrapper = document.getElementById('deals-wrapper');
+  
 
   if (!dealsWrapper) {
     console.error('❌ Deals wrapper element not found in DOM');
@@ -8,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
   // Get shop domain from data attribute (preferred) or fallback to Shopify.shop
-  let shop = dealsWrapper.getAttribute('data-shop') || (typeof Shopify !== 'undefined' && Shopify.shop) || '';
+  let shop = dealsWrapper.getAttribute('data-shop') || (typeof Shopify.shop !== 'undefined' && Shopify.shop) || '';
 
   if (!shop) {
     console.error('❌ Shop domain not found. Cannot fetch deals.');

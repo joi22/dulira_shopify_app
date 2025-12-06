@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import save1 from '../../_index/media/save-1.jpg';
 
 const HomeSectionPreview = ({
   title = "Bundle Deals",
@@ -14,58 +15,69 @@ const HomeSectionPreview = ({
     products.length > 0
       ? products
       : [
-          {
-            id: 1,
-            productTitle: "Invisible leg shortening clip, non-slip",
-            price: "0.96",
-            media:
-              "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
-          },
-          {
-            id: 2,
-            productTitle: "200M 2000LED Green Wire Fairy Lights",
-            price: "3.79",
-            originalPrice: "4.10",
-            media:
-              "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
-          },
-          {
-            id: 3,
-            productTitle: "1690pcs Green Racing Building Blocks",
-            price: "8.59",
-            originalPrice: "9.83",
-            media:
-              "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
-          },
-          {
-            id: 4,
-            productTitle: "Premium Wireless Headphones",
-            price: "199.99",
-            media:
-              "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
-          },
-        ];
+        {
+          id: 1,
+          productTitle: "Invisible leg shortening clip, non-slip",
+          price: "0.96",
+          media: [
+            { src: save1 } // FIXED
+          ],
+        },
+        {
+          id: 2,
+          productTitle: "200M 2000LED Green Wire Fairy Lights",
+          price: "3.79",
+          originalPrice: "4.10",
+          media: [
+            {
+              src: save1
+            }
+          ], // FIXED
+        },
+        {
+          id: 3,
+          productTitle: "1690pcs Green Racing Building Blocks",
+          price: "8.59",
+          originalPrice: "9.83",
+          media: [
+            {
+              src: save1
+            }
+          ],
+        },
+        {
+          id: 4,
+          productTitle: "Premium Wireless Headphones",
+          price: "199.99",
+          media: [
+            {
+              src: save1
+            }
+          ],
+        },
+      ];
+
 
   const mockOffers =
     offers.length > 0
       ? offers
       : [
-          {
-            goalType: "quantity",
-            goalQuantity: 2,
-            rewardType: "discount",
-            discountType: "percentage",
-            discountCode: 10,
-            goalTextBefore: "Add {{amount_left}} more items to get {{reward}}",
-          },
-          {
-            goalType: "quantity",
-            goalQuantity: 4,
-            rewardType: "gift",
-            goalTextBefore:
-              "Add {{amount_left}} more items to unlock {{reward}}",
-          },
-        ];
+        {
+          goalType: "quantity",
+          goalQuantity: 2,
+          rewardType: "discount",
+          discountType: "percentage",
+          discountCode: 10,
+          goalTextBefore: "Add {{amount_left}} more items to get {{reward}}",
+        },
+        {
+          goalType: "quantity",
+          goalQuantity: 4,
+          rewardType: "gift",
+          goalTextBefore:
+            "Add {{amount_left}} more items to unlock {{reward}}",
+        },
+      ];
 
   const escapeHtml = (str) => {
     if (!str) return "";
@@ -179,16 +191,10 @@ const HomeSectionPreview = ({
         }
 
         .product-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #333;
-          margin-bottom: 12px;
-          line-height: 1.4;
-          height: 40px;
-          overflow: hidden;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-align: center;
         }
 
         .price-section {
@@ -434,15 +440,30 @@ const HomeSectionPreview = ({
 
         <div className="products-slider">
           <div className="slider-container">
-            {getVisibleProducts().map((product, productIndex) => {
-              const productTitle = product.productTitle || "";
-              const media =
-                Array.isArray(product.media) && product.media[0]?.src
+            {displayProducts.map((product, productIndex) => {
+
+              // ---- FIX TITLE ----
+              const productTitle = product.productTitle || product.title || "";
+
+              // ---- FIX MEDIA ----
+              let media = "";
+              if (product.media) {
+                // old API support
+                media = Array.isArray(product.media) && product.media[0]?.src
                   ? product.media[0].src
-                  : product.media || "";
+                  : product.media;
+              } else if (product.image) {
+                // NEW API support (your current dataset)
+                media = typeof product.image === "string"
+                  ? product.image
+                  : product.image.src || "";
+              }
+
+              console.log("media:", media);
+
               const price = parseFloat(product.price) || 0;
 
-              // Show discount details from API offers
+              // Show discount details
               let discountHtml = "";
               if (Array.isArray(mockOffers) && mockOffers.length > 0) {
                 mockOffers.forEach((offer) => {
@@ -469,10 +490,10 @@ const HomeSectionPreview = ({
                     .replace(/\{\{\s*reward\s*\}\}/gi, rewardText || "");
 
                   discountHtml += `
-                    <div class="discount-offer">
-                      <small>${goalText}</small>
-                    </div>
-                  `;
+            <div class="discount-offer">
+              <small>${goalText}</small>
+            </div>
+          `;
                 });
               }
 
@@ -481,15 +502,14 @@ const HomeSectionPreview = ({
                   <div className="product-image">
                     <img src={media} alt={escapeHtml(productTitle)} />
                   </div>
+
                   <div className="product-info">
-                    <h4 className="product-title">
-                      {escapeHtml(productTitle)}
-                    </h4>
+                    <h4 className="product-title">{escapeHtml(productTitle)}</h4>
+
                     <div className="price-section">
-                      <strong className="current-price">
-                        €{price.toFixed(2)}
-                      </strong>
+                      <strong className="current-price">€{price.toFixed(2)}</strong>
                     </div>
+
                     <div dangerouslySetInnerHTML={{ __html: discountHtml }} />
                   </div>
                 </div>
@@ -498,17 +518,14 @@ const HomeSectionPreview = ({
           </div>
 
           <div className="slider-controls">
-            <button className="slider-btn prev-btn" onClick={prevSlide}>
-              ‹
-            </button>
+            <button className="slider-btn prev-btn" onClick={prevSlide}>‹</button>
             <span className="slide-indicator">
               {currentSlide + 1} / {maxSlides + 1}
             </span>
-            <button className="slider-btn next-btn" onClick={nextSlide}>
-              ›
-            </button>
+            <button className="slider-btn next-btn" onClick={nextSlide}>›</button>
           </div>
         </div>
+
       </div>
     </div>
   );

@@ -37,6 +37,7 @@ import save2 from "./_index/media/save-2.png";
 import gift from "./_index/media/gift.png";
 import free from "./_index/media/shipping.png";
 import discou from "./_index/media/disc.png";
+import save1 from './_index/media/save-1.jpg'
 const SketchPicker = pakg;
 import {
   GiftCardIcon,
@@ -402,7 +403,7 @@ export default function CreateCampaign() {
   const [campaignName, setCampaignName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
-  const [placement, setPlacement] = useState("");
+  const [placement, setPlacement] = useState("home");
   const [dealType, setDealType] = useState("");
   const [currentProgress] = useState(1); // Mock progress for preview
 
@@ -414,7 +415,7 @@ export default function CreateCampaign() {
     active: true,
     badges: false,
     lockedGoals: false,
-    showConfetti: true,
+    showConfetti: false,
   });
   const [upsellselectedItems, setUpsellselectedItems] = useState([]);
   const [selectedCollections, setSelectedCollections] = useState([]);
@@ -425,7 +426,7 @@ export default function CreateCampaign() {
     useState("all");
   const [blockProductCollections, setBlockProductCollections] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showBadges, setShowBadges] = useState(true);
+  const [showBadges, setShowBadges] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showBadgeIcons, setShowBadgeIcons] = useState(false);
@@ -451,8 +452,7 @@ export default function CreateCampaign() {
       id: 1,
       title: "The Collection Snowboard: Liquid",
       price: "749.95",
-      image:
-        "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
+      image: save1 ,
     },
     {
       id: 2,
@@ -464,8 +464,7 @@ export default function CreateCampaign() {
       id: 3,
       title: "Summer PANTS Bundle",
       price: "49.99",
-      image:
-        "https://cdn.shopify.com/s/files/1/0642/6063/files/wax-special.png?v=1730040415",
+      image: save2 ,
     },
   ];
 
@@ -848,14 +847,14 @@ export default function CreateCampaign() {
           prev.map((offer) =>
             offer.id === offerId
               ? {
-                  ...offer,
-                  rewardProducts: isFixedDeal
-                    ? newProducts.slice(0, 1)
-                    : [...currentOffer.rewardProducts, ...newProducts].slice(
-                        0,
-                        20,
-                      ),
-                }
+                ...offer,
+                rewardProducts: isFixedDeal
+                  ? newProducts.slice(0, 1)
+                  : [...currentOffer.rewardProducts, ...newProducts].slice(
+                    0,
+                    20,
+                  ),
+              }
               : offer,
           ),
         );
@@ -906,12 +905,12 @@ export default function CreateCampaign() {
           prev.map((offer) =>
             offer.id === offerId
               ? {
-                  ...offer,
-                  rewardCollection: [
-                    ...(currentOffer.rewardCollection || []),
-                    ...newCollections,
-                  ],
-                }
+                ...offer,
+                rewardCollection: [
+                  ...(currentOffer.rewardCollection || []),
+                  ...newCollections,
+                ],
+              }
               : offer,
           ),
         );
@@ -935,10 +934,10 @@ export default function CreateCampaign() {
       prev.map((offer) =>
         offer.id === offerId
           ? {
-              ...offer,
-              rewardCollection:
-                offer.rewardCollection?.filter((item) => item.id !== id) || [],
-            }
+            ...offer,
+            rewardCollection:
+              offer.rewardCollection?.filter((item) => item.id !== id) || [],
+          }
           : offer,
       ),
     );
@@ -949,11 +948,11 @@ export default function CreateCampaign() {
       const updatedOffers = prev.map((offer) =>
         offer.id === offerId
           ? {
-              ...offer,
-              rewardProducts: offer.rewardProducts.filter(
-                (item) => item.id !== id,
-              ),
-            }
+            ...offer,
+            rewardProducts: offer.rewardProducts.filter(
+              (item) => item.id !== id,
+            ),
+          }
           : offer,
       );
       return updatedOffers;
@@ -1335,12 +1334,12 @@ export default function CreateCampaign() {
     const progressPercentage = activeOffer
       ? activeOffer.goalType === "quantity"
         ? Math.min(
-            (currentProgress / (parseInt(activeOffer.goalquantity) || 1)) * 100,
-          )
+          (currentProgress / (parseInt(activeOffer.goalquantity) || 1)) * 100,
+        )
         : Math.min(
-            (currentProgress / (parseFloat(activeOffer.goalAmount) || 1)) * 100,
-            100,
-          )
+          (currentProgress / (parseFloat(activeOffer.goalAmount) || 1)) * 100,
+          100,
+        )
       : currentProgress >= 100
         ? 100
         : (currentProgress / 1) * 100;
@@ -1388,12 +1387,12 @@ export default function CreateCampaign() {
 
       return isGoalReached
         ? activeOffer.goalTextAfter
-            .replace("{{reward}}", rewardDescription)
-            .replace("{{goal}}", goal)
+          .replace("{{reward}}", rewardDescription)
+          .replace("{{goal}}", goal)
         : activeOffer.goalTextBefore
-            .replace("{{amount_left}}", amountLeft)
-            .replace("{{reward}}", rewardDescription)
-            .replace("{{goal}}", goal);
+          .replace("{{amount_left}}", amountLeft)
+          .replace("{{reward}}", rewardDescription)
+          .replace("{{goal}}", goal);
     };
 
     const maxGoalValue =
@@ -1409,31 +1408,31 @@ export default function CreateCampaign() {
     const offerProgress =
       sortedOffers.length > 0
         ? sortedOffers.map((offer) => {
-            const goalValue =
-              offer.goalType === "quantity"
-                ? parseInt(offer.goalquantity) || 1
-                : parseFloat(offer.goalAmount) || 1;
-            const offerPercentage = (goalValue / maxGoalValue) * 100;
-            const isGoalReached = currentProgress >= goalValue;
-            return {
-              ...offer,
-              percentage: offerPercentage,
-              isGoalReached,
-              icon: offer.badgeIconUrl
-                ? offer.badgeIconUrl
-                : offer.badgeIcon
-                  ? createObjectURL(offer.badgeIcon)
-                  : icons[offer.rewardType] || "",
-            };
-          })
+          const goalValue =
+            offer.goalType === "quantity"
+              ? parseInt(offer.goalquantity) || 1
+              : parseFloat(offer.goalAmount) || 1;
+          const offerPercentage = (goalValue / maxGoalValue) * 100;
+          const isGoalReached = currentProgress >= goalValue;
+          return {
+            ...offer,
+            percentage: offerPercentage,
+            isGoalReached,
+            icon: offer.badgeIconUrl
+              ? offer.badgeIconUrl
+              : offer.badgeIcon
+                ? createObjectURL(offer.badgeIcon)
+                : icons[offer.rewardType] || "",
+          };
+        })
         : [
-            {
-              ...defaultGoal,
-              percentage: 100,
-              isGoalReached: currentProgress >= 1,
-              icon: icons.gift || "",
-            },
-          ];
+          {
+            ...defaultGoal,
+            percentage: 100,
+            isGoalReached: currentProgress >= 1,
+            icon: icons.gift || "",
+          },
+        ];
 
     const renderGoalText = (offer) => {
       const isGoalReached =
@@ -1457,12 +1456,12 @@ export default function CreateCampaign() {
 
       return isGoalReached
         ? offer.goalTextAfter
-            .replace("{{reward}}", rewardDescription)
-            .replace("{{goal}}", goal)
+          .replace("{{reward}}", rewardDescription)
+          .replace("{{goal}}", goal)
         : offer.goalTextBefore
-            .replace("{{amount_left}}", amountLeft)
-            .replace("{{reward}}", rewardDescription)
-            .replace("{{goal}}", goal);
+          .replace("{{amount_left}}", amountLeft)
+          .replace("{{reward}}", rewardDescription)
+          .replace("{{goal}}", goal);
     };
 
     if (!placement) {
@@ -1718,7 +1717,7 @@ export default function CreateCampaign() {
                                   ? progressBarStyle.goalCompleteColor
                                   : offer.percentage >= 40
                                     ? progressBarStyle.secondaryColor ||
-                                      progressBarStyle.primaryColor
+                                    progressBarStyle.primaryColor
                                     : progressBarStyle.primaryColor,
                               borderRadius:
                                 progressBarStyle.cornerRadius === "square"
@@ -2045,9 +2044,8 @@ export default function CreateCampaign() {
                         <div class="cart-drawer-overlay"></div>
                         <div class="cart-drawer">
                         <div>
-              ${
-                status.showConfetti === true
-                  ? `
+              ${status.showConfetti === true
+                    ? `
              <canvas id="confetti-canvas" style="
                 position:fixed;
                 top:0;left:0;
@@ -2080,8 +2078,8 @@ export default function CreateCampaign() {
                 })();
               </script>
               `
-                  : ""
-              }
+                    : ""
+                  }
                            </div>
                                                         <div class="cart-header">
 <div style="position: relative; text-align: center; margin-bottom: 25px;">
@@ -2118,11 +2116,10 @@ export default function CreateCampaign() {
                                                 "
                                                 ></div>
 
-${
-  showBadges
-    ? offerProgress
-        .map(
-          (offer) => `
+${showBadges
+                    ? offerProgress
+                      .map(
+                        (offer) => `
           <div class="progress_step" style="left: ${Math.min(offer.percentage, 100)}%;">
 
               <div
@@ -2153,29 +2150,27 @@ ${
               </div>
 
               <div class="step_goal" style="margin-top: 6px;">
-                ${
-                  offer.goalType === "quantity"
-                    ? offer.goalquantity
-                    : `${offer.currency}${offer.goalAmount}`
-                }
+                ${offer.goalType === "quantity"
+                            ? offer.goalquantity
+                            : `${offer.currency}${offer.goalAmount}`
+                          }
               </div>
           </div>
         `,
-        )
-        .join("")
-    : ""
-}
+                      )
+                      .join("")
+                    : ""
+                  }
 
                                                 </div>
 
                                             </div>
                                         </div>
                                         <div class="cart-content">
-${
-  upsellselectedItems.length > 0
-    ? upsellselectedItems
-        .map(
-          (item) => `
+${upsellselectedItems.length > 0
+                    ? upsellselectedItems
+                      .map(
+                        (item) => `
       <div class="cart-item">
         <div class="cart-item-image">
           <img src="${item.media || save2}" alt="${item.title}" />
@@ -2187,9 +2182,9 @@ ${
         </div>
       </div>
     `,
-        )
-        .join("")
-    : `
+                      )
+                      .join("")
+                    : `
       <div class="cart-item">
         <div class="cart-item-image">
           <img src="${save2}" alt="Product" />
@@ -2201,18 +2196,17 @@ ${
         </div>
       </div>
     `
-}
+                  }
                                                     <div class="gift-section">
                 <div class="gift-section-title">🎁 Gift Items</div>
                 <div class="gift-items-container">
-${
-  offers.length > 0
-    ? offers
-        .map((offer) =>
-          offer.rewardProducts && offer.rewardProducts.length > 0
-            ? offer.rewardProducts
-                .map(
-                  (item) => `
+${offers.length > 0
+                    ? offers
+                      .map((offer) =>
+                        offer.rewardProducts && offer.rewardProducts.length > 0
+                          ? offer.rewardProducts
+                            .map(
+                              (item) => `
                 <div class="gift-item">
                     <div class="gift-item-image">
                         <img src="${item.media || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23f0f0f0' width='100' height='100'/%3E%3Ctext fill='%23999' font-family='sans-serif' font-size='12' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3ENo Image%3C/text%3E%3C/svg%3E"}" alt="${item.title}" />
@@ -2227,47 +2221,45 @@ ${
                     </div>
                 </div>
             `,
-                )
-                .join("")
-            : "",
-        )
-        .join("")
-    : ""
-}
+                            )
+                            .join("")
+                          : "",
+                      )
+                      .join("")
+                    : ""
+                  }
 
                                       <div class="cart-footer">
                                             <div class="cart-subtotal">
                                                 <span>Subtotal</span>
-                                                <span>$${
-                                                  upsellselectedItems.length > 0
-                                                    ? upsellselectedItems
-                                                        .reduce(
-                                                          (total, item) =>
-                                                            total +
-                                                            parseFloat(
-                                                              item.price || 0,
-                                                            ),
-                                                          0,
-                                                        )
-                                                        .toFixed(2)
-                                                    : "29.99"
-                                                }</span>
+                                                <span>$${upsellselectedItems.length > 0
+                    ? upsellselectedItems
+                      .reduce(
+                        (total, item) =>
+                          total +
+                          parseFloat(
+                            item.price || 0,
+                          ),
+                        0,
+                      )
+                      .toFixed(2)
+                    : "29.99"
+                  }</span>
                                             </div>
                                             <div class="cart-buttons">
-                                                <button class="checkout">Checkout . $${
-                                                  upsellselectedItems.length > 0
-                                                    ? upsellselectedItems
-                                                        .reduce(
-                                                          (total, item) =>
-                                                            total +
-                                                            parseFloat(
-                                                              item.price || 0,
-                                                            ),
-                                                          0,
-                                                        )
-                                                        .toFixed(2)
-                                                    : "29.99"
-                                                }</button>
+                                                <button class="checkout">Checkout . $${upsellselectedItems.length > 0
+                    ? upsellselectedItems
+                      .reduce(
+                        (total, item) =>
+                          total +
+                          parseFloat(
+                            item.price || 0,
+                          ),
+                        0,
+                      )
+                      .toFixed(2)
+                    : "29.99"
+                  }</button>
                                             </div>
                                         </div>
                                     </div>
@@ -3774,10 +3766,10 @@ ${
                                             >
                                               Selected:{" "}
                                               {offer.rewardSelectionType ===
-                                              "products"
+                                                "products"
                                                 ? `${offer.rewardProducts.length}/1`
                                                 : offer.rewardSelectionType ===
-                                                    "collections"
+                                                  "collections"
                                                   ? `${offer.rewardCollection?.length || 0} collection(s)`
                                                   : "All Products"}
                                             </Text>
@@ -3789,12 +3781,12 @@ ${
                                               (offer.rewardSelectionType ===
                                                 "products" &&
                                                 offer.rewardProducts.length >=
-                                                  2) ||
-                                              (offer.rewardSelectionType ===
-                                                "collections" &&
-                                                offer.rewardCollection?.length >
+                                                2) ||
+                                                (offer.rewardSelectionType ===
+                                                  "collections" &&
+                                                  offer.rewardCollection?.length >
                                                   0) ||
-                                              offer.rewardSelectionType ===
+                                                offer.rewardSelectionType ===
                                                 "all"
                                                 ? "success"
                                                 : "warning"
@@ -3811,10 +3803,10 @@ ${
                                             >
                                               Selected:{" "}
                                               {offer.rewardSelectionType ===
-                                              "products"
+                                                "products"
                                                 ? `${offer.rewardProducts.length}/2 (minimum)`
                                                 : offer.rewardSelectionType ===
-                                                    "collections"
+                                                  "collections"
                                                   ? `${offer.rewardCollection?.length || 0} collection(s)`
                                                   : "All Products"}
                                             </Text>
@@ -3939,52 +3931,52 @@ ${
 
                                   {offer.rewardSelectionType ===
                                     "collections" && (
-                                    <>
-                                      <Button
-                                        onClick={() =>
-                                          rewardCollectionPicker(offer.id)
-                                        }
-                                        variant="primary"
-                                        size="medium"
-                                      >
-                                        Select Reward Collections
-                                      </Button>
-                                      {offer.rewardCollection &&
-                                        offer.rewardCollection.length > 0 && (
-                                          <Box paddingBlockStart="200">
-                                            <Text fontWeight="semibold">
-                                              Selected Reward Collections (
-                                              {offer.rewardCollection.length}):
-                                            </Text>
-                                            <BlockStack gap="100">
-                                              {offer.rewardCollection.map(
-                                                (item) => (
-                                                  <InlineStack
-                                                    key={item.id}
-                                                    align="space-between"
-                                                    blockAlign="center"
-                                                  >
-                                                    <Text>{item.title}</Text>
-                                                    <Button
-                                                      tone="critical"
-                                                      size="medium"
-                                                      onClick={() =>
-                                                        removeRewardCollection(
-                                                          offer.id,
-                                                          item.id,
-                                                        )
-                                                      }
+                                      <>
+                                        <Button
+                                          onClick={() =>
+                                            rewardCollectionPicker(offer.id)
+                                          }
+                                          variant="primary"
+                                          size="medium"
+                                        >
+                                          Select Reward Collections
+                                        </Button>
+                                        {offer.rewardCollection &&
+                                          offer.rewardCollection.length > 0 && (
+                                            <Box paddingBlockStart="200">
+                                              <Text fontWeight="semibold">
+                                                Selected Reward Collections (
+                                                {offer.rewardCollection.length}):
+                                              </Text>
+                                              <BlockStack gap="100">
+                                                {offer.rewardCollection.map(
+                                                  (item) => (
+                                                    <InlineStack
+                                                      key={item.id}
+                                                      align="space-between"
+                                                      blockAlign="center"
                                                     >
-                                                      Remove
-                                                    </Button>
-                                                  </InlineStack>
-                                                ),
-                                              )}
-                                            </BlockStack>
-                                          </Box>
-                                        )}
-                                    </>
-                                  )}
+                                                      <Text>{item.title}</Text>
+                                                      <Button
+                                                        tone="critical"
+                                                        size="medium"
+                                                        onClick={() =>
+                                                          removeRewardCollection(
+                                                            offer.id,
+                                                            item.id,
+                                                          )
+                                                        }
+                                                      >
+                                                        Remove
+                                                      </Button>
+                                                    </InlineStack>
+                                                  ),
+                                                )}
+                                              </BlockStack>
+                                            </Box>
+                                          )}
+                                      </>
+                                    )}
                                 </BlockStack>
                               )}
                             </BlockStack>
@@ -4471,11 +4463,11 @@ ${
                   }}
                 >
                   <BlockStack gap="300">
-                    <Text variant="bodySm" tone="subdued">
+                    {/* <Text variant="bodySm" tone="subdued">
                       {placement
                         ? `Preview: ${placement === "home" ? "Homepage" : placement === "Page" ? "Product Page" : "Cart Page"}`
                         : "Select a placement to see the preview"}
-                    </Text>
+                    </Text> */}
                     <div
                       style={{
                         minHeight: "400px",
